@@ -1,9 +1,8 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Pencil,
-  Trash2,
   Calendar,
   Users,
   Target,
@@ -34,6 +33,7 @@ import type { Project } from '@/types';
 
 export function ProjectsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { projects, employees, deleteProject, showToast } = useData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -42,6 +42,14 @@ export function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [detailProject, setDetailProject] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+
+  useEffect(() => {
+    const projectId = (location.state as { projectId?: string } | null)?.projectId;
+    const project = projects.find((item) => item.id === projectId);
+    if (!project) return;
+    setDetailProject(project);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, projects]);
 
   const filtered = useMemo(() => {
     return projects.filter((p) => {
@@ -260,7 +268,7 @@ function ProjectDetailModal({
   onEdit: (p: Project) => void;
   onOpenTeamBuilder: (p: Project) => void;
 }) {
-  const { employees, projects, assignEmployeeToProject, unassignEmployeeFromProject, showToast } = useData();
+  const { employees, projects, unassignEmployeeFromProject, showToast } = useData();
 
   if (!project) return null;
 

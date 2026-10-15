@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Pencil,
   Trash2,
   X,
-  Search,
   Mail,
   Briefcase,
   Clock,
-  TrendingUp,
   GraduationCap,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -25,7 +25,6 @@ import {
   calculateEmployeeUtilization,
   getEmployeeProjects,
   getSkillName,
-  skillLevelLabels,
 } from '@/utils';
 import type { Employee } from '@/types';
 
@@ -34,6 +33,8 @@ type SortDir = 'asc' | 'desc';
 
 export function EmployeesPage() {
   const { employees, projects, settings, deleteEmployee, showToast } = useData();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [skillFilter, setSkillFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('all');
@@ -45,6 +46,14 @@ export function EmployeesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+
+  useEffect(() => {
+    const employeeId = (location.state as { employeeId?: string } | null)?.employeeId;
+    const employee = employees.find((item) => item.id === employeeId);
+    if (!employee) return;
+    setSelectedEmployee(employee);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [employees, location.pathname, location.state, navigate]);
 
   const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
   const allSkillIds = useMemo(() => Array.from(new Set(employees.flatMap((e) => e.skills.map((s) => s.skillId)))).sort(), [employees]);

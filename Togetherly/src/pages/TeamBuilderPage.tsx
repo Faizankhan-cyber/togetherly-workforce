@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   Plus,
@@ -19,26 +19,24 @@ import { Avatar } from '@/components/Avatar';
 import { StatusBadge } from '@/components/StatusBadge';
 import { MatchScore } from '@/components/MatchScore';
 import { SkillTag } from '@/components/SkillTag';
-import { CapacityBar } from '@/components/CapacityBar';
 import { ProjectForm } from '@/components/ProjectForm';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
-import { EmptyState } from '@/components/EmptyState';
 import { useData } from '@/context/DataContext';
 import {
   generateRecommendations,
   getTeamSkillCoverage,
   getSkillName,
-  calculateEmployeeUtilization,
   getProjectStaffingProgress,
   formatDate,
 } from '@/utils';
-import type { Project, RecommendationResult, AppSettings, Employee } from '@/types';
+import type { Project, RecommendationResult, Employee } from '@/types';
 
 type Step = 'select' | 'review' | 'generate' | 'confirm';
 
 export function TeamBuilderPage() {
   const location = useLocation();
-  const { projects, employees, settings, assignEmployeeToProject, showToast, addActivity } = useData();
+  const navigate = useNavigate();
+  const { projects, employees, settings, assignEmployeeToProject, unassignEmployeeFromProject, showToast, addActivity } = useData();
   const [step, setStep] = useState<Step>('select');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -68,7 +66,11 @@ export function TeamBuilderPage() {
 
   function toggleTeamMember(empId: string) {
     setSelectedTeam((prev) =>
-      prev.includes(empId) ? prev.filter((id) => id !== empId) : [...prev, empId]
+      prev.includes(empId)
+        ? prev.filter((id) => id !== empId)
+        : prev.length < (selectedProject?.targetTeamSize ?? 0)
+          ? [...prev, empId]
+          : prev
     );
   }
 
@@ -76,18 +78,11 @@ export function TeamBuilderPage() {
     if (!selectedProject) return;
     const currentAssigned = selectedProject.assignedEmployeeIds;
     currentAssigned.forEach((id) => {
-      if (!selectedTeam.includes(id)) {
-        assignEmployeeToProject(id, selectedProject.id);
-      }
+      if (!selectedTeam.includes(id)) unassignEmployeeFromProject(id, selectedProject.id);
     });
     selectedTeam.forEach((id) => {
       if (!currentAssigned.includes(id)) {
         assignEmployeeToProject(id, selectedProject.id);
-      }
-    });
-    currentAssigned.forEach((id) => {
-      if (!selectedTeam.includes(id)) {
-        // unassign
       }
     });
     addActivity({ type: 'team', message: `Team confirmed for "${selectedProject.name}" (${selectedTeam.length} members)` });
@@ -111,6 +106,11 @@ export function TeamBuilderPage() {
         title="Team Builder"
         description="Generate AI-powered team recommendations based on skills, experience, and availability"
         breadcrumb={['Home', 'Team Builder']}
+        actions={selectedProjectId && (
+          <button className="btn-secondary" onClick={() => navigate('/workforce-twin', { state: { projectId: selectedProjectId } })}>
+            Open Workforce Twin <ArrowRight size={15} />
+          </button>
+        )}
       />
 
       {/* Stepper */}
@@ -163,8 +163,6 @@ export function TeamBuilderPage() {
         <GenerateStep
           project={selectedProject}
           employees={employees}
-          projects={projects}
-          settings={settings}
           recommendations={recommendations}
           selectedTeam={selectedTeam}
           onToggleMember={toggleTeamMember}
@@ -175,7 +173,7 @@ export function TeamBuilderPage() {
       )}
 
       {step === 'confirm' && selectedProject && (
-        <ConfirmStep project={selectedProject} employees={employees} projects={projects} onReset={reset} />
+        <ConfirmStep project={selectedProject} employees={employees} onReset={reset} />
       )}
 
       <ProjectForm open={formOpen} onClose={() => setFormOpen(false)} />
@@ -332,11 +330,9 @@ function ReviewStep({ project, employees, weights, onWeightsChange, onBack, onGe
   );
 }
 
-function GenerateStep({ project, employees, projects, settings, recommendations, selectedTeam, onToggleMember, onRegenerate, onBack, onConfirm }: {
+function GenerateStep({ project, employees, recommendations, selectedTeam, onToggleMember, onRegenerate, onBack, onConfirm }: {
   project: Project;
   employees: Employee[];
-  projects: Project[];
-  settings: AppSettings;
   recommendations: RecommendationResult[];
   selectedTeam: string[];
   onToggleMember: (id: string) => void;
@@ -406,9 +402,10 @@ function GenerateStep({ project, employees, projects, settings, recommendations,
                   <div className="flex flex-col gap-1.5">
                     <button
                       onClick={() => onToggleMember(emp.id)}
+                      disabled={!inTeam && (!rec.capacityFeasible || selectedTeam.length >= project.targetTeamSize)}
                       className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                         inTeam ? 'bg-primary text-white' : 'bg-base-hover text-text-primary hover:bg-base-border'
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-40`}
                     >
                       {inTeam ? <Check size={14} /> : <Plus size={14} />}
                     </button>
@@ -481,7 +478,7 @@ function GenerateStep({ project, employees, projects, settings, recommendations,
 
         <div className="flex items-center gap-2">
           <button className="btn-secondary flex-1" onClick={onBack}><ArrowLeft size={16} /> Back</button>
-          <button className="btn-primary flex-1" onClick={onConfirm} disabled={selectedTeam.length === 0}>
+          <button className="btn-primary flex-1" onClick={onConfirm} disabled={selectedTeam.length !== project.targetTeamSize}>
             Confirm <ArrowRight size={16} />
           </button>
         </div>
@@ -555,10 +552,9 @@ function GenerateStep({ project, employees, projects, settings, recommendations,
   );
 }
 
-function ConfirmStep({ project, employees, projects, onReset }: {
+function ConfirmStep({ project, employees, onReset }: {
   project: Project;
   employees: Employee[];
-  projects: Project[];
   onReset: () => void;
 }) {
   const coverage = getTeamSkillCoverage(project.assignedEmployeeIds, project, employees);

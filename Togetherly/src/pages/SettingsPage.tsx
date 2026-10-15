@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { useData } from '@/context/DataContext';
 import type { AppSettings } from '@/types';
+import { defaultSettings } from '@/data/mockData';
 
 export function SettingsPage() {
   const { settings, updateSettings, resetData, showToast } = useData();
@@ -24,7 +25,7 @@ export function SettingsPage() {
 
   function handleReset() {
     resetData();
-    setLocal(settings);
+    setLocal(defaultSettings);
     showToast('success', 'Demo data has been reset to defaults');
   }
 

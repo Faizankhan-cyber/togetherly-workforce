@@ -6,7 +6,10 @@ import type {
   Skill,
   AppSettings,
 } from '@/types';
-import { skills as allSkills, projects as allProjects } from '@/data/mockData';
+import { skills as allSkills } from '@/data/mockData';
+
+export const ESTIMATED_PROJECT_LOAD_PERCENT = 25;
+export const MAX_CONCURRENT_PROJECTS = Math.floor(100 / ESTIMATED_PROJECT_LOAD_PERCENT);
 
 export function getSkill(skillId: string): Skill | undefined {
   return allSkills.find((s) => s.id === skillId);
@@ -57,17 +60,24 @@ export function getEmployeeProjects(employeeId: string, projects: Project[]): Pr
   return projects.filter((p) => p.assignedEmployeeIds.includes(employeeId));
 }
 
+export function getActiveAssignmentCount(employeeId: string, projects: Project[]): number {
+  return projects.filter(
+    (project) =>
+      project.assignedEmployeeIds.includes(employeeId) &&
+      (project.status === 'active' || project.status === 'planning')
+  ).length;
+}
+
 export function calculateEmployeeUtilization(
   employeeId: string,
   projects: Project[],
   targetUtilization: number
 ): number {
-  const assigned = projects.filter(
-    (p) => p.assignedEmployeeIds.includes(employeeId) && p.status !== 'completed'
-  );
-  const projectShare = assigned.length > 0 ? targetUtilization / assigned.length : 0;
-  const totalLoad = assigned.length * projectShare;
-  return Math.min(Math.round(totalLoad), 100);
+  // The imported data has project membership, not timesheets. Present this as
+  // an explicit estimate: each active project consumes one quarter of capacity.
+  void targetUtilization;
+  const activeAssignments = getActiveAssignmentCount(employeeId, projects);
+  return Math.min(activeAssignments * ESTIMATED_PROJECT_LOAD_PERCENT, 100);
 }
 
 export function getUtilizationStatus(utilization: number, settings: AppSettings): 'overloaded' | 'balanced' | 'underutilized' {
@@ -87,6 +97,7 @@ export function scoreEmployeeForProject(
   projects: Project[],
   settings: AppSettings
 ): RecommendationResult {
+  void settings;
   const matchedSkills: string[] = [];
   const missingSkills: string[] = [];
   let skillPoints = 0;
@@ -119,6 +130,7 @@ export function scoreEmployeeForProject(
   const availableCapacity = getAvailableCapacity(utilization);
   const availabilityScore =
     employee.availability === 'available' ? availableCapacity : employee.availability === 'busy' ? availableCapacity * 0.4 : 0;
+  const capacityFeasible = employee.availability !== 'unavailable' && availableCapacity >= ESTIMATED_PROJECT_LOAD_PERCENT;
 
   const w = weights;
   const totalWeight = w.skillMatch + w.experience + w.availability;
@@ -142,16 +154,20 @@ export function scoreEmployeeForProject(
     reasons.push(`${employee.yearsExperience} years of experience`);
   }
   if (employee.availability === 'available') {
-    reasons.push(`${availableCapacity}% available capacity`);
+    reasons.push(`${availableCapacity}% available capacity; a new project is estimated at ${ESTIMATED_PROJECT_LOAD_PERCENT}%`);
   } else if (employee.availability === 'busy') {
     reasons.push('Currently busy — limited availability');
   } else {
     reasons.push('Unavailable for new assignments');
   }
+  if (!capacityFeasible) {
+    reasons.push('Not capacity-safe for another project assignment');
+  }
 
   return {
     employeeId: employee.id,
     matchScore,
+    capacityFeasible,
     matchedSkills,
     missingSkills,
     experienceRelevance: Math.round(experienceScore),
@@ -170,7 +186,7 @@ export function generateRecommendations(
 ): RecommendationResult[] {
   return employees
     .map((emp) => scoreEmployeeForProject(emp, project, weights, projects, settings))
-    .sort((a, b) => b.matchScore - a.matchScore);
+    .sort((a, b) => Number(b.capacityFeasible) - Number(a.capacityFeasible) || b.matchScore - a.matchScore);
 }
 
 export function getTeamSkillCoverage(

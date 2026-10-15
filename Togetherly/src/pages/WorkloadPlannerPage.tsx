@@ -9,13 +9,15 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Avatar } from '@/components/Avatar';
-import { StatusBadge } from '@/components/StatusBadge';
 import { CapacityBar } from '@/components/CapacityBar';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { FilterToolbar, SelectFilter } from '@/components/FilterToolbar';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
+  getActiveAssignmentCount,
+  MAX_CONCURRENT_PROJECTS,
+  ESTIMATED_PROJECT_LOAD_PERCENT,
   getUtilizationStatus,
   getEmployeeProjects,
   exportToCsv,
@@ -41,7 +43,7 @@ export function WorkloadPlannerPage() {
   const filteredEmployees = useMemo(() => {
     return employees.filter((e) => {
       if (deptFilter !== 'all' && e.department !== deptFilter) return false;
-      if (projectFilter !== 'all' && !e.id === false) {
+      if (projectFilter !== 'all') {
         const empProjects = getEmployeeProjects(e.id, projects);
         if (!empProjects.some((p) => p.id === projectFilter)) return false;
       }
@@ -202,6 +204,9 @@ export function WorkloadPlannerPage() {
           <div className="text-xs text-text-secondary mt-1">≤ {settings.underutilizedThreshold}% utilization</div>
         </div>
       </div>
+      <p className="mb-4 -mt-2 text-xs text-text-secondary">
+        Workload is an estimate: each active project assignment counts as {ESTIMATED_PROJECT_LOAD_PERCENT}% capacity because the demo data does not include timesheets.
+      </p>
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
@@ -300,7 +305,8 @@ export function WorkloadPlannerPage() {
                       >
                         <option value="">+ Assign to...</option>
                         {activeProjects
-                          .filter((p) => !empSimProjects.some((ep) => ep.id === p.id))
+                           .filter((p) => p.assignedEmployeeIds.length < p.targetTeamSize && !empSimProjects.some((ep) => ep.id === p.id))
+                           .filter(() => getActiveAssignmentCount(emp.id, simulatedProjects) < MAX_CONCURRENT_PROJECTS)
                           .map((p) => (
                             <option key={p.id} value={p.id}>{p.name.slice(0, 25)}{p.name.length > 25 ? '...' : ''}</option>
                           ))}

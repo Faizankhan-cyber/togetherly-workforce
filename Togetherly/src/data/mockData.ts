@@ -6,6 +6,8 @@ import type {
   AppSettings,
 } from '@/types';
 
+export const demoEmployeeId = 'emp-001';
+
 export const skills: Skill[] = [
   { id: 'skl-react', name: 'React', category: 'Frontend' },
   { id: 'skl-typescript', name: 'TypeScript', category: 'Frontend' },
@@ -31,6 +33,7 @@ export const skills: Skill[] = [
   { id: 'skl-marketing', name: 'Marketing', category: 'Business' },
   { id: 'skl-salesforce', name: 'Salesforce', category: 'Business' },
   { id: 'skl-graphQL', name: 'GraphQL', category: 'Backend' },
+  { id: 'skl-linux', name: 'Linux', category: 'DevOps' },
 ];
 
 const avatarColors = [
@@ -537,11 +540,10 @@ export const projects: Project[] = [
 export const recentActivity: ActivityEntry[] = [
   { id: 'act-001', type: 'project', message: 'Project "Cloud Infrastructure Migration" moved to planning', timestamp: '2026-10-14T10:30:00Z' },
   { id: 'act-002', type: 'team', message: 'Team confirmed for "ML Analytics Platform" (3 of 4 members)', timestamp: '2026-10-14T09:15:00Z' },
-  { id: 'act-003', type: 'employee', message: 'Nora Lindberg completed React onboarding training', timestamp: '2026-10-13T16:45:00Z' },
-  { id: 'act-004', type: 'workload', message: 'Thomas Wright flagged as overloaded (95% utilization)', timestamp: '2026-10-13T14:20:00Z' },
-  { id: 'act-005', type: 'training', message: 'Carlos Mendez started "GraphQL Fundamentals" course', timestamp: '2026-10-12T11:00:00Z' },
-  { id: 'act-006', type: 'project', message: 'Project "Internal QA Automation Framework" completed', timestamp: '2026-10-10T15:30:00Z' },
-  { id: 'act-007', type: 'team', message: 'New team generated for "Mobile App MVP"', timestamp: '2026-10-10T10:10:00Z' },
+  { id: 'act-003', type: 'training', message: 'Nora Lindberg is progressing through Advanced TypeScript training (50%)', timestamp: '2026-10-13T16:45:00Z' },
+  { id: 'act-004', type: 'training', message: 'Carlos Mendez started "GraphQL Fundamentals" course', timestamp: '2026-10-12T11:00:00Z' },
+  { id: 'act-005', type: 'project', message: 'Project "Internal QA Automation Framework" completed', timestamp: '2026-10-10T15:30:00Z' },
+  { id: 'act-006', type: 'team', message: 'New team generated for "Mobile App MVP"', timestamp: '2026-10-10T10:10:00Z' },
 ];
 
 export const defaultSettings: AppSettings = {

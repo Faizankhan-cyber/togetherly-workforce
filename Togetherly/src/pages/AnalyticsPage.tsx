@@ -5,14 +5,11 @@ import {
   PieChart,
   Pie,
   Cell,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
 } from 'recharts';
 import { Download, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -28,8 +25,6 @@ import {
   getProjectStaffingProgress,
   exportToCsv,
 } from '@/utils';
-
-const CHART_COLORS = ['#8B5CF6', '#22D3EE', '#22C55E', '#F59E0B', '#F87171', '#A78BFA', '#67E8F9', '#86EFAC'];
 
 export function AnalyticsPage() {
   const { employees, projects, settings, showToast } = useData();

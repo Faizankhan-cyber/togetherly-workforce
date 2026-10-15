@@ -12,6 +12,8 @@ import type {
   AppSettings,
   ActivityEntry,
   ToastMessage,
+  TrainingAssignment,
+  UserRole,
 } from '@/types';
 import {
   employees as seedEmployees,
@@ -37,6 +39,10 @@ interface DataContextValue {
   updateSettings: (updates: Partial<AppSettings>) => void;
   addActivity: (entry: Omit<ActivityEntry, 'id' | 'timestamp'>) => void;
   resetData: () => void;
+  role: UserRole;
+  setRole: (role: UserRole) => void;
+  addTrainingAssignment: (employeeId: string, assignment: Omit<TrainingAssignment, 'id'>) => void;
+  updateTrainingAssignment: (employeeId: string, assignmentId: string, updates: Partial<TrainingAssignment>) => void;
   toasts: ToastMessage[];
   showToast: (type: ToastMessage['type'], message: string) => void;
   dismissToast: (id: string) => void;
@@ -45,6 +51,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | null>(null);
 
 const STORAGE_KEY = 'togetherly-data-v1';
+const ROLE_STORAGE_KEY = 'togetherly-demo-role';
 
 interface StoredData {
   employees: Employee[];
@@ -73,6 +80,13 @@ function saveToStorage(data: StoredData) {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const stored = loadFromStorage();
+  const [role, setRole] = useState<UserRole>(() => {
+    try {
+      return localStorage.getItem(ROLE_STORAGE_KEY) === 'employee' ? 'employee' : 'manager';
+    } catch {
+      return 'manager';
+    }
+  });
   const [employees, setEmployees] = useState<Employee[]>(stored?.employees ?? seedEmployees);
   const [projects, setProjects] = useState<Project[]>(stored?.projects ?? seedProjects);
   const [settings, setSettings] = useState<AppSettings>(stored?.settings ?? defaultSettings);
@@ -82,6 +96,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     saveToStorage({ employees, projects, settings, activities });
   }, [employees, projects, settings, activities]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ROLE_STORAGE_KEY, role);
+    } catch {
+      // Keep the current session usable when browser storage is unavailable.
+    }
+  }, [role]);
 
   const showToast = useCallback((type: ToastMessage['type'], message: string) => {
     const id = uid('toast');
@@ -164,6 +186,57 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const addTrainingAssignment = useCallback((
+    employeeId: string,
+    assignment: Omit<TrainingAssignment, 'id'>
+  ) => {
+    const next: TrainingAssignment = { ...assignment, id: uid('tr') };
+    setEmployees((prev) => prev.map((employee) =>
+      employee.id === employeeId && !employee.trainingAssignments.some((item) =>
+        item.skillId === assignment.skillId && item.status !== 'completed'
+      )
+        ? { ...employee, trainingAssignments: [...employee.trainingAssignments, next] }
+        : employee
+    ));
+  }, []);
+
+  const updateTrainingAssignment = useCallback((
+    employeeId: string,
+    assignmentId: string,
+    updates: Partial<TrainingAssignment>
+  ) => {
+    const employee = employees.find((item) => item.id === employeeId);
+    const assignment = employee?.trainingAssignments.find((item) => item.id === assignmentId);
+    const completesCourse = !!assignment && assignment.status !== 'completed' && updates.status === 'completed';
+
+    setEmployees((prev) => prev.map((item) => {
+      if (item.id !== employeeId) return item;
+      return {
+        ...item,
+        trainingAssignments: item.trainingAssignments.map((training) =>
+          training.id === assignmentId ? { ...training, ...updates } : training
+        ),
+        ...(completesCourse && assignment
+          ? {
+              skills: (() => {
+                const currentLevel = item.skills.find((skill) => skill.skillId === assignment.skillId)?.level ?? 0;
+                const nextLevel = Math.min(5, Math.max(1, currentLevel + 1)) as 1 | 2 | 3 | 4 | 5;
+                return item.skills.some((skill) => skill.skillId === assignment.skillId)
+                  ? item.skills.map((skill) => skill.skillId === assignment.skillId
+                      ? { ...skill, level: nextLevel }
+                      : skill)
+                  : [...item.skills, { skillId: assignment.skillId, level: nextLevel }];
+              })(),
+            }
+          : {}),
+      };
+    }));
+
+    if (completesCourse && employee && assignment) {
+      addActivity({ type: 'training', message: `${employee.name} completed "${assignment.courseName}"` });
+    }
+  }, [employees, addActivity]);
+
   const resetData = useCallback(() => {
     setEmployees(seedEmployees);
     setProjects(seedProjects);
@@ -188,6 +261,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateSettings,
     addActivity,
     resetData,
+    role,
+    setRole,
+    addTrainingAssignment,
+    updateTrainingAssignment,
     toasts,
     showToast,
     dismissToast,

@@ -4,7 +4,7 @@ import { skills as allSkills } from '@/data/mockData';
 import { getSkillName, getDepartmentStats } from '@/utils';
 import { useData } from '@/context/DataContext';
 import { Modal } from './Modal';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 
 interface EmployeeFormProps {
   open: boolean;

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Download,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -14,8 +15,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  RadialBarChart,
-  RadialBar,
 } from 'recharts';
 import { PageHeader } from '@/components/PageHeader';
 import { Avatar } from '@/components/Avatar';
@@ -33,7 +32,7 @@ import {
 } from '@/utils';
 
 export function SkillsTrainingPage() {
-  const { employees, projects, showToast } = useData();
+  const { employees, projects, showToast, updateTrainingAssignment } = useData();
   const [deptFilter, setDeptFilter] = useState('all');
   const [skillFilter, setSkillFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
@@ -90,6 +89,14 @@ export function SkillsTrainingPage() {
     ]);
     exportToCsv('skill-matrix.csv', headers, rows);
     showToast('success', 'Skill matrix exported to CSV');
+  }
+
+  function advanceTraining(employeeId: string, trainingId: string, progress: number, status: 'not-started' | 'in-progress' | 'completed') {
+    if (status === 'completed') return;
+    const nextProgress = status === 'not-started' ? Math.max(10, progress) : Math.min(100, progress + 25);
+    const nextStatus = nextProgress >= 100 ? 'completed' : 'in-progress';
+    updateTrainingAssignment(employeeId, trainingId, { progress: nextProgress, status: nextStatus });
+    showToast('success', nextStatus === 'completed' ? 'Training completed and employee skill profile updated' : `Training progress updated to ${nextProgress}%`);
   }
 
   return (
@@ -177,13 +184,14 @@ export function SkillsTrainingPage() {
           ) : (
             <div className="space-y-2 max-h-[240px] overflow-y-auto">
               {skillGaps.map((gap, i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-base-bg border border-base-border">
+                <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-base-bg border border-base-border">
                   <div className="flex items-center gap-2">
                     <SkillTag skillId={gap.skillId} />
                   </div>
                   <span className="text-xs text-text-secondary">{gap.projectName}</span>
                 </div>
               ))}
+              <Link to="/roadmap" className="btn-secondary mt-2 w-fit">Assign a development course</Link>
             </div>
           )}
         </div>
@@ -283,6 +291,17 @@ export function SkillsTrainingPage() {
                     <div className={`h-full rounded-full ${training.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ width: `${training.progress}%` }} />
                   </div>
                 </div>
+                {training.status !== 'completed' ? (
+                  <button
+                    className="btn-secondary mt-3"
+                    onClick={() => advanceTraining(employee.id, training.id, training.progress, training.status)}
+                  >
+                    <CheckCircle2 size={14} />
+                    {training.status === 'not-started' ? 'Start training' : 'Add 25% progress'}
+                  </button>
+                ) : (
+                  <div className="mt-3 flex items-center gap-1 text-xs text-success"><CheckCircle2 size={14} /> Completed · skill profile updated</div>
+                )}
               </div>
             ))}
           </div>

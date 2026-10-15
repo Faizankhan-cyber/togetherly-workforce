@@ -10,19 +10,36 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  GitCompareArrows,
+  Lightbulb,
+  FileBarChart,
+  Map,
+  UserRound,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
+import { useNavigate } from 'react-router-dom';
 
-const navItems = [
+const managerNavItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/employees', label: 'Employees', icon: Users },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/team-builder', label: 'Team Builder', icon: UsersRound },
+  { to: '/workforce-twin', label: 'Workforce Twin', icon: GitCompareArrows },
   { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
+  { to: '/roadmap', label: 'Development Roadmap', icon: Map },
   { to: '/workload', label: 'Workload Planner', icon: BarChart3 },
+  { to: '/opportunities', label: 'Opportunity Finder', icon: Lightbulb },
+  { to: '/impact-report', label: 'Allocation Impact', icon: FileBarChart },
   { to: '/analytics', label: 'Analytics & Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
+];
+
+const employeeNavItems = [
+  { to: '/', label: 'My Dashboard', icon: LayoutDashboard },
+  { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
+  { to: '/roadmap', label: 'My Development', icon: GraduationCap },
 ];
 
 interface AppSidebarProps {
@@ -33,7 +50,16 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
-  const { settings } = useData();
+  const { employees, role, setRole } = useData();
+  const navigate = useNavigate();
+  const profile = employees.find((employee) => employee.id === 'emp-001');
+  const navItems = role === 'manager' ? managerNavItems : employeeNavItems;
+
+  function changeRole(nextRole: 'manager' | 'employee') {
+    setRole(nextRole);
+    navigate('/');
+    onCloseMobile();
+  }
 
   return (
     <>
@@ -80,14 +106,56 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           })}
         </nav>
 
+        <div className={`px-3 pb-3 ${collapsed ? 'flex flex-col items-center gap-1' : ''}`}>
+          {!collapsed && (
+            <p className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+              Demo role
+            </p>
+          )}
+          <div className={collapsed ? 'flex flex-col gap-1' : 'grid grid-cols-2 gap-1 rounded-xl border border-base-border bg-base-bg p-1'}>
+            <button
+              type="button"
+              onClick={() => changeRole('manager')}
+              aria-pressed={role === 'manager'}
+              title={collapsed ? 'Switch to Manager / HR' : undefined}
+              className={`flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+                collapsed ? 'justify-center w-10 h-10' : 'justify-center'
+              } ${role === 'manager' ? 'bg-primary/15 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'}`}
+            >
+              <BriefcaseBusiness size={15} />
+              {!collapsed && 'Manager / HR'}
+            </button>
+            <button
+              type="button"
+              onClick={() => changeRole('employee')}
+              aria-pressed={role === 'employee'}
+              title={collapsed ? 'Switch to Employee' : undefined}
+              className={`flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+                collapsed ? 'justify-center w-10 h-10' : 'justify-center'
+              } ${role === 'employee' ? 'bg-primary/15 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'}`}
+            >
+              <UserRound size={15} />
+              {!collapsed && 'Employee'}
+            </button>
+          </div>
+        </div>
+
         {/* User profile */}
         <div className={`p-3 border-t border-base-border flex-shrink-0 ${collapsed ? 'flex justify-center' : ''}`}>
           <div className={`flex items-center gap-3 ${collapsed ? '' : 'p-2 rounded-lg hover:bg-base-hover transition-colors cursor-pointer'}`}>
-            <Avatar name="Alex Morgan" color="#8B5CF6" size="sm" />
+            <Avatar
+              name={role === 'employee' && profile ? profile.name : 'Alex Morgan'}
+              color={role === 'employee' && profile ? profile.avatarColor : '#8B5CF6'}
+              size="sm"
+            />
             {!collapsed && (
               <div className="overflow-hidden flex-1">
-                <div className="text-sm font-medium text-text-primary truncate">Alex Morgan</div>
-                <div className="text-xs text-text-secondary truncate">Operations Lead</div>
+                <div className="text-sm font-medium text-text-primary truncate">
+                  {role === 'employee' && profile ? profile.name : 'Alex Morgan'}
+                </div>
+                <div className="text-xs text-text-secondary truncate">
+                  {role === 'employee' && profile ? profile.role : 'Operations Lead'}
+                </div>
               </div>
             )}
           </div>

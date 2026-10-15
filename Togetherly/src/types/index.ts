@@ -1,4 +1,5 @@
 export type SkillLevel = 1 | 2 | 3 | 4 | 5;
+export type UserRole = 'manager' | 'employee';
 
 export interface Skill {
   id: string;
@@ -67,6 +68,7 @@ export interface MatchWeights {
 export interface RecommendationResult {
   employeeId: string;
   matchScore: number;
+  capacityFeasible: boolean;
   matchedSkills: string[];
   missingSkills: string[];
   experienceRelevance: number;

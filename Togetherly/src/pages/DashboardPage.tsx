@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   Plus,
   Sparkles,
-  TrendingUp,
   Zap,
   ArrowRight,
   Activity,
@@ -29,27 +28,28 @@ import { PageHeader } from '@/components/PageHeader';
 import { MetricCard } from '@/components/MetricCard';
 import { ChartCard } from '@/components/ChartCard';
 import { Avatar } from '@/components/Avatar';
-import { StatusBadge } from '@/components/StatusBadge';
-import { CapacityBar } from '@/components/CapacityBar';
 import {
   calculateEmployeeUtilization,
   getUtilizationStatus,
   getProjectStaffingProgress,
-  getEmployeeProjects,
   getAllSkillGaps,
-  getSkillName,
   formatTimestamp,
-  getDepartmentStats,
 } from '@/utils';
 import { useData } from '@/context/DataContext';
+import { EmployeeDashboardPage } from '@/pages/EmployeeExperiencePage';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { employees, projects, settings, activities } = useData();
+  const { employees, projects, settings, activities, role } = useData();
+
+  if (role === 'employee') return <EmployeeDashboardPage />;
 
   const activeProjects = projects.filter((p) => p.status === 'active');
   const availableEmployees = employees.filter((e) => e.availability === 'available');
   const skillGaps = getAllSkillGaps(projects, employees);
+  const firstUnderstaffedProject = projects.find((project) =>
+    project.status !== 'completed' && project.assignedEmployeeIds.length < project.targetTeamSize
+  );
 
   const overloadedEmployees = employees
     .map((e) => ({
@@ -93,7 +93,10 @@ export function DashboardPage() {
     }));
 
   const recommendedActions = [
-    { message: `Cloud Infrastructure Migration needs ${Math.max(0, (projects.find(p => p.id === 'prj-003')?.targetTeamSize ?? 0) - (projects.find(p => p.id === 'prj-003')?.assignedEmployeeIds.length ?? 0))} more members`, action: () => navigate('/team-builder') },
+    ...(firstUnderstaffedProject ? [{
+      message: `${firstUnderstaffedProject.name} needs ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length} more ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length === 1 ? 'member' : 'members'}`,
+      action: () => navigate('/team-builder', { state: { projectId: firstUnderstaffedProject.id } }),
+    }] : []),
     { message: `${overloadedEmployees.length} employees are overloaded — consider reassigning work`, action: () => navigate('/workload') },
     { message: `${skillGaps.length} skill gaps detected across active projects`, action: () => navigate('/skills') },
     { message: `${availableEmployees.length} employees available for new assignments`, action: () => navigate('/employees') },
@@ -123,28 +126,24 @@ export function DashboardPage() {
           label="Total Employees"
           value={employees.length}
           icon={<Users size={20} />}
-          trend={{ value: 8, direction: 'up', label: 'vs last quarter' }}
           accent="primary"
         />
         <MetricCard
           label="Active Projects"
           value={activeProjects.length}
           icon={<FolderKanban size={20} />}
-          trend={{ value: 12, direction: 'up', label: '2 starting this month' }}
           accent="cyan"
         />
         <MetricCard
           label="Available Employees"
           value={availableEmployees.length}
           icon={<UserCheck size={20} />}
-          trend={{ value: 5, direction: 'down', label: '3 newly assigned' }}
           accent="success"
         />
         <MetricCard
           label="Skill Gaps"
           value={skillGaps.length}
           icon={<AlertTriangle size={20} />}
-          trend={{ value: 15, direction: 'down', label: 'training in progress' }}
           accent="warning"
         />
       </div>
