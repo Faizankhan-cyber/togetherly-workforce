@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-base-bg text-text-primary font-sans antialiased;
+  }
+
+  * {
+    @apply border-base-border;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #29324B;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3A4566;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-base-card border border-base-border rounded-2xl shadow-card;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-primary/40 hover:shadow-glow;
+  }
+
+  .input-field {
+    @apply bg-base-bg border border-base-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-600 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-base-card hover:bg-base-hover border border-base-border text-text-primary font-medium text-sm px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text-primary hover:bg-base-hover font-medium text-sm px-3 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .btn-danger {
+    @apply bg-critical/10 hover:bg-critical/20 text-critical border border-critical/30 font-medium text-sm px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-colors duration-150;
+  }
+
+  .nav-link-active {
+    @apply bg-primary/10 text-primary border border-primary/20;
+  }
+}
