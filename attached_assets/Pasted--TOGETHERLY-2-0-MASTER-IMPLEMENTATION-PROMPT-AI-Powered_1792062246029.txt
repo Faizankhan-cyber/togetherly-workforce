@@ -1,0 +1,496 @@
+# TOGETHERLY 2.0 — MASTER IMPLEMENTATION PROMPT
+## AI-Powered Workforce Intelligence & Optimization Platform
+
+Act as a senior full-stack engineer, AI systems architect, product designer, and hackathon technical lead.
+
+You are working inside my EXISTING Togetherly repository. Your task is to upgrade the current application into a polished, functional, innovative workforce intelligence platform suitable for a competitive hackathon demonstration.
+
+Do not create a new project, replace the existing application with a starter template, or delete working functionality.
+
+First inspect the existing codebase, then implement the improvements in structured stages. Make actual code changes, not just recommendations or a written plan.
+
+---
+
+# 1. PRODUCT VISION
+
+Togetherly helps organizations make better workforce decisions by connecting employees, skills, projects, availability, workload, and professional development.
+
+The platform must solve these core problems:
+
+- Finding the right employees for a project.
+- Building balanced teams based on required skills.
+- Explaining why particular employees are recommended.
+- Identifying missing skills and recommending training.
+- Detecting overloaded and underutilized employees.
+- Simulating alternative team allocations before confirming decisions.
+- Giving employees a personalized view of their assignments, workload, and development.
+
+The application should feel like a premium enterprise SaaS product, not a generic admin dashboard.
+
+## Core product differentiator
+
+Build a flagship feature named:
+
+**Togetherly Workforce Twin: Simulate. Compare. Optimize.**
+
+The Workforce Twin allows managers to simulate different workforce allocation decisions, see their consequences, compare alternatives, and confirm the best feasible assignment.
+
+This feature must be interactive and connected to the actual application data. It must not be a static illustration or a dashboard full of hardcoded numbers.
+
+# 2. INSPECT AND PRESERVE THE EXISTING APPLICATION
+
+Before editing:
+- Inspect the project structure and current Git state.
+- Identify the framework, routes, existing pages, dependencies, shared components, state management, data model, and persistence mechanism.
+- Check whether the app builds and runs.
+- Identify incomplete pages, broken imports, runtime errors, and blank-screen issues.
+- Reuse existing functionality and components wherever appropriate.
+- Preserve the existing package manager and lockfile.
+- Do not replace working pages simply to make the design more consistent.
+- Do not overwrite user work or perform destructive Git operations.
+- Never expose secrets, API keys, or environment variables.
+
+If the app is already functional, improve it incrementally rather than rewriting it.
+
+After inspection, create a prioritized plan and begin implementing it. Do not stop after producing the plan.
+
+# 3. USER ROLES AND DEMO ROLE SWITCHER
+
+Implement two genuinely different user experiences.
+
+Add a visible, persistent Demo Role Switcher near the bottom of the main sidebar.
+
+The control must allow instant switching between:
+
+- Manager / HR
+- Employee
+
+Display the active role clearly. Switching roles must update navigation, available actions, page content, and relevant data without requiring logout.
+
+Use a consistent demo employee profile in Employee mode. Preserve the chosen role across navigation and refresh.
+
+## Manager / HR experience
+
+Managers should have access to:
+- Company-wide workforce dashboard.
+- Employee directory and employee profiles.
+- Employee skills and proficiency management.
+- Project creation and editing.
+- Project skill requirements and staffing needs.
+- Intelligent team recommendations.
+- Team comparison.
+- Workforce Twin simulation.
+- Skill-gap analysis.
+- Training recommendations and assignments.
+- Workload balancing.
+- Allocation confirmation and management.
+- Workforce analytics and reports.
+- Relevant administrative settings.
+
+## Employee experience
+
+Employees should have access to:
+- Personalized dashboard.
+- Assigned projects and responsibilities.
+- Project deadlines and relevant status information.
+- Personal skills and proficiency levels.
+- Current workload and remaining capacity.
+- Workload utilization visualization.
+- Assigned training modules.
+- Training progress and completion status.
+- Recommended skills to develop.
+- Appropriate read-only team and project information.
+
+Employees must not be able to create projects, modify company-wide allocations, or manage other employees.
+
+Implement role-aware route guards and action permissions. Hide or disable unauthorized controls appropriately.
+
+IMPORTANT: This is a hackathon demo role simulation. Do not claim it provides production-grade authentication or backend authorization. If the application has a backend, enforce permissions there as well. If it is frontend-only, document the limitation.
+
+# 4. FLAGSHIP FEATURE: WORKFORCE TWIN
+
+Build a dedicated Workforce Twin page with a polished interactive simulation interface.
+
+## A. Configure the simulation
+
+Allow managers to:
+- Select an existing project or create one.
+- Define required skills and proficiency expectations.
+- Define team size, project duration, and staffing requirements.
+- Review eligible employees and their current workloads.
+- Generate an initial recommended team.
+
+## B. Explainable matching engine
+
+Create a maintainable matching service that evaluates employees using:
+- Relevant skills and proficiency.
+- Relevant experience.
+- Availability.
+- Existing workload and remaining capacity.
+- Project requirements and staffing constraints.
+
+If appropriate, use this initial configurable score model:
+
+- Skills match: 50%.
+- Relevant experience: 25%.
+- Availability and workload suitability: 25%.
+
+Document the weights and calculation method. Normalize scores consistently and handle missing information explicitly.
+
+Use hard constraints for genuinely ineligible candidates, such as insufficient availability or exceeded capacity where the project requires it. Explain any exclusion to the manager.
+
+Do not allow a high skill score to conceal an employee's capacity violation.
+
+For each candidate, display:
+- Overall match score.
+- Skills match score.
+- Experience score.
+- Availability and workload score.
+- Matching skills.
+- Missing or insufficient skills.
+- Current workload.
+- Remaining capacity.
+- Reasons for recommendation.
+- Potential risks and trade-offs.
+
+Do not describe a deterministic scoring algorithm as a trained AI model.
+
+## C. Team composition and comparison
+
+Allow managers to:
+- Generate recommended teams.
+- Add or remove candidates.
+- Swap employees.
+- Compare at least two alternative team configurations when enough candidates exist.
+- Compare skill coverage, overall fit, availability, workload balance, and potential risks.
+- See why the recommended team is preferable.
+
+Provide a clear explanation when one team has stronger skills but worse availability, or when a more balanced team offers a better feasible allocation.
+
+## D. Interactive what-if simulation
+
+When a manager changes a proposed team:
+- Recalculate relevant team metrics.
+- Update skill coverage.
+- Update projected workloads.
+- Identify capacity violations.
+- Update candidate and team scores where appropriate.
+- Highlight changes from the previous configuration.
+
+Show before-and-after comparisons.
+
+Simulations must remain temporary until confirmed. Provide Reset, Discard, and Confirm Allocation actions.
+
+## E. Confirm allocation
+
+When a manager confirms an allocation:
+- Update project membership.
+- Update employee assignments.
+- Update workload calculations.
+- Update the employee dashboards.
+- Update relevant analytics.
+- Preserve the allocation across refresh.
+
+Do not mutate the underlying assignment data during an unconfirmed simulation.
+
+# 5. WORKLOAD INTELLIGENCE AND BALANCING
+
+Build a functional workload planner.
+
+Display:
+- Employee capacity.
+- Current workload.
+- Utilization percentage.
+- Remaining capacity.
+- Overloaded employees.
+- Underutilized employees.
+- Project assignments.
+- Proposed reassignment opportunities.
+
+Allow managers to simulate moving an employee between projects and compare the consequences.
+
+Use a consistent capacity model. Make units explicit, such as hours per week or workload points. Avoid mixing incompatible units.
+
+Provide clear status indicators for:
+- Available.
+- Approaching capacity.
+- Overloaded.
+
+Recommend feasible reallocations while respecting skills, project requirements, availability, and capacity limits.
+
+Allow managers to confirm or discard proposed changes.
+
+# 6. SKILL-GAP ANALYSIS AND LEARNING RECOMMENDATIONS
+
+Compare project requirements with the skills available across proposed teams.
+
+Display:
+- Required skills.
+- Covered skills.
+- Skill coverage percentage.
+- Missing skills.
+- Insufficient proficiency.
+- Employees who cover each skill.
+- Recommended training modules.
+- Training progress and assignment status.
+
+Managers should be able to assign relevant training to employees.
+
+Employees should be able to view their assigned training and update its completion status in the demo.
+
+Where possible, connect training recommendations to the requirements of a specific project.
+
+Do not automatically claim that completing a training module proves professional proficiency. Any simulated improvement must be clearly labeled as a simulation.
+
+# 7. ADDITIONAL HIGH-VALUE FEATURES
+
+Implement these features in priority order, reusing existing pages where possible.
+
+## Feature A: Workforce Opportunity Finder
+
+Identify employees who could contribute to upcoming projects but are currently underutilized or whose relevant skills are being overlooked.
+
+Show:
+- Suitable projects.
+- Relevant skills.
+- Available capacity.
+- Potential workload impact.
+- Why the employee is a suitable candidate.
+
+This should work from actual project and employee records.
+
+## Feature B: Team Comparison and Decision Explanations
+
+Let managers compare proposed teams side by side.
+
+Compare:
+- Overall fit.
+- Skill coverage.
+- Experience.
+- Availability.
+- Workload balance.
+- Capacity violations.
+- Skill gaps.
+- Relevant risks.
+
+Provide a concise explanation of trade-offs and why the selected configuration is recommended.
+
+## Feature C: Skill Development Roadmap
+
+Create a personalized roadmap connecting an employee's current skills to skills needed for relevant projects.
+
+Display:
+- Current skills.
+- Target skills.
+- Identified gaps.
+- Recommended training.
+- Progress status.
+- Projects for which the skills may be useful.
+
+## Feature D: Allocation Impact Report
+
+After confirming an allocation, generate a summary showing:
+- Project and team selected.
+- Reason for the recommendation.
+- Skills covered and remaining gaps.
+- Workload changes.
+- Capacity warnings.
+- Training recommendations.
+
+Allow the report to be viewed in the application and exported if practical using existing libraries or browser-native functionality.
+
+Do not invent financial savings, productivity improvements, or delivery-time reductions without data supporting them.
+
+## Feature E: Scenario Presets
+
+Provide a small set of resettable demonstration scenarios, such as:
+- A project requiring cloud and Python skills.
+- A project with a critical missing skill.
+- A team with overloaded employees.
+- A scenario with available but underutilized employees.
+
+Use coherent seeded data, and label presets as demo scenarios.
+
+# 8. SHARED DATA MODEL
+
+Ensure all pages and roles use a consistent source of truth for:
+- Employees.
+- Skills and proficiency.
+- Projects.
+- Project requirements.
+- Assignments.
+- Workload and capacity.
+- Training modules.
+- Training assignments.
+- Simulation state.
+- Confirmed allocations.
+
+Use stable identifiers and avoid duplicate or contradictory records.
+
+A confirmed assignment must be visible in both the Manager and relevant Employee views.
+
+Changes to skills, training, and assignments must update related calculations.
+
+Preserve existing data and data structures wherever possible. Introduce migrations or compatibility handling if the schema needs to change.
+
+Use the existing backend and database if available. If the project is frontend-only, reuse its current persistence mechanism and clearly document its limitations.
+
+Do not add a complex backend or database merely for the sake of architectural appearance.
+
+# 9. ANIMATED UI/UX REDESIGN
+
+Upgrade the existing website to a premium, futuristic enterprise SaaS experience.
+
+## Visual identity
+
+Use:
+- Background: #0B1020.
+- Sidebar: #11182B.
+- Cards: #171D33.
+- Violet: #8B5CF6.
+- Cyan: #22D3EE.
+- Primary text: #F8FAFC.
+- Secondary text: #94A3B8.
+- Borders: #29324B.
+- Green for success.
+- Amber for warnings.
+- Red for critical issues.
+
+Use clean typography, consistent spacing, refined cards, restrained gradients, subtle shadows, and clear data visualization.
+
+Avoid excessive glow, excessive glassmorphism, cluttered layouts, and decorative elements that make the app harder to use.
+
+## Animation requirements
+
+Implement purposeful animations for:
+- Page transitions.
+- Sidebar active states.
+- KPI counters.
+- Chart updates.
+- Employee cards entering or leaving a proposed team.
+- Skill coverage and workload changes.
+- Training progress.
+- Modal and drawer transitions.
+- Toast notifications.
+- Loading skeletons and empty states.
+
+Use the existing animation library where appropriate. Add a lightweight dependency only when necessary.
+
+Respect reduced-motion preferences. Keep animations fast and avoid delaying important actions.
+
+## Responsive UX
+
+Ensure:
+- Sidebar behavior works on smaller screens.
+- Tables and charts remain readable.
+- Forms are easy to use.
+- Controls have clear states.
+- Empty states explain what the user can do next.
+- Errors are understandable.
+- Important actions have appropriate confirmations.
+- Keyboard navigation and contrast are accessible.
+
+# 10. IMPROVE ALL EXISTING PAGES
+
+Audit and complete the current:
+- Dashboard.
+- Employees.
+- Projects.
+- Team Builder.
+- Skills & Training.
+- Workload Planner.
+- Analytics & Reports.
+- Settings.
+
+Reuse the existing routes and components when practical.
+
+Make the Manager and Employee navigation distinct and appropriate.
+
+Do not leave decorative buttons that do nothing. Every visible primary action must work or be clearly disabled with an explanation.
+
+# 11. ANALYTICS AND REPORTS
+
+Provide useful, data-driven analytics such as:
+- Workforce utilization.
+- Employee capacity distribution.
+- Project staffing and skill coverage.
+- Skill gaps by project.
+- Training assignment and completion status.
+- Allocation changes and workload balance.
+- Underutilized talent.
+
+Use actual application data and sensible empty states. Avoid arbitrary percentages or hardcoded metrics that contradict the underlying records.
+
+# 12. HACKATHON DEMONSTRATION FLOW
+
+Ensure this end-to-end scenario works:
+
+1. Open the Manager dashboard.
+2. Select a project requiring multiple skills.
+3. Generate candidate teams.
+4. Inspect explainable candidate scores.
+5. Compare alternative teams.
+6. Open Workforce Twin.
+7. Swap an employee and observe skill coverage and workload changes.
+8. Review skill gaps and training recommendations.
+9. Confirm the allocation.
+10. Switch to Employee mode using the sidebar switcher.
+11. Verify that the relevant employee sees the new project and updated workload.
+12. Open assigned training and the skill development roadmap.
+13. Switch back to Manager mode.
+14. Verify that all changes remain consistent.
+15. Reset the demo scenario for another demonstration.
+
+Make the flow repeatable and understandable to judges without requiring lengthy explanations.
+
+# 13. TESTING AND QUALITY CONTROL
+
+After implementation:
+- Verify application startup and production build.
+- Verify all routes and role-specific navigation.
+- Verify role switching and persistence.
+- Verify scoring calculations.
+- Verify capacity constraints.
+- Verify team comparison and simulation reset.
+- Verify confirmation and discard behavior.
+- Verify shared assignments and training data.
+- Verify refresh behavior.
+- Verify forms and primary actions.
+- Check console errors, broken imports, and lint errors where tooling exists.
+
+Run the tests and build commands supported by the existing repository.
+
+Do not claim that a test passed unless it was actually executed.
+
+Do not claim a deployment was updated unless it was actually deployed.
+
+# 14. IMPLEMENTATION ORDER
+
+Implement the work in this exact order:
+
+Stage 1: Inspect the repository and fix critical startup or build problems.
+
+Stage 2: Establish the shared data model and the Manager/Employee sidebar role switcher.
+
+Stage 3: Complete Team Builder and implement Workforce Twin.
+
+Stage 4: Connect workload balancing, skill-gap analysis, and training.
+
+Stage 5: Implement Team Comparison, Workforce Opportunity Finder, Skill Development Roadmap, and Allocation Impact Report.
+
+Stage 6: Redesign the existing pages with consistent styling and purposeful animations.
+
+Stage 7: Run the complete demonstration flow, fix regressions, and verify the production build.
+
+At the end of each stage, summarize:
+- Files changed.
+- Features implemented.
+- Tests actually performed.
+- Known issues.
+- Remaining work.
+
+Commit or create a safe checkpoint after each stable stage when Git access is available. Never overwrite user changes or perform destructive Git operations without approval.
+
+If usage limits or context limits become a problem, stop at a stable checkpoint and explain how to resume.
+
+START NOW: Inspect the existing Togetherly repository, identify its current state, and begin Stage 1. Do not stop after writing a plan. Make actual code changes and verify them.
