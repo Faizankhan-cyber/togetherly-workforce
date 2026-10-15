@@ -2,7 +2,9 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { DataProvider } from '@/context/DataContext';
 import { useData } from '@/context/DataContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AppLayout } from '@/components/AppLayout';
+import { AuthPage } from '@/pages/AuthPage';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const EmployeesPage = lazy(() => import('@/pages/EmployeesPage').then((module) => ({ default: module.EmployeesPage })));
@@ -28,7 +30,12 @@ function EmployeeRoutes() {
   return role === 'employee' ? <Outlet /> : <Navigate to="/" replace />;
 }
 
-function App() {
+function AuthenticatedApp() {
+  const { session, loading } = useAuth();
+
+  if (loading) return <div className="grid min-h-screen place-items-center text-sm text-text-secondary" role="status">Loading Togetherly…</div>;
+  if (!session) return <AuthPage />;
+
   return (
     <DataProvider>
       <BrowserRouter>
@@ -59,6 +66,14 @@ function App() {
         </Suspense>
       </BrowserRouter>
     </DataProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   );
 }
 

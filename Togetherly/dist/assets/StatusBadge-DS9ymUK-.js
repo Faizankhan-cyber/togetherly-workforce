@@ -1,1 +1,0 @@
-import{j as n,N as i,O as l}from"./index-h4BGQpU9.js";function d({status:s,label:e,size:t="sm"}){const a=i[s]??"text-text-secondary bg-base-hover border-base-border",o=e??l[s]??s,r=t==="sm"?"text-xs px-2 py-0.5":"text-sm px-3 py-1";return n.jsx("span",{className:`inline-flex items-center rounded-md border font-medium capitalize ${a} ${r}`,children:o})}export{d as S};
