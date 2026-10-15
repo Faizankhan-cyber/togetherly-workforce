@@ -1,296 +1,54 @@
 import { useNavigate } from 'react-router-dom';
-import {
-  Users,
-  FolderKanban,
-  UserCheck,
-  AlertTriangle,
-  Plus,
-  Sparkles,
-  Zap,
-  ArrowRight,
-  Activity,
-} from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
-import { PageHeader } from '@/components/PageHeader';
-import { MetricCard } from '@/components/MetricCard';
-import { ChartCard } from '@/components/ChartCard';
-import { Avatar } from '@/components/Avatar';
-import {
-  calculateEmployeeUtilization,
-  getUtilizationStatus,
-  getProjectStaffingProgress,
-  getAllSkillGaps,
-  formatTimestamp,
-} from '@/utils';
+import { Activity, AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, Clock3, FolderKanban, Gauge, Plus, Sparkles, UserCheck, Users, Zap } from 'lucide-react';
 import { useData } from '@/context/DataContext';
+import { Avatar } from '@/components/Avatar';
+import { CapacityBar } from '@/components/CapacityBar';
 import { EmployeeDashboardPage } from '@/pages/EmployeeExperiencePage';
+import { calculateEmployeeUtilization, formatTimestamp, getAllSkillGaps, getUtilizationStatus } from '@/utils';
+
+const panel = 'border border-base-border bg-base-card';
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const { employees, projects, settings, activities, role } = useData();
-
   if (role === 'employee') return <EmployeeDashboardPage />;
 
-  const activeProjects = projects.filter((p) => p.status === 'active');
-  const availableEmployees = employees.filter((e) => e.availability === 'available');
+  const activeProjects = projects.filter((project) => project.status === 'active');
+  const availableEmployees = employees.filter((employee) => employee.availability === 'available');
   const skillGaps = getAllSkillGaps(projects, employees);
-  const firstUnderstaffedProject = projects.find((project) =>
-    project.status !== 'completed' && project.assignedEmployeeIds.length < project.targetTeamSize
-  );
-
-  const overloadedEmployees = employees
-    .map((e) => ({
-      employee: e,
-      utilization: calculateEmployeeUtilization(e.id, projects, e.targetUtilization),
-    }))
-    .filter(({ utilization }) => getUtilizationStatus(utilization, settings) === 'overloaded')
-    .sort((a, b) => b.utilization - a.utilization);
-
-  const utilizationData = employees.map((e) => ({
-    name: e.name.split(' ').slice(0, 2).map((n) => n[0]).join(''),
-    utilization: calculateEmployeeUtilization(e.id, projects, e.targetUtilization),
-    target: e.targetUtilization,
-  }));
-
-  const workloadDistribution = [
-    {
-      name: 'Overloaded',
-      value: employees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'overloaded').length,
-      color: '#F87171',
-    },
-    {
-      name: 'Balanced',
-      value: employees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'balanced').length,
-      color: '#22C55E',
-    },
-    {
-      name: 'Underutilized',
-      value: employees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'underutilized').length,
-      color: '#22D3EE',
-    },
-  ];
-
-  const staffingProgress = projects
-    .filter((p) => p.status !== 'completed')
-    .map((p) => ({
-      name: p.name.length > 20 ? p.name.slice(0, 20) + '...' : p.name,
-      progress: getProjectStaffingProgress(p),
-      target: p.targetTeamSize,
-      assigned: p.assignedEmployeeIds.length,
-    }));
-
-  const recommendedActions = [
-    ...(firstUnderstaffedProject ? [{
-      message: `${firstUnderstaffedProject.name} needs ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length} more ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length === 1 ? 'member' : 'members'}`,
-      action: () => navigate('/team-builder', { state: { projectId: firstUnderstaffedProject.id } }),
-    }] : []),
-    { message: `${overloadedEmployees.length} employees are overloaded — consider reassigning work`, action: () => navigate('/workload') },
-    { message: `${skillGaps.length} skill gaps detected across active projects`, action: () => navigate('/skills') },
-    { message: `${availableEmployees.length} employees available for new assignments`, action: () => navigate('/employees') },
-  ];
+  const utilization = employees.map((employee) => ({ employee, value: calculateEmployeeUtilization(employee.id, projects, employee.targetUtilization) }));
+  const overloaded = utilization.filter(({ value }) => getUtilizationStatus(value, settings) === 'overloaded');
+  const balanced = utilization.filter(({ value }) => getUtilizationStatus(value, settings) === 'balanced');
+  const coverage = employees.length ? Math.round((balanced.length / employees.length) * 100) : 0;
+  const staffing = projects.filter((project) => project.status !== 'completed').map((project) => ({ ...project, progress: project.targetTeamSize ? Math.min(100, Math.round((project.assignedEmployeeIds.length / project.targetTeamSize) * 100)) : 0 }));
+  const firstGap = staffing.find((project) => project.progress < 100);
 
   return (
-    <div>
-      <PageHeader
-        title="Welcome back, Alex"
-        description="Here's what's happening across your workforce today."
-        breadcrumb={['Home', 'Dashboard']}
-        actions={
-          <>
-            <button className="btn-secondary" onClick={() => navigate('/team-builder')}>
-              <Sparkles size={16} /> Generate Team
-            </button>
-            <button className="btn-primary" onClick={() => navigate('/projects')}>
-              <Plus size={16} /> Create Project
-            </button>
-          </>
-        }
-      />
+    <div className="-m-4 min-h-[calc(100vh-4rem)] bg-base-bg lg:-m-6">
+      <header className="flex items-center justify-between border-b border-base-border px-5 py-3 lg:px-6">
+        <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Command center</p><h1 className="text-lg font-semibold text-text-primary">Workforce overview</h1></div>
+        <div className="flex items-center gap-2"><span className="hidden text-xs text-text-secondary sm:inline">Tuesday, June 18, 2024</span><button className="btn-secondary" onClick={() => navigate('/team-builder')}><Sparkles size={14} /> Build a team</button><button className="btn-primary" onClick={() => navigate('/projects')}><Plus size={14} /> New project</button></div>
+      </header>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <MetricCard
-          label="Total Employees"
-          value={employees.length}
-          icon={<Users size={20} />}
-          accent="primary"
-        />
-        <MetricCard
-          label="Active Projects"
-          value={activeProjects.length}
-          icon={<FolderKanban size={20} />}
-          accent="cyan"
-        />
-        <MetricCard
-          label="Available Employees"
-          value={availableEmployees.length}
-          icon={<UserCheck size={20} />}
-          accent="success"
-        />
-        <MetricCard
-          label="Skill Gaps"
-          value={skillGaps.length}
-          icon={<AlertTriangle size={20} />}
-          accent="warning"
-        />
-      </div>
+      <div className="grid min-h-[calc(100vh-8rem)] grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+        <aside className={`${panel} border-x-0 border-t-0 p-4 xl:border-r`}>
+          <div className="flex items-center gap-3 border-b border-base-border pb-4"><Avatar name="Alex Morgan" color="#8B9DFF" size="lg" /><div><h2 className="text-sm font-semibold text-text-primary">Alex Morgan</h2><p className="text-[11px] text-text-secondary">Operations Lead</p><span className="mt-1 inline-flex items-center gap-1 text-[10px] text-success"><span className="size-1.5 rounded-full bg-success" /> Online</span></div></div>
+          <div className="border-b border-base-border py-4"><p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Organization</p><div className="flex items-center justify-between"><span className="text-xs text-text-secondary">Team</span><span className="text-xs text-text-primary">People Operations</span></div><div className="mt-2 flex items-center justify-between"><span className="text-xs text-text-secondary">Members</span><span className="text-xs text-text-primary">{employees.length} employees</span></div></div>
+          <div className="border-b border-base-border py-4"><div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Capacity health</p><Gauge size={14} className="text-primary" /></div><div className="flex items-end gap-2"><span className="text-2xl font-semibold text-text-primary">{coverage}%</span><span className="mb-1 text-[11px] text-success">balanced</span></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-base-hover"><div className="h-full rounded-full bg-success" style={{ width: `${coverage}%` }} /></div><p className="mt-2 text-[11px] text-text-secondary">{balanced.length} of {employees.length} people in target range</p></div>
+          <div className="py-4"><p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Quick actions</p><div className="flex flex-col gap-1">{[[Users, 'Review employees', '/employees'], [FolderKanban, 'Manage projects', '/projects'], [BriefcaseBusiness, 'Open opportunity finder', '/opportunities']].map(([Icon, label, path]) => <button key={label as string} onClick={() => navigate(path as string)} className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-text-secondary hover:bg-base-hover hover:text-text-primary"><Icon size={14} />{label as string}<ArrowRight size={12} className="ml-auto" /></button>)}</div></div>
+          <div className="border-t border-base-border pt-4"><p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Workforce signals</p><div className="flex flex-col gap-3">{overloaded.slice(0, 3).map(({ employee, value }) => <div key={employee.id} className="flex items-center gap-2"><Avatar name={employee.name} color={employee.avatarColor} size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-xs text-text-primary">{employee.name}</p><p className="text-[10px] text-critical">{value}% utilized</p></div></div>)}</div></div>
+        </aside>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <ChartCard
-          title="Workforce Utilization"
-          subtitle="Current vs target utilization per employee"
-          className="lg:col-span-2"
-        >
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={utilizationData}>
-              <defs>
-                <linearGradient id="utilGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#29324B" />
-              <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} interval={0} />
-              <YAxis stroke="#94A3B8" fontSize={11} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#171D33', border: '1px solid #29324B', borderRadius: '8px', fontSize: '12px' }}
-                labelStyle={{ color: '#F8FAFC' }}
-              />
-              <Area type="monotone" dataKey="utilization" stroke="#8B5CF6" strokeWidth={2} fill="url(#utilGrad)" name="Utilization" />
-              <Area type="monotone" dataKey="target" stroke="#22D3EE" strokeWidth={1.5} strokeDasharray="5 5" fill="none" name="Target" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <main className="min-w-0 border-b border-base-border p-4 lg:p-5 xl:border-r">
+          <div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-semibold text-text-primary">Intelligence snapshot</h2><p className="mt-1 text-[11px] text-text-secondary">Live signals from your workforce and project roster</p></div><button className="btn-ghost text-xs" onClick={() => navigate('/analytics')}>View reports <ArrowRight size={13} /></button></div>
+          <div className="grid grid-cols-2 gap-px overflow-hidden border border-base-border bg-base-border md:grid-cols-4">{[[Users, 'Employees', employees.length, 'Total workforce'], [FolderKanban, 'Active projects', activeProjects.length, 'In delivery'], [UserCheck, 'Available', availableEmployees.length, 'Ready to allocate'], [AlertTriangle, 'Skill gaps', skillGaps.length, 'Need attention']].map(([Icon, label, value, note]) => <div key={label as string} className="bg-base-card p-3"><div className="flex items-center justify-between"><span className="text-[11px] text-text-secondary">{label as string}</span><Icon size={14} className="text-primary" /></div><div className="mt-2 text-xl font-semibold text-text-primary">{value as number}</div><p className="mt-1 text-[10px] text-text-secondary">{note as string}</p></div>)}</div>
 
-        <ChartCard title="Workload Distribution" subtitle="Employee workload balance">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={workloadDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={85}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {workloadDistribution.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ backgroundColor: '#171D33', border: '1px solid #29324B', borderRadius: '8px', fontSize: '12px' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-4 mt-2">
-            {workloadDistribution.map((d) => (
-              <div key={d.name} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                <span className="text-xs text-text-secondary">{d.name}: {d.value}</span>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
-      </div>
+          <section className={`${panel} mt-4`}><div className="flex items-center justify-between border-b border-base-border px-4 py-3"><div><h3 className="text-sm font-semibold text-text-primary">Workload distribution</h3><p className="text-[11px] text-text-secondary">Utilization compared with individual target</p></div><button className="btn-ghost text-xs" onClick={() => navigate('/workload')}>Planner <ArrowRight size={12} /></button></div><div className="grid gap-3 p-4 md:grid-cols-2">{utilization.slice(0, 8).map(({ employee, value }) => <div key={employee.id} className="flex items-center gap-3"><Avatar name={employee.name} color={employee.avatarColor} size="sm" /><div className="min-w-0 flex-1"><div className="mb-1 flex justify-between gap-2"><span className="truncate text-xs text-text-primary">{employee.name}</span><span className={`text-[11px] ${value > 100 ? 'text-critical' : value < 70 ? 'text-warning' : 'text-success'}`}>{value}%</span></div><CapacityBar utilization={value} overloadedThreshold={settings.overloadedThreshold} underutilizedThreshold={settings.underutilizedThreshold} showLabel={false} /></div></div>)}</div></section>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <ChartCard
-          title="Project Staffing Progress"
-          subtitle="Assigned vs target team size"
-          className="lg:col-span-2"
-        >
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={staffingProgress}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#29324B" />
-              <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} interval={0} angle={-15} textAnchor="end" height={60} />
-              <YAxis stroke="#94A3B8" fontSize={11} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#171D33', border: '1px solid #29324B', borderRadius: '8px', fontSize: '12px' }}
-                labelStyle={{ color: '#F8FAFC' }}
-              />
-              <Bar dataKey="progress" fill="#8B5CF6" radius={[4, 4, 0, 0]} name="Staffing %" />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          <section className={`${panel} mt-4`}><div className="flex items-center justify-between border-b border-base-border px-4 py-3"><div><h3 className="text-sm font-semibold text-text-primary">Project staffing</h3><p className="text-[11px] text-text-secondary">Coverage across active delivery teams</p></div><span className="text-[11px] text-text-secondary">{staffing.length} tracked</span></div><div className="divide-y divide-base-border">{staffing.slice(0, 5).map((project) => <button key={project.id} onClick={() => navigate('/workforce-twin', { state: { projectId: project.id } })} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-base-hover"><div className="flex-1"><div className="flex items-center justify-between gap-3"><span className="truncate text-xs font-medium text-text-primary">{project.name}</span><span className={`text-[11px] ${project.progress === 100 ? 'text-success' : 'text-warning'}`}>{project.progress}%</span></div><div className="mt-2 h-1 overflow-hidden rounded-full bg-base-hover"><div className="h-full rounded-full bg-primary" style={{ width: `${project.progress}%` }} /></div></div><span className="whitespace-nowrap text-[10px] text-text-secondary">{project.assignedEmployeeIds.length}/{project.targetTeamSize} people</span><ArrowRight size={13} className="text-text-secondary" /></button>)}</div></section>
+        </main>
 
-        {/* Overloaded Employees */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-critical" />
-            <h3 className="text-sm font-semibold text-text-primary">Overloaded Employees</h3>
-          </div>
-          <div className="space-y-3 max-h-[240px] overflow-y-auto">
-            {overloadedEmployees.length === 0 && (
-              <p className="text-sm text-text-secondary">No overloaded employees. Workforce is balanced.</p>
-            )}
-            {overloadedEmployees.slice(0, 5).map(({ employee, utilization }) => (
-              <div key={employee.id} className="flex items-center gap-3">
-                <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-text-primary truncate">{employee.name}</div>
-                  <div className="text-xs text-text-secondary truncate">{employee.role}</div>
-                </div>
-                <span className="text-sm font-semibold text-critical">{utilization}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Activity + Recommended Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={16} className="text-cyan" />
-            <h3 className="text-sm font-semibold text-text-primary">Recent Activity</h3>
-          </div>
-          <div className="space-y-3">
-            {activities.slice(0, 6).map((act) => (
-              <div key={act.id} className="flex items-start gap-3 text-sm">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-text-primary">{act.message}</p>
-                  <p className="text-xs text-text-secondary mt-0.5">{formatTimestamp(act.timestamp)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap size={16} className="text-primary" />
-            <h3 className="text-sm font-semibold text-text-primary">Recommended Actions</h3>
-          </div>
-          <div className="space-y-2">
-            {recommendedActions.map((action, i) => (
-              <button
-                key={i}
-                onClick={action.action}
-                className="w-full flex items-center justify-between gap-2 p-3 rounded-lg bg-base-bg border border-base-border hover:border-primary/30 transition-all duration-200 text-left group"
-              >
-                <span className="text-sm text-text-primary">{action.message}</span>
-                <ArrowRight size={16} className="text-text-secondary group-hover:text-primary transition-colors flex-shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
+        <aside className={`${panel} border-x-0 border-t-0 p-4`}><div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-semibold text-text-primary">Tasks & alerts</h2><p className="mt-1 text-[11px] text-text-secondary">Operational follow-ups</p></div><button className="text-[11px] text-primary hover:underline" onClick={() => navigate('/workforce-twin')}>Twin</button></div><div className="flex flex-col gap-2">{firstGap && <button onClick={() => navigate('/workforce-twin', { state: { projectId: firstGap.id } })} className="rounded-md border border-warning/30 bg-warning/5 p-3 text-left"><div className="flex items-center gap-2"><Clock3 size={13} className="text-warning" /><span className="text-[10px] font-semibold uppercase tracking-wide text-warning">Needs staffing</span></div><p className="mt-2 text-xs font-medium text-text-primary">{firstGap.name}</p><p className="mt-1 text-[11px] text-text-secondary">{firstGap.targetTeamSize - firstGap.assignedEmployeeIds.length} more {firstGap.targetTeamSize - firstGap.assignedEmployeeIds.length === 1 ? 'person' : 'people'} required</p></button>}{overloaded.slice(0, 2).map(({ employee, value }) => <button key={employee.id} onClick={() => navigate('/workload')} className="rounded-md border border-critical/25 bg-critical/5 p-3 text-left"><div className="flex items-center gap-2"><AlertTriangle size={13} className="text-critical" /><span className="text-[10px] font-semibold uppercase tracking-wide text-critical">Workload review</span></div><p className="mt-2 text-xs font-medium text-text-primary">{employee.name}</p><p className="mt-1 text-[11px] text-text-secondary">Currently at {value}% utilization</p></button>)}{skillGaps.length > 0 && <button onClick={() => navigate('/skills')} className="rounded-md border border-primary/25 bg-primary/5 p-3 text-left"><div className="flex items-center gap-2"><Zap size={13} className="text-primary" /><span className="text-[10px] font-semibold uppercase tracking-wide text-primary">Development</span></div><p className="mt-2 text-xs font-medium text-text-primary">{skillGaps.length} skill gaps detected</p><p className="mt-1 text-[11px] text-text-secondary">Review training recommendations</p></button>}</div><div className="mt-5 border-t border-base-border pt-4"><div className="mb-3 flex items-center gap-2"><Activity size={14} className="text-secondary-accent" /><h3 className="text-xs font-semibold text-text-primary">Latest activity</h3></div><div className="flex flex-col gap-3">{activities.slice(0, 5).map((activity) => <div key={activity.id} className="flex gap-2"><CheckCircle2 size={13} className="mt-0.5 shrink-0 text-success" /><div><p className="text-[11px] leading-4 text-text-primary">{activity.message}</p><p className="mt-1 text-[10px] text-text-secondary">{formatTimestamp(activity.timestamp)}</p></div></div>)}</div></div></aside>
       </div>
     </div>
   );
