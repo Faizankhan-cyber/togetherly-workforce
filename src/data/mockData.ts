@@ -1,4 +1,4 @@
-import type { AppSettings, Employee, Project, Activity } from '@/types';
+import type { AppSettings, Employee, Project, Activity, TrainingSubmission } from '@/types';
 
 export const demoEmployeeId = 'emp-001';
 
@@ -65,9 +65,12 @@ export const initialEmployees: Employee[] = [
         provider: 'AWS Skill Builder',
         skillId: 'skl-aws',
         status: 'in-progress',
-        progress: 60,
+        progress: 100,
         reason: 'Required for Enterprise Cloud Modernization',
         assignedDate: '2026-09-15',
+        completedDate: '2026-10-10',
+        verificationStatus: 'pending-verification',
+        submissionId: 'sub-001',
       },
       {
         id: 'trn-002',
@@ -78,6 +81,7 @@ export const initialEmployees: Employee[] = [
         progress: 0,
         reason: 'Target skill for senior infrastructure track',
         assignedDate: '2026-10-01',
+        verificationStatus: 'not-started',
       },
     ],
   },
@@ -126,9 +130,12 @@ export const initialEmployees: Employee[] = [
         provider: 'Frontend Masters',
         skillId: 'skl-react',
         status: 'in-progress',
-        progress: 45,
+        progress: 100,
         reason: 'Design systems code bridging',
         assignedDate: '2026-09-20',
+        completedDate: '2026-10-05',
+        verificationStatus: 'needs-more-evidence',
+        submissionId: 'sub-003',
       },
     ],
   },
@@ -362,5 +369,164 @@ export const initialActivities: Activity[] = [
     message: 'Elena Rostova updated UI/UX competency profile to Level 5',
     timestamp: '2026-10-12T09:20:00Z',
     type: 'training',
+  },
+];
+
+export function createSampleCertificateSvg(recipient: string, course: string, provider: string, date: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" width="100%" height="100%">
+    <defs>
+      <linearGradient id="cert-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="100%" stop-color="#F8FAFC"/>
+      </linearGradient>
+      <linearGradient id="gold-seal" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#F59E0B"/>
+        <stop offset="100%" stop-color="#D97706"/>
+      </linearGradient>
+    </defs>
+    <rect width="800" height="560" fill="url(#cert-bg)" stroke="#E2E8F0" stroke-width="2"/>
+    <rect x="24" y="24" width="752" height="512" fill="none" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <rect x="36" y="36" width="728" height="488" fill="none" stroke="#0078D4" stroke-width="2"/>
+    <text x="400" y="96" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="700" letter-spacing="4" fill="#0078D4">CERTIFICATE OF COMPLETION</text>
+    <text x="400" y="126" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#64748B">THIS OFFICIAL ACCREDITATION IS AWARDED TO</text>
+    <text x="400" y="190" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="800" fill="#0F172A">${recipient}</text>
+    <line x1="220" y1="210" x2="580" y2="210" stroke="#CBD5E1" stroke-width="1.5"/>
+    <text x="400" y="250" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#64748B">for successfully meeting all accredited curriculum standards and verification requirements in</text>
+    <text x="400" y="290" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" fill="#1E293B">${course}</text>
+    <text x="400" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#0078D4">Issuing Provider: ${provider}</text>
+    <circle cx="400" cy="410" r="38" fill="url(#gold-seal)"/>
+    <circle cx="400" cy="410" r="32" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <text x="400" y="414" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1" fill="#FFFFFF">OFFICIAL SEAL</text>
+    <text x="100" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#475569">Issue Date: ${date}</text>
+    <text x="100" y="498" font-family="system-ui, -apple-system, sans-serif" font-size="10" fill="#94A3B8">Verification Record: TOGETHERLY-VERIFIED-AUTH</text>
+    <text x="700" y="480" text-anchor="end" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#475569">Corporate Registrar</text>
+    <text x="700" y="498" text-anchor="end" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-style="italic" fill="#0078D4">Workforce Intelligence Board</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+export const initialSubmissions: TrainingSubmission[] = [
+  {
+    id: 'sub-001',
+    employeeId: 'emp-001',
+    employeeName: 'Aisha Patel',
+    employeeRole: 'Senior Full Stack Engineer',
+    employeeDepartment: 'Engineering',
+    employeeAvatarColor: '#8B5CF6',
+    courseName: 'AWS Cloud Practitioner',
+    provider: 'AWS Skill Builder',
+    skillId: 'skl-aws',
+    completionDate: '2026-10-10',
+    submissionDate: '2026-10-11',
+    credentialId: 'AWS-CP-884920',
+    verificationUrl: 'https://aws.amazon.com/verification/AWS-CP-884920',
+    notes: 'Completed curriculum and passed official proctored examination (Score: 890/1000). Certificate attached.',
+    evidenceFileName: 'aisha_patel_aws_cloud_practitioner.png',
+    evidenceFileType: 'image',
+    evidenceFileSize: 384000,
+    evidenceDataUrl: createSampleCertificateSvg('Aisha Patel', 'AWS Cloud Practitioner', 'AWS Skill Builder', '2026-10-10'),
+    status: 'pending-verification',
+    assignmentId: 'trn-001',
+    auditTrail: [
+      {
+        id: 'log-001',
+        action: 'submitted',
+        actorName: 'Aisha Patel',
+        actorRole: 'employee',
+        actorId: 'emp-001',
+        timestamp: '2026-10-11T14:30:00Z',
+        note: 'Submitted certificate for AWS Cloud Practitioner completion.',
+      },
+    ],
+  },
+  {
+    id: 'sub-002',
+    employeeId: 'emp-002',
+    employeeName: 'Marcus Chen',
+    employeeRole: 'Cloud Architect & DevOps Lead',
+    employeeDepartment: 'Infrastructure',
+    employeeAvatarColor: '#22D3EE',
+    courseName: 'Terraform Associate (003)',
+    provider: 'HashiCorp',
+    skillId: 'skl-terraform',
+    completionDate: '2026-09-28',
+    submissionDate: '2026-09-29',
+    credentialId: 'HASHI-TA-99124',
+    verificationUrl: 'https://www.credly.com/badges/hashicorp-terraform-associate',
+    notes: 'Renewed HashiCorp Terraform professional credential.',
+    evidenceFileName: 'marcus_chen_terraform_cert.png',
+    evidenceFileType: 'image',
+    evidenceFileSize: 420000,
+    evidenceDataUrl: createSampleCertificateSvg('Marcus Chen', 'Terraform Associate (003)', 'HashiCorp', '2026-09-28'),
+    status: 'verified',
+    reviewerId: 'mgr-001',
+    reviewerName: 'Alex Morgan',
+    reviewTimestamp: '2026-10-02T10:15:00Z',
+    reviewerNotes: 'Credential validated via public registry. Meets senior infrastructure qualification.',
+    auditTrail: [
+      {
+        id: 'log-002',
+        action: 'submitted',
+        actorName: 'Marcus Chen',
+        actorRole: 'employee',
+        actorId: 'emp-002',
+        timestamp: '2026-09-29T09:00:00Z',
+        note: 'Submitted certificate credential.',
+      },
+      {
+        id: 'log-003',
+        action: 'approved',
+        actorName: 'Alex Morgan',
+        actorRole: 'manager',
+        actorId: 'mgr-001',
+        timestamp: '2026-10-02T10:15:00Z',
+        note: 'Credential validated via public registry.',
+      },
+    ],
+  },
+  {
+    id: 'sub-003',
+    employeeId: 'emp-003',
+    employeeName: 'Elena Rostova',
+    employeeRole: 'Lead Product Designer',
+    employeeDepartment: 'Product',
+    employeeAvatarColor: '#EC4899',
+    courseName: 'React Foundations',
+    provider: 'Frontend Masters',
+    skillId: 'skl-react',
+    completionDate: '2026-10-05',
+    submissionDate: '2026-10-06',
+    credentialId: '',
+    verificationUrl: '',
+    notes: 'Completed all 24 video lessons and project exercises.',
+    evidenceFileName: 'course_enrollment_receipt.pdf',
+    evidenceFileType: 'pdf',
+    evidenceFileSize: 112000,
+    status: 'needs-more-evidence',
+    assignmentId: 'trn-003',
+    reviewerId: 'mgr-001',
+    reviewerName: 'Alex Morgan',
+    reviewTimestamp: '2026-10-08T11:20:00Z',
+    reviewerNotes: 'Please upload the final certificate of completion rather than the payment receipt.',
+    auditTrail: [
+      {
+        id: 'log-004',
+        action: 'submitted',
+        actorName: 'Elena Rostova',
+        actorRole: 'employee',
+        actorId: 'emp-003',
+        timestamp: '2026-10-06T16:00:00Z',
+        note: 'Submitted completion notice.',
+      },
+      {
+        id: 'log-005',
+        action: 'requested_more_evidence',
+        actorName: 'Alex Morgan',
+        actorRole: 'manager',
+        actorId: 'mgr-001',
+        timestamp: '2026-10-08T11:20:00Z',
+        note: 'Please upload the final certificate of completion rather than the payment receipt.',
+      },
+    ],
   },
 ];

@@ -9,6 +9,53 @@ export interface EmployeeSkill {
   level: number; // 1 to 5
 }
 
+export type VerificationStatus =
+  | 'not-started'
+  | 'in-progress'
+  | 'pending-verification'
+  | 'verified'
+  | 'rejected'
+  | 'needs-more-evidence';
+
+export interface VerificationAuditLog {
+  id: string;
+  action: 'submitted' | 'resubmitted' | 'approved' | 'rejected' | 'requested_more_evidence';
+  actorName: string;
+  actorRole: 'manager' | 'employee';
+  actorId: string;
+  timestamp: string;
+  note?: string;
+}
+
+export interface TrainingSubmission {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string;
+  employeeDepartment: string;
+  employeeAvatarColor?: string;
+  courseName: string;
+  provider: string;
+  skillId: string;
+  completionDate: string;
+  submissionDate: string;
+  credentialId?: string;
+  verificationUrl?: string;
+  notes?: string;
+  evidenceFileName?: string;
+  evidenceFileType?: 'pdf' | 'image' | 'link' | 'none';
+  evidenceDataUrl?: string;
+  evidenceFileSize?: number;
+  status: VerificationStatus;
+  assignmentId?: string;
+  reviewerId?: string;
+  reviewerName?: string;
+  reviewTimestamp?: string;
+  reviewerNotes?: string;
+  rejectionReason?: string;
+  auditTrail: VerificationAuditLog[];
+}
+
 export interface TrainingAssignment {
   id: string;
   courseName: string;
@@ -19,6 +66,8 @@ export interface TrainingAssignment {
   reason?: string;
   assignedDate?: string;
   completedDate?: string;
+  verificationStatus?: VerificationStatus;
+  submissionId?: string;
 }
 
 export interface Employee {

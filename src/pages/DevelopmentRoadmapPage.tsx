@@ -1,11 +1,26 @@
 import { useMemo, useState } from 'react';
-import { BookOpenCheck, CheckCircle2, CirclePlay, GraduationCap, LockKeyhole, Sparkles } from 'lucide-react';
+import {
+  BookOpenCheck,
+  CheckCircle2,
+  CirclePlay,
+  GraduationCap,
+  LockKeyhole,
+  Sparkles,
+  Award,
+  Eye,
+  AlertCircle,
+  Plus,
+} from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
+import { StatusBadge } from '@/components/StatusBadge';
 import { Reveal } from '@/components/Reveal';
+import { TrainingSubmissionModal } from '@/components/TrainingSubmissionModal';
+import { EvidenceReviewModal } from '@/components/EvidenceReviewModal';
 import { useData } from '@/context/DataContext';
 import { demoEmployeeId } from '@/data/mockData';
 import { getEmployeeProjects, getSkillName } from '@/utils';
+import type { TrainingSubmission } from '@/types';
 
 const coursesBySkill: Record<string, { course: string; provider: string }> = {
   'skl-react': { course: 'React Foundations', provider: 'Frontend Masters' },
@@ -28,8 +43,13 @@ const coursesBySkill: Record<string, { course: string; provider: string }> = {
 };
 
 export function DevelopmentRoadmapPage() {
-  const { employees, projects, role, addTrainingAssignment, updateTrainingAssignment, showToast } = useData();
+  const { employees, projects, submissions, role, addTrainingAssignment, updateTrainingAssignment, showToast } = useData();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(demoEmployeeId);
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);
+  const [resubmitClaim, setResubmitClaim] = useState<TrainingSubmission | undefined>(undefined);
+  const [initialClaimData, setInitialClaimData] = useState<Partial<TrainingSubmission> | undefined>(undefined);
+
   const employeeId = role === 'employee' ? demoEmployeeId : selectedEmployeeId;
   const employee = employees.find((item) => item.id === employeeId);
   const employeeProjects = useMemo(
@@ -74,7 +94,7 @@ export function DevelopmentRoadmapPage() {
     const nextProgress = status === 'not-started' ? Math.max(10, progress) : Math.min(100, progress + 25);
     const nextStatus = nextProgress >= 100 ? 'completed' : 'in-progress';
     updateTrainingAssignment(selectedEmployee.id, trainingId, { progress: nextProgress, status: nextStatus });
-    showToast('success', nextStatus === 'completed' ? 'Course completed. Your skill profile has been updated.' : `Course progress updated to ${nextProgress}%`);
+    showToast('success', nextStatus === 'completed' ? 'Coursework completed (100%). Ready for completion verification.' : `Course progress updated to ${nextProgress}%`);
   }
 
   function assignCourse(skillId: string, requiredLevel: number, projectNames: string[]) {
@@ -94,8 +114,23 @@ export function DevelopmentRoadmapPage() {
     <div>
       <PageHeader
         title={role === 'employee' ? 'My Development Roadmap' : 'Skill Development Roadmap'}
-        description="Turn project skill needs into trackable learning goals."
+        description="Turn project skill needs into trackable learning goals and verified achievements."
         breadcrumb={['Home', role === 'employee' ? 'My Development' : 'Development Roadmap']}
+        actions={
+          role === 'employee' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setInitialClaimData(undefined);
+                setResubmitClaim(undefined);
+                setSubmitModalOpen(true);
+              }}
+              className="btn-primary"
+            >
+              <Plus size={15} /> Submit External Course Claim
+            </button>
+          ) : undefined
+        }
       />
 
       {role === 'manager' && (
@@ -159,33 +194,159 @@ export function DevelopmentRoadmapPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {employee.trainingAssignments.map((training) => (
-                <article key={training.id} className="rounded-xl border border-base-border bg-base-bg/70 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {training.status === 'completed' ? <CheckCircle2 size={16} className="text-success" /> : <GraduationCap size={16} className="text-primary" />}
-                        <h3 className="text-sm font-medium text-text-primary">{training.courseName}</h3>
+              {employee.trainingAssignments.map((training) => {
+                const sub = submissions.find(
+                  (s) =>
+                    s.id === training.submissionId ||
+                    (s.employeeId === selectedEmployee.id &&
+                      s.courseName.toLowerCase() === training.courseName.toLowerCase())
+                );
+                const isRejectedOrEvidence =
+                  sub && (sub.status === 'rejected' || sub.status === 'needs-more-evidence');
+
+                return (
+                  <article key={training.id} className="rounded-xl border border-base-border bg-base-bg/70 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {training.status === 'completed' ? (
+                            <CheckCircle2 size={16} className="text-success" />
+                          ) : (
+                            <GraduationCap size={16} className="text-primary" />
+                          )}
+                          <h3 className="text-sm font-medium text-text-primary">{training.courseName}</h3>
+                        </div>
+                        <p className="ml-6 mt-1 text-xs text-text-secondary">
+                          {training.provider} · {getSkillName(training.skillId)}
+                        </p>
                       </div>
-                      <p className="ml-6 mt-1 text-xs text-text-secondary">{training.provider} · {getSkillName(training.skillId)}</p>
+                      <div className="flex items-center gap-2">
+                        {sub ? (
+                          <StatusBadge status={sub.status} />
+                        ) : (
+                          <StatusBadge status={training.verificationStatus || 'not-started'} />
+                        )}
+                      </div>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs ${training.status === 'completed' ? 'bg-success/10 text-success' : training.status === 'in-progress' ? 'bg-primary/10 text-primary' : 'bg-base-hover text-text-secondary'}`}>
-                      {training.status === 'completed' ? 'Completed' : training.status === 'in-progress' ? 'In progress' : 'Not started'}
-                    </span>
-                  </div>
-                  <p className="ml-6 mt-2 text-xs text-text-secondary">{training.reason}</p>
-                  <div className="ml-6 mt-3">
-                    <div className="mb-1 flex justify-between text-xs"><span className="text-text-secondary">Course progress</span><span className="text-text-primary">{training.progress}%</span></div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-base-border"><div className={`h-full rounded-full ${training.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ width: `${training.progress}%` }} /></div>
-                  </div>
-                  {training.status !== 'completed' && (
-                    <button className="btn-secondary ml-6 mt-3" onClick={() => advanceTraining(training.id, training.progress, training.status)}>
-                      {training.status === 'not-started' ? <><CirclePlay size={15} /> Start course</> : <><CheckCircle2 size={15} /> Add 25% progress</>}
-                    </button>
-                  )}
-                  {training.status === 'completed' && <p className="ml-6 mt-3 text-xs text-success">Skill profile updated to reflect this completed learning.</p>}
-                </article>
-              ))}
+                    <p className="ml-6 mt-2 text-xs text-text-secondary">{training.reason}</p>
+                    <div className="ml-6 mt-3">
+                      <div className="mb-1 flex justify-between text-xs">
+                        <span className="text-text-secondary">Course progress</span>
+                        <span className="text-text-primary font-medium">{training.progress}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-base-border">
+                        <div
+                          className={`h-full rounded-full ${
+                            training.status === 'completed' ? 'bg-success' : 'bg-primary'
+                          }`}
+                          style={{ width: `${training.progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Reviewer feedback if rejected or needs more evidence */}
+                    {isRejectedOrEvidence && (
+                      <div
+                        className={`ml-6 mt-3 p-2.5 rounded-lg text-xs ${
+                          sub.status === 'rejected'
+                            ? 'bg-rose-50 border border-rose-200 text-rose-900'
+                            : 'bg-indigo-50 border border-indigo-200 text-indigo-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 font-bold text-[11px] mb-0.5">
+                          <AlertCircle size={12} /> Reviewer Note:
+                        </div>
+                        <p className="text-[11px] leading-relaxed">
+                          {sub.rejectionReason || sub.reviewerNotes}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Action Bar */}
+                    <div className="ml-6 mt-3 pt-2.5 border-t border-base-border/50 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {training.status !== 'completed' && (
+                          <button
+                            className="btn-secondary text-xs py-1 px-2.5"
+                            onClick={() => advanceTraining(training.id, training.progress, training.status)}
+                          >
+                            {training.status === 'not-started' ? (
+                              <>
+                                <CirclePlay size={14} /> Start course
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={14} /> Add 25% progress
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {training.status === 'completed' && (
+                          <span className="text-xs text-text-secondary font-medium">
+                            Coursework completed (100%)
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {role === 'employee' ? (
+                          sub ? (
+                            isRejectedOrEvidence ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResubmitClaim(sub);
+                                  setInitialClaimData(undefined);
+                                  setSubmitModalOpen(true);
+                                }}
+                                className="btn-primary text-xs py-1 px-2.5"
+                              >
+                                Resubmit Evidence
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSubmission(sub)}
+                                className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
+                              >
+                                <Eye size={12} /> View Claim Evidence
+                              </button>
+                            )
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setInitialClaimData({
+                                  courseName: training.courseName,
+                                  provider: training.provider,
+                                  skillId: training.skillId,
+                                  assignmentId: training.id,
+                                });
+                                setResubmitClaim(undefined);
+                                setSubmitModalOpen(true);
+                              }}
+                              className="btn-primary text-xs py-1 px-2.5 flex items-center gap-1"
+                            >
+                              <Award size={13} /> Submit for Verification
+                            </button>
+                          )
+                        ) : (
+                          sub && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSubmission(sub)}
+                              className="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1"
+                            >
+                              <Eye size={12} /> Inspect Evidence
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
@@ -226,11 +387,35 @@ export function DevelopmentRoadmapPage() {
             </div>
           )}
           <div className="mt-4 rounded-xl border border-cyan/15 bg-cyan/5 p-3 text-xs leading-relaxed text-text-secondary">
-            Finishing a course marks it complete and increases the corresponding skill by one level (up to level 5).
+            Coursework tracks learning progress. Formal completion verification requires submitting accredited certificate evidence for Manager/HR approval.
           </div>
         </section>
         </Reveal>
       </div>
+
+      {/* Submission Modal */}
+      <TrainingSubmissionModal
+        isOpen={submitModalOpen}
+        onClose={() => {
+          setSubmitModalOpen(false);
+          setResubmitClaim(undefined);
+          setInitialClaimData(undefined);
+        }}
+        initialData={initialClaimData}
+        existingSubmission={resubmitClaim}
+      />
+
+      {/* Evidence Review Modal */}
+      <EvidenceReviewModal
+        isOpen={Boolean(selectedSubmission)}
+        onClose={() => setSelectedSubmission(null)}
+        submission={selectedSubmission}
+        onResubmit={(sub) => {
+          setResubmitClaim(sub);
+          setInitialClaimData(undefined);
+          setSubmitModalOpen(true);
+        }}
+      />
     </div>
   );
 }

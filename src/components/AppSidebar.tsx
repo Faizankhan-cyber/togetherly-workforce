@@ -50,10 +50,11 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
-  const { employees, role, setRole } = useData();
+  const { employees, role, setRole, submissions } = useData();
   const navigate = useNavigate();
   const profile = employees.find((employee) => employee.id === 'emp-001');
   const navItems = role === 'manager' ? managerNavItems : employeeNavItems;
+  const pendingCount = submissions.filter((s) => s.status === 'pending-verification').length;
 
   function changeRole(nextRole: 'manager' | 'employee') {
     setRole(nextRole);
@@ -93,6 +94,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const hasPending = item.to === '/skills' && pendingCount > 0;
             return (
               <NavLink
                 key={item.to}
@@ -100,7 +102,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                 end={item.to === '/'}
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                  `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                     isActive
                       ? 'bg-primary-50 text-primary font-semibold border-l-2 border-primary'
                       : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'
@@ -116,7 +118,15 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                         isActive ? 'text-primary' : 'text-text-secondary'
                       }`}
                     />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+                    {hasPending && !collapsed && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500 text-white">
+                        {pendingCount}
+                      </span>
+                    )}
+                    {hasPending && collapsed && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1.5 right-1.5 ring-2 ring-white" />
+                    )}
                   </>
                 )}
               </NavLink>

@@ -5,6 +5,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  ShieldCheck,
+  Eye,
+  Layers,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -19,11 +22,15 @@ import {
 import { PageHeader } from '@/components/PageHeader';
 import { Avatar } from '@/components/Avatar';
 import { SkillTag } from '@/components/SkillTag';
+import { StatusBadge } from '@/components/StatusBadge';
 import { ChartCard } from '@/components/ChartCard';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterToolbar, SelectFilter } from '@/components/FilterToolbar';
 import { Reveal } from '@/components/Reveal';
+import { VerificationQueueTable } from '@/components/VerificationQueueTable';
+import { EvidenceReviewModal } from '@/components/EvidenceReviewModal';
 import { useData } from '@/context/DataContext';
+import type { TrainingSubmission } from '@/types';
 import {
   getSkillDistribution,
   getSkillDemand,
@@ -33,10 +40,16 @@ import {
 } from '@/utils';
 
 export function SkillsTrainingPage() {
-  const { employees, projects, showToast, updateTrainingAssignment } = useData();
+  const { employees, projects, submissions, showToast, updateTrainingAssignment } = useData();
+  const [activeTab, setActiveTab] = useState<'skills' | 'verification'>('skills');
+  const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);
   const [deptFilter, setDeptFilter] = useState('all');
   const [skillFilter, setSkillFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
+
+  const pendingVerificationCount = useMemo(() => {
+    return submissions.filter((s) => s.status === 'pending-verification').length;
+  }, [submissions]);
 
   const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
   const activeProjects = projects.filter((p) => p.status !== 'completed');
@@ -97,26 +110,72 @@ export function SkillsTrainingPage() {
     const nextProgress = status === 'not-started' ? Math.max(10, progress) : Math.min(100, progress + 25);
     const nextStatus = nextProgress >= 100 ? 'completed' : 'in-progress';
     updateTrainingAssignment(employeeId, trainingId, { progress: nextProgress, status: nextStatus });
-    showToast('success', nextStatus === 'completed' ? 'Training completed and employee skill profile updated' : `Training progress updated to ${nextProgress}%`);
+    showToast('success', nextStatus === 'completed' ? 'Coursework completed (100%). Awaiting completion verification claim.' : `Training progress updated to ${nextProgress}%`);
   }
 
   return (
     <div>
       <PageHeader
         title="Skills & Training"
-        description="Company-wide skill inventory, gaps, and training recommendations"
+        description="Company-wide skill inventory, gaps, and training completion verification"
         breadcrumb={['Home', 'Skills & Training']}
         actions={
-          <button className="btn-secondary" onClick={handleExportMatrix}>
-            <Download size={16} /> Export Matrix
-          </button>
+          activeTab === 'skills' ? (
+            <button className="btn-secondary" onClick={handleExportMatrix}>
+              <Download size={16} /> Export Matrix
+            </button>
+          ) : undefined
         }
       />
 
-      {/* Filters */}
-      <Reveal>
-      <div className="card p-4 mb-4">
-        <FilterToolbar>
+      {/* Module Navigation Tabs */}
+      <div className="flex items-center gap-2 mb-5 border-b border-base-border pb-2.5">
+        <button
+          type="button"
+          onClick={() => setActiveTab('skills')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            activeTab === 'skills'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'
+          }`}
+        >
+          <Layers size={14} />
+          Skill Inventory & Matrix
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('verification')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            activeTab === 'verification'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'
+          }`}
+        >
+          <ShieldCheck size={14} />
+          Training Verification Queue
+          {pendingVerificationCount > 0 && (
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                activeTab === 'verification'
+                  ? 'bg-white text-primary'
+                  : 'bg-amber-500 text-white'
+              }`}
+            >
+              {pendingVerificationCount} Pending
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'verification' ? (
+        <VerificationQueueTable onSelectSubmission={(sub) => setSelectedSubmission(sub)} />
+      ) : (
+        <>
+          {/* Filters */}
+          <Reveal>
+          <div className="card p-4 mb-4">
+            <FilterToolbar>
           <SelectFilter
             label="Department"
             value={deptFilter}
@@ -302,17 +361,50 @@ export function SkillsTrainingPage() {
                     <div className={`h-full rounded-full ${training.status === 'completed' ? 'bg-success' : 'bg-primary'}`} style={{ width: `${training.progress}%` }} />
                   </div>
                 </div>
-                {training.status !== 'completed' ? (
-                  <button
-                    className="btn-secondary mt-3"
-                    onClick={() => advanceTraining(employee.id, training.id, training.progress, training.status)}
-                  >
-                    <CheckCircle2 size={14} />
-                    {training.status === 'not-started' ? 'Start training' : 'Add 25% progress'}
-                  </button>
-                ) : (
-                  <div className="mt-3 flex items-center gap-1 text-xs text-success"><CheckCircle2 size={14} /> Completed · skill profile updated</div>
-                )}
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-base-border/50">
+                  {training.status !== 'completed' ? (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => advanceTraining(employee.id, training.id, training.progress, training.status)}
+                    >
+                      <CheckCircle2 size={14} />
+                      {training.status === 'not-started' ? 'Start training' : 'Add 25% progress'}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                      <CheckCircle2 size={14} /> Coursework finished (100%)
+                    </div>
+                  )}
+
+                  {(() => {
+                    const sub = submissions.find(
+                      (s) =>
+                        s.id === training.submissionId ||
+                        (s.employeeId === employee.id &&
+                          s.courseName.toLowerCase() === training.courseName.toLowerCase())
+                    );
+                    if (sub) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={sub.status} />
+                          <button
+                            type="button"
+                            className="btn-secondary text-[11px] py-1 px-2 flex items-center gap-1"
+                            onClick={() => setSelectedSubmission(sub)}
+                          >
+                            <Eye size={12} /> Inspect Evidence
+                          </button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+                        <span>Verification:</span>
+                        <StatusBadge status={training.verificationStatus || 'not-started'} />
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
               </Reveal>
             ))}
@@ -320,6 +412,15 @@ export function SkillsTrainingPage() {
         )}
       </div>
       </Reveal>
+      </>
+      )}
+
+      {/* Evidence Review Modal */}
+      <EvidenceReviewModal
+        isOpen={Boolean(selectedSubmission)}
+        onClose={() => setSelectedSubmission(null)}
+        submission={selectedSubmission}
+      />
     </div>
   );
 }

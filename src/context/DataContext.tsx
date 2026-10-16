@@ -7,12 +7,16 @@ import type {
   Role,
   ToastNotification,
   TrainingAssignment,
+  TrainingSubmission,
+  VerificationAuditLog,
+  VerificationStatus,
 } from '@/types';
 import {
   defaultSettings,
   initialActivities,
   initialEmployees,
   initialProjects,
+  initialSubmissions,
 } from '@/data/mockData';
 
 interface DataContextType {
@@ -23,6 +27,7 @@ interface DataContextType {
   settings: AppSettings;
   activities: Activity[];
   toasts: ToastNotification[];
+  submissions: TrainingSubmission[];
   addEmployee: (employee: Omit<Employee, 'id'> & { id?: string }) => void;
   updateEmployee: (id: string, updates: Partial<Employee>) => void;
   deleteEmployee: (id: string) => void;
@@ -37,6 +42,20 @@ interface DataContextType {
     trainingId: string,
     updates: Partial<TrainingAssignment>
   ) => void;
+  submitTrainingClaim: (
+    claim: Omit<TrainingSubmission, 'id' | 'submissionDate' | 'status' | 'auditTrail'> & { id?: string }
+  ) => TrainingSubmission;
+  resubmitTrainingClaim: (
+    submissionId: string,
+    updates: Partial<TrainingSubmission>
+  ) => { success: boolean; error?: string };
+  reviewTrainingClaim: (
+    submissionId: string,
+    decision: 'approved' | 'rejected' | 'requested_more_evidence',
+    notes: string,
+    reviewerId?: string,
+    reviewerName?: string
+  ) => { success: boolean; error?: string };
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetData: () => void;
   addActivity: (messageOrObj: string | { message: string; type?: string }, maybeType?: string) => void;
@@ -52,6 +71,7 @@ const STORAGE_KEYS = {
   PROJECTS: 'togetherly_projects',
   SETTINGS: 'togetherly_settings',
   ACTIVITIES: 'togetherly_activities',
+  SUBMISSIONS: 'togetherly_training_submissions',
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -100,6 +120,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
+  const [submissions, setSubmissions] = useState<TrainingSubmission[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.SUBMISSIONS);
+      return stored ? JSON.parse(stored) : initialSubmissions;
+    } catch {
+      return initialSubmissions;
+    }
+  });
+
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   // Sync to local storage
@@ -126,6 +155,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       void e;
     }
   }, [projects]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    } catch (e) {
+      void e;
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
+    } catch (e) {
+      void e;
+    }
+  }, [activities]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(submissions));
+    } catch (e) {
+      void e;
+    }
+  }, [submissions]);
 
   useEffect(() => {
     try {
@@ -309,35 +362,265 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (emp.id === employeeId) {
           const updatedAssignments = emp.trainingAssignments.map((trn) => {
             if (trn.id === trainingId) {
-              const merged = { ...trn, ...updates };
-              return merged;
+              return { ...trn, ...updates };
             }
             return trn;
           });
 
-          // If training reached 100%, boost corresponding employee skill level
-          let updatedSkills = emp.skills;
-          const targetTrn = emp.trainingAssignments.find((t) => t.id === trainingId);
-          if (targetTrn && updates.progress === 100) {
-            const skillIdx = emp.skills.findIndex((s) => s.skillId === targetTrn.skillId);
-            if (skillIdx >= 0) {
-              updatedSkills = emp.skills.map((s, idx) =>
-                idx === skillIdx ? { ...s, level: Math.min(5, s.level + 1) } : s
-              );
-            } else {
-              updatedSkills = [...emp.skills, { skillId: targetTrn.skillId, level: 3 }];
-            }
-          }
-
           return {
             ...emp,
-            skills: updatedSkills,
             trainingAssignments: updatedAssignments,
           };
         }
         return emp;
       })
     );
+  };
+
+  const submitTrainingClaim = (
+    claim: Omit<TrainingSubmission, 'id' | 'submissionDate' | 'status' | 'auditTrail'> & { id?: string }
+  ): TrainingSubmission => {
+    const newSubmission: TrainingSubmission = {
+      ...claim,
+      id: claim.id || `sub-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      submissionDate: new Date().toISOString().split('T')[0],
+      status: 'pending-verification',
+      auditTrail: [
+        {
+          id: `log-${Date.now()}`,
+          action: 'submitted',
+          actorName: claim.employeeName,
+          actorRole: 'employee',
+          actorId: claim.employeeId,
+          timestamp: new Date().toISOString(),
+          note: claim.notes || 'Training completion claim submitted for verification.',
+        },
+      ],
+    };
+
+    setSubmissions((prev) => [newSubmission, ...prev]);
+
+    // Update corresponding employee training assignment if linked or matching
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id === claim.employeeId) {
+          let updated = false;
+          const newAssignments = emp.trainingAssignments.map((trn) => {
+            if (
+              (claim.assignmentId && trn.id === claim.assignmentId) ||
+              trn.courseName.toLowerCase() === claim.courseName.toLowerCase()
+            ) {
+              updated = true;
+              return {
+                ...trn,
+                progress: 100,
+                completedDate: claim.completionDate,
+                verificationStatus: 'pending-verification' as const,
+                submissionId: newSubmission.id,
+              };
+            }
+            return trn;
+          });
+
+          if (!updated && claim.skillId) {
+            newAssignments.push({
+              id: `trn-${Date.now()}`,
+              courseName: claim.courseName,
+              provider: claim.provider,
+              skillId: claim.skillId,
+              status: 'in-progress',
+              progress: 100,
+              assignedDate: new Date().toISOString().split('T')[0],
+              completedDate: claim.completionDate,
+              verificationStatus: 'pending-verification',
+              submissionId: newSubmission.id,
+              reason: 'Self-directed training completion submission',
+            });
+          }
+
+          return {
+            ...emp,
+            trainingAssignments: newAssignments,
+          };
+        }
+        return emp;
+      })
+    );
+
+    addActivity(
+      `${claim.employeeName} submitted "${claim.courseName}" for completion verification`,
+      'training'
+    );
+    showToast('success', `Submitted "${claim.courseName}" for verification.`);
+    return newSubmission;
+  };
+
+  const resubmitTrainingClaim = (
+    submissionId: string,
+    updates: Partial<TrainingSubmission>
+  ): { success: boolean; error?: string } => {
+    const existing = submissions.find((s) => s.id === submissionId);
+    if (!existing) {
+      showToast('error', 'Submission record not found.');
+      return { success: false, error: 'Submission not found' };
+    }
+
+    const resubmitLog: VerificationAuditLog = {
+      id: `log-${Date.now()}`,
+      action: 'resubmitted',
+      actorName: existing.employeeName,
+      actorRole: 'employee',
+      actorId: existing.employeeId,
+      timestamp: new Date().toISOString(),
+      note: updates.notes || 'Updated training evidence resubmitted for verification.',
+    };
+
+    const updatedSubmission: TrainingSubmission = {
+      ...existing,
+      ...updates,
+      status: 'pending-verification',
+      submissionDate: new Date().toISOString().split('T')[0],
+      reviewerNotes: undefined,
+      rejectionReason: undefined,
+      auditTrail: [resubmitLog, ...existing.auditTrail],
+    };
+
+    setSubmissions((prev) => prev.map((s) => (s.id === submissionId ? updatedSubmission : s)));
+
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id === existing.employeeId) {
+          return {
+            ...emp,
+            trainingAssignments: emp.trainingAssignments.map((trn) => {
+              if (trn.submissionId === submissionId || trn.id === existing.assignmentId) {
+                return {
+                  ...trn,
+                  verificationStatus: 'pending-verification' as const,
+                };
+              }
+              return trn;
+            }),
+          };
+        }
+        return emp;
+      })
+    );
+
+    addActivity(
+      `${existing.employeeName} resubmitted evidence for "${existing.courseName}"`,
+      'training'
+    );
+    showToast('success', `Resubmitted evidence for "${existing.courseName}".`);
+    return { success: true };
+  };
+
+  const reviewTrainingClaim = (
+    submissionId: string,
+    decision: 'approved' | 'rejected' | 'requested_more_evidence',
+    notes: string,
+    reviewerId: string = 'mgr-001',
+    reviewerName: string = 'Alex Morgan'
+  ): { success: boolean; error?: string } => {
+    const submission = submissions.find((s) => s.id === submissionId);
+    if (!submission) {
+      showToast('error', 'Training submission not found.');
+      return { success: false, error: 'Submission not found' };
+    }
+
+    // Security & record integrity: Prevent self-approval
+    if (reviewerId && reviewerId === submission.employeeId) {
+      showToast('error', 'Self-approval is prohibited: Employees cannot approve their own training claims.');
+      return { success: false, error: 'Self-approval is prohibited.' };
+    }
+
+    if (role === 'employee') {
+      showToast('error', 'Access denied: Only Managers and HR administrators can verify training completions.');
+      return { success: false, error: 'Unauthorized role.' };
+    }
+
+    if (decision === 'rejected' && (!notes || !notes.trim())) {
+      showToast('error', 'A rejection reason is required.');
+      return { success: false, error: 'Rejection reason is required.' };
+    }
+
+    if (decision === 'requested_more_evidence' && (!notes || !notes.trim())) {
+      showToast('error', 'Please specify what additional evidence is required.');
+      return { success: false, error: 'Evidence note is required.' };
+    }
+
+    const newStatus: VerificationStatus =
+      decision === 'approved'
+        ? 'verified'
+        : decision === 'rejected'
+        ? 'rejected'
+        : 'needs-more-evidence';
+
+    const log: VerificationAuditLog = {
+      id: `log-${Date.now()}`,
+      action: decision,
+      actorName: reviewerName,
+      actorRole: 'manager',
+      actorId: reviewerId,
+      timestamp: new Date().toISOString(),
+      note: notes.trim(),
+    };
+
+    const updatedSubmission: TrainingSubmission = {
+      ...submission,
+      status: newStatus,
+      reviewerId,
+      reviewerName,
+      reviewTimestamp: new Date().toISOString(),
+      reviewerNotes: decision === 'requested_more_evidence' ? notes.trim() : submission.reviewerNotes,
+      rejectionReason: decision === 'rejected' ? notes.trim() : submission.rejectionReason,
+      auditTrail: [log, ...submission.auditTrail],
+    };
+
+    setSubmissions((prev) => prev.map((s) => (s.id === submissionId ? updatedSubmission : s)));
+
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        if (emp.id === submission.employeeId) {
+          return {
+            ...emp,
+            trainingAssignments: emp.trainingAssignments.map((trn) => {
+              if (trn.submissionId === submissionId || trn.id === submission.assignmentId) {
+                return {
+                  ...trn,
+                  verificationStatus: newStatus,
+                  completedDate: decision === 'approved' ? submission.completionDate : trn.completedDate,
+                };
+              }
+              return trn;
+            }),
+          };
+        }
+        return emp;
+      })
+    );
+
+    if (decision === 'approved') {
+      addActivity(
+        `Verified training achievement: ${submission.employeeName} completed "${submission.courseName}"`,
+        'training'
+      );
+      showToast('success', `Verified "${submission.courseName}" for ${submission.employeeName}.`);
+    } else if (decision === 'rejected') {
+      addActivity(
+        `Training claim rejected for ${submission.employeeName}: "${submission.courseName}" (${notes.trim()})`,
+        'training'
+      );
+      showToast('warning', `Rejected claim for "${submission.courseName}".`);
+    } else {
+      addActivity(
+        `Requested additional evidence from ${submission.employeeName} for "${submission.courseName}"`,
+        'training'
+      );
+      showToast('info', `Requested more evidence for "${submission.courseName}".`);
+    }
+
+    return { success: true };
   };
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
@@ -349,12 +632,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProjects(initialProjects);
     setSettings(defaultSettings);
     setActivities(initialActivities);
+    setSubmissions(initialSubmissions);
     setRoleState('manager');
     try {
       localStorage.removeItem(STORAGE_KEYS.EMPLOYEES);
       localStorage.removeItem(STORAGE_KEYS.PROJECTS);
       localStorage.removeItem(STORAGE_KEYS.SETTINGS);
       localStorage.removeItem(STORAGE_KEYS.ACTIVITIES);
+      localStorage.removeItem(STORAGE_KEYS.SUBMISSIONS);
       localStorage.removeItem(STORAGE_KEYS.ROLE);
     } catch (e) {
       void e;
@@ -372,6 +657,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         settings,
         activities,
         toasts,
+        submissions,
         addEmployee,
         updateEmployee,
         deleteEmployee,
@@ -382,6 +668,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unassignEmployeeFromProject,
         addTrainingAssignment,
         updateTrainingAssignment,
+        submitTrainingClaim,
+        resubmitTrainingClaim,
+        reviewTrainingClaim,
         updateSettings,
         resetData,
         addActivity,
@@ -394,6 +683,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useData(): DataContextType {
   const context = useContext(DataContext);
   if (!context) {

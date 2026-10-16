@@ -23,6 +23,19 @@ export const statusColors: Record<string, string> = {
   high: 'text-warning bg-orange-50 border-orange-200',
   medium: 'text-primary bg-primary-50 border-primary-200',
   low: 'text-text-secondary bg-gray-100 border-base-border',
+  // Verification statuses
+  'not-started': 'text-text-secondary bg-gray-100 border-base-border',
+  'in-progress': 'text-primary bg-primary-50 border-primary-200',
+  'pending-verification': 'text-amber-800 bg-amber-50 border-amber-300',
+  verified: 'text-emerald-800 bg-emerald-50 border-emerald-300',
+  rejected: 'text-rose-800 bg-rose-50 border-rose-300',
+  'needs-more-evidence': 'text-indigo-800 bg-indigo-50 border-indigo-300',
+  'Not Started': 'text-text-secondary bg-gray-100 border-base-border',
+  'In Progress': 'text-primary bg-primary-50 border-primary-200',
+  'Pending Verification': 'text-amber-800 bg-amber-50 border-amber-300',
+  Verified: 'text-emerald-800 bg-emerald-50 border-emerald-300',
+  Rejected: 'text-rose-800 bg-rose-50 border-rose-300',
+  'Needs More Evidence': 'text-indigo-800 bg-indigo-50 border-indigo-300',
 };
 
 export const statusLabels: Record<string, string> = {
@@ -37,7 +50,30 @@ export const statusLabels: Record<string, string> = {
   high: 'High',
   medium: 'Medium',
   low: 'Low',
+  'not-started': 'Not Started',
+  'in-progress': 'In Progress',
+  'pending-verification': 'Pending Verification',
+  verified: 'Verified',
+  rejected: 'Rejected',
+  'needs-more-evidence': 'Needs More Evidence',
 };
+
+export function formatFileSize(bytes?: number): string {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+export function isValidHttpUrl(stringToTest: string): boolean {
+  try {
+    const url = new URL(stringToTest);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 export function getSkillName(skillId: string): string {
   const found = skillsList.find((s) => s.id === skillId);

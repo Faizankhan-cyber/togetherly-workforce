@@ -18,6 +18,18 @@ const statusDotColors: Record<string, string> = {
   high: 'bg-warning',
   medium: 'bg-primary',
   low: 'bg-text-secondary',
+  'not-started': 'bg-gray-400',
+  'in-progress': 'bg-primary',
+  'pending-verification': 'bg-amber-500',
+  verified: 'bg-emerald-600',
+  rejected: 'bg-rose-500',
+  'needs-more-evidence': 'bg-indigo-500',
+  'Not Started': 'bg-gray-400',
+  'In Progress': 'bg-primary',
+  'Pending Verification': 'bg-amber-500',
+  Verified: 'bg-emerald-600',
+  Rejected: 'bg-rose-500',
+  'Needs More Evidence': 'bg-indigo-500',
 };
 
 export function StatusBadge({ status, label, size = 'sm' }: StatusBadgeProps) {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
@@ -9,6 +9,13 @@ import {
   GraduationCap,
   Sparkles,
   Target,
+  Award,
+  Plus,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  AlertCircle,
+  Eye,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Avatar } from '@/components/Avatar';
@@ -16,6 +23,8 @@ import { CapacityBar } from '@/components/CapacityBar';
 import { SkillTag } from '@/components/SkillTag';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Reveal } from '@/components/Reveal';
+import { TrainingSubmissionModal } from '@/components/TrainingSubmissionModal';
+import { EvidenceReviewModal } from '@/components/EvidenceReviewModal';
 import { useData } from '@/context/DataContext';
 import { demoEmployeeId } from '@/data/mockData';
 import {
@@ -25,11 +34,19 @@ import {
   getEmployeeProjects,
   getSkillName,
 } from '@/utils';
-import type { ProjectRequirement } from '@/types';
+import type { ProjectRequirement, TrainingSubmission } from '@/types';
 
 export function EmployeeDashboardPage() {
-  const { employees, projects, settings } = useData();
+  const { employees, projects, settings, submissions } = useData();
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);
+  const [resubmitClaim, setResubmitClaim] = useState<TrainingSubmission | undefined>(undefined);
+  const [initialClaimData, setInitialClaimData] = useState<Partial<TrainingSubmission> | undefined>(undefined);
+
   const employee = employees.find((item) => item.id === demoEmployeeId);
+  const employeeSubmissions = useMemo(() => {
+    return employee ? submissions.filter((s) => s.employeeId === employee.id) : [];
+  }, [employee, submissions]);
   const assignedProjects = useMemo(
     () => employee ? getEmployeeProjects(employee.id, projects).filter((project) => project.status !== 'completed') : [],
     [employee, projects]
@@ -214,30 +231,74 @@ export function EmployeeDashboardPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {activeTraining.slice(0, 3).map((training) => (
-                  <div key={training.id} className="p-3 rounded-xl border border-base-border/60 bg-base-bg/60">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-xl bg-primary/15 border border-primary/30 p-2 text-primary flex-shrink-0">
-                        <GraduationCap size={16} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold text-text-primary truncate">{training.courseName}</div>
-                        <div className="text-[11px] text-text-secondary mt-0.5">{training.provider} · {getSkillName(training.skillId)}</div>
-                        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-base-border/60">
-                          <div className="h-full rounded-full bg-gradient-to-r from-primary to-cyan transition-all duration-500" style={{ width: `${training.progress}%` }} />
+                {activeTraining.slice(0, 3).map((training) => {
+                  const sub = submissions.find(
+                    (s) =>
+                      s.id === training.submissionId ||
+                      (s.employeeId === employee.id &&
+                        s.courseName.toLowerCase() === training.courseName.toLowerCase())
+                  );
+
+                  return (
+                    <div key={training.id} className="p-3 rounded-xl border border-base-border/60 bg-base-bg/60">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-xl bg-primary/15 border border-primary/30 p-2 text-primary flex-shrink-0">
+                          <GraduationCap size={16} />
                         </div>
-                        <div className="mt-1 text-right text-[10px] text-text-secondary font-mono">{training.progress}%</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-bold text-text-primary truncate">{training.courseName}</div>
+                            {sub ? (
+                              <StatusBadge status={sub.status} />
+                            ) : (
+                              <StatusBadge status={training.verificationStatus || 'in-progress'} />
+                            )}
+                          </div>
+                          <div className="text-[11px] text-text-secondary mt-0.5">{training.provider} · {getSkillName(training.skillId)}</div>
+                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-base-border/60">
+                            <div className="h-full rounded-full bg-gradient-to-r from-primary to-cyan transition-all duration-500" style={{ width: `${training.progress}%` }} />
+                          </div>
+                          <div className="mt-1 flex items-center justify-between text-[10px] text-text-secondary">
+                            <span>{training.progress}% coursework progress</span>
+                            {sub ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSubmission(sub)}
+                                className="text-primary hover:underline font-semibold flex items-center gap-1"
+                              >
+                                <Eye size={11} /> View Claim
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInitialClaimData({
+                                    courseName: training.courseName,
+                                    provider: training.provider,
+                                    skillId: training.skillId,
+                                    assignmentId: training.id,
+                                  });
+                                  setResubmitClaim(undefined);
+                                  setSubmitModalOpen(true);
+                                }}
+                                className="text-primary hover:underline font-semibold flex items-center gap-1"
+                              >
+                                <Award size={11} /> Submit for Verification
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
         </Reveal>
       </div>
 
-      {/* Skill Profile Snapshot */}
+      {/* Verified Competency Inventory */}
       <Reveal delay={240}>
         <section className="card p-5 shadow-lg">
           <div className="mb-4 flex items-center justify-between pb-3 border-b border-base-border/50">
@@ -259,6 +320,187 @@ export function EmployeeDashboardPage() {
           </div>
         </section>
       </Reveal>
+
+      {/* Accredited Training Claims & Verifications Section */}
+      <Reveal delay={300}>
+        <section className="card p-5 sm:p-6 shadow-lg border-base-border/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-base-border/60">
+            <div>
+              <div className="flex items-center gap-2">
+                <Award size={18} className="text-primary" />
+                <h3 className="text-sm sm:text-base font-bold text-text-primary">
+                  Accredited Training Claims & Verifications
+                </h3>
+              </div>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Official certificates and credentials submitted for HR and manager completion verification.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setInitialClaimData(undefined);
+                setResubmitClaim(undefined);
+                setSubmitModalOpen(true);
+              }}
+              className="btn-primary text-xs py-2 px-3 w-fit"
+            >
+              <Plus size={14} /> Submit Course for Verification
+            </button>
+          </div>
+
+          {employeeSubmissions.length === 0 ? (
+            <div className="p-8 rounded-xl border border-dashed border-base-border text-center bg-base-bg/40">
+              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2.5">
+                <Award size={20} />
+              </div>
+              <h4 className="text-xs font-bold text-text-primary">No verification claims submitted yet</h4>
+              <p className="text-xs text-text-secondary mt-1 max-w-sm mx-auto">
+                Completed an internal curriculum or external credential? Upload your certificate PDF or share a credential URL for official verification.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setInitialClaimData(undefined);
+                  setResubmitClaim(undefined);
+                  setSubmitModalOpen(true);
+                }}
+                className="btn-secondary text-xs mx-auto mt-3"
+              >
+                <Plus size={13} /> Submit Your First Claim
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {employeeSubmissions.map((sub) => {
+                const isRejectedOrEvidence =
+                  sub.status === 'rejected' || sub.status === 'needs-more-evidence';
+
+                return (
+                  <div
+                    key={sub.id}
+                    className="p-4 rounded-xl border border-base-border/70 bg-base-bg/50 hover:border-primary/40 transition-colors flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-text-primary truncate">{sub.courseName}</h4>
+                          <p className="text-[11px] text-text-secondary">{sub.provider}</p>
+                        </div>
+                        <StatusBadge status={sub.status} />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <SkillTag skillId={sub.skillId} />
+                        <span className="text-[11px] text-text-secondary font-mono">
+                          Completed {formatDate(sub.completionDate)}
+                        </span>
+                      </div>
+
+                      {/* Evidence indicators */}
+                      <div className="flex items-center gap-2 text-[11px] text-text-secondary mb-3 pb-2 border-b border-base-border/40">
+                        <span className="font-medium">Evidence:</span>
+                        {sub.evidenceFileType === 'pdf' && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                            <FileText size={12} /> PDF Document
+                          </span>
+                        )}
+                        {sub.evidenceFileType === 'image' && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-cyan">
+                            <ImageIcon size={12} /> Image Certificate
+                          </span>
+                        )}
+                        {sub.verificationUrl && (
+                          <span className="inline-flex items-center gap-1 text-text-secondary">
+                            <LinkIcon size={12} /> Registry URL
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Reviewer Feedback banner if rejected or needs more evidence */}
+                      {isRejectedOrEvidence && (
+                        <div
+                          className={`p-2.5 rounded-lg text-xs mb-3 ${
+                            sub.status === 'rejected'
+                              ? 'bg-rose-50 border border-rose-200 text-rose-900'
+                              : 'bg-indigo-50 border border-indigo-200 text-indigo-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 font-bold text-[11px] mb-0.5">
+                            <AlertCircle size={12} /> Reviewer Feedback:
+                          </div>
+                          <p className="text-[11px] leading-relaxed">
+                            {sub.rejectionReason || sub.reviewerNotes || 'Please provide updated documentation.'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Verified Banner */}
+                      {sub.status === 'verified' && sub.reviewerName && (
+                        <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 mb-3 flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                          <span className="text-[11px]">
+                            Verified by {sub.reviewerName} on {formatDate(sub.reviewTimestamp || '')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-base-border/40">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSubmission(sub)}
+                        className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1"
+                      >
+                        <Eye size={12} /> View Details & Evidence
+                      </button>
+
+                      {isRejectedOrEvidence && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResubmitClaim(sub);
+                            setInitialClaimData(undefined);
+                            setSubmitModalOpen(true);
+                          }}
+                          className="btn-primary text-[11px] py-1 px-2.5"
+                        >
+                          Resubmit Evidence
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </Reveal>
+
+      {/* Submission Modal */}
+      <TrainingSubmissionModal
+        isOpen={submitModalOpen}
+        onClose={() => {
+          setSubmitModalOpen(false);
+          setResubmitClaim(undefined);
+          setInitialClaimData(undefined);
+        }}
+        initialData={initialClaimData}
+        existingSubmission={resubmitClaim}
+      />
+
+      {/* Evidence Review Modal */}
+      <EvidenceReviewModal
+        isOpen={Boolean(selectedSubmission)}
+        onClose={() => setSelectedSubmission(null)}
+        submission={selectedSubmission}
+        onResubmit={(sub) => {
+          setResubmitClaim(sub);
+          setInitialClaimData(undefined);
+          setSubmitModalOpen(true);
+        }}
+      />
     </div>
   );
 }
