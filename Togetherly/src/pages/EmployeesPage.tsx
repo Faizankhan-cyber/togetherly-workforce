@@ -20,6 +20,7 @@ import { EmployeeForm } from '@/components/EmployeeForm';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterToolbar, SelectFilter, SearchInput } from '@/components/FilterToolbar';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
@@ -144,6 +145,7 @@ export function EmployeesPage() {
       />
 
       {/* Filters */}
+      <Reveal>
       <div className="card p-4 mb-4">
         <FilterToolbar>
           <SearchInput value={search} onChange={setSearch} placeholder="Search by name or role..." />
@@ -195,9 +197,11 @@ export function EmployeesPage() {
           </button>
         </FilterToolbar>
       </div>
+      </Reveal>
 
       {/* Table + Detail Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Reveal delay={0} className="lg:col-span-2">
         <div className="lg:col-span-2 card overflow-hidden">
           {filtered.length === 0 ? (
             <EmptyState
@@ -263,8 +267,10 @@ export function EmployeesPage() {
             Showing {filtered.length} of {employees.length} employees
           </div>
         </div>
+        </Reveal>
 
         {/* Detail Panel */}
+        <Reveal delay={80}>
         <div className="card p-5 h-fit sticky top-20">
           {!selectedEmployee ? (
             <EmptyState
@@ -275,6 +281,7 @@ export function EmployeesPage() {
             <EmployeeDetail employee={selectedEmployee} onEdit={() => handleEdit(selectedEmployee)} />
           )}
         </div>
+        </Reveal>
       </div>
 
       <EmployeeForm open={formOpen} onClose={() => setFormOpen(false)} employee={editingEmployee} />

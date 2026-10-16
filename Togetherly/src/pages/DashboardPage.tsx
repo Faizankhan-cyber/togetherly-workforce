@@ -27,6 +27,7 @@ import {
 import { PageHeader } from '@/components/PageHeader';
 import { MetricCard } from '@/components/MetricCard';
 import { ChartCard } from '@/components/ChartCard';
+import { Reveal } from '@/components/Reveal';
 import { Avatar } from '@/components/Avatar';
 import {
   calculateEmployeeUtilization,
@@ -122,30 +123,38 @@ export function DashboardPage() {
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <MetricCard
-          label="Total Employees"
-          value={employees.length}
-          icon={<Users size={20} />}
-          accent="primary"
-        />
-        <MetricCard
-          label="Active Projects"
-          value={activeProjects.length}
-          icon={<FolderKanban size={20} />}
-          accent="cyan"
-        />
-        <MetricCard
-          label="Available Employees"
-          value={availableEmployees.length}
-          icon={<UserCheck size={20} />}
-          accent="success"
-        />
-        <MetricCard
-          label="Skill Gaps"
-          value={skillGaps.length}
-          icon={<AlertTriangle size={20} />}
-          accent="warning"
-        />
+        <Reveal delay={0}>
+          <MetricCard
+            label="Total Employees"
+            value={employees.length}
+            icon={<Users size={20} />}
+            accent="primary"
+          />
+        </Reveal>
+        <Reveal delay={80}>
+          <MetricCard
+            label="Active Projects"
+            value={activeProjects.length}
+            icon={<FolderKanban size={20} />}
+            accent="cyan"
+          />
+        </Reveal>
+        <Reveal delay={160}>
+          <MetricCard
+            label="Available Employees"
+            value={availableEmployees.length}
+            icon={<UserCheck size={20} />}
+            accent="success"
+          />
+        </Reveal>
+        <Reveal delay={240}>
+          <MetricCard
+            label="Skill Gaps"
+            value={skillGaps.length}
+            icon={<AlertTriangle size={20} />}
+            accent="warning"
+          />
+        </Reveal>
       </div>
 
       {/* Charts Row 1 */}
@@ -230,67 +239,73 @@ export function DashboardPage() {
         </ChartCard>
 
         {/* Overloaded Employees */}
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-critical" />
-            <h3 className="text-sm font-semibold text-text-primary">Overloaded Employees</h3>
-          </div>
-          <div className="space-y-3 max-h-[240px] overflow-y-auto">
-            {overloadedEmployees.length === 0 && (
-              <p className="text-sm text-text-secondary">No overloaded employees. Workforce is balanced.</p>
-            )}
-            {overloadedEmployees.slice(0, 5).map(({ employee, utilization }) => (
-              <div key={employee.id} className="flex items-center gap-3">
-                <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-text-primary truncate">{employee.name}</div>
-                  <div className="text-xs text-text-secondary truncate">{employee.role}</div>
+        <Reveal delay={120}>
+          <div className="card p-5 h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={16} className="text-critical" />
+              <h3 className="text-sm font-semibold text-text-primary">Overloaded Employees</h3>
+            </div>
+            <div className="space-y-3 max-h-[240px] overflow-y-auto">
+              {overloadedEmployees.length === 0 && (
+                <p className="text-sm text-text-secondary">No overloaded employees. Workforce is balanced.</p>
+              )}
+              {overloadedEmployees.slice(0, 5).map(({ employee, utilization }) => (
+                <div key={employee.id} className="flex items-center gap-3 transition-all duration-200 hover:translate-x-1">
+                  <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-text-primary truncate">{employee.name}</div>
+                    <div className="text-xs text-text-secondary truncate">{employee.role}</div>
+                  </div>
+                  <span className="text-sm font-semibold text-critical">{utilization}%</span>
                 </div>
-                <span className="text-sm font-semibold text-critical">{utilization}%</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
 
       {/* Activity + Recommended Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={16} className="text-cyan" />
-            <h3 className="text-sm font-semibold text-text-primary">Recent Activity</h3>
-          </div>
-          <div className="space-y-3">
-            {activities.slice(0, 6).map((act) => (
-              <div key={act.id} className="flex items-start gap-3 text-sm">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-text-primary">{act.message}</p>
-                  <p className="text-xs text-text-secondary mt-0.5">{formatTimestamp(act.timestamp)}</p>
+        <Reveal>
+          <div className="card p-5 h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity size={16} className="text-cyan" />
+              <h3 className="text-sm font-semibold text-text-primary">Recent Activity</h3>
+            </div>
+            <div className="space-y-3">
+              {activities.slice(0, 6).map((act) => (
+                <div key={act.id} className="flex items-start gap-3 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-text-primary">{act.message}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">{formatTimestamp(act.timestamp)}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </Reveal>
 
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap size={16} className="text-primary" />
-            <h3 className="text-sm font-semibold text-text-primary">Recommended Actions</h3>
+        <Reveal delay={120}>
+          <div className="card p-5 h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={16} className="text-primary" />
+              <h3 className="text-sm font-semibold text-text-primary">Recommended Actions</h3>
+            </div>
+            <div className="space-y-2">
+              {recommendedActions.map((action, i) => (
+                <button
+                  key={i}
+                  onClick={action.action}
+                  className="w-full flex items-center justify-between gap-2 p-3 rounded-lg bg-base-bg border border-base-border hover:border-primary/30 hover:bg-base-hover transition-all duration-200 text-left group"
+                >
+                  <span className="text-sm text-text-primary">{action.message}</span>
+                  <ArrowRight size={16} className="text-text-secondary group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            {recommendedActions.map((action, i) => (
-              <button
-                key={i}
-                onClick={action.action}
-                className="w-full flex items-center justify-between gap-2 p-3 rounded-lg bg-base-bg border border-base-border hover:border-primary/30 transition-all duration-200 text-left group"
-              >
-                <span className="text-sm text-text-primary">{action.message}</span>
-                <ArrowRight size={16} className="text-text-secondary group-hover:text-primary transition-colors flex-shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
+        </Reveal>
       </div>
     </div>
   );

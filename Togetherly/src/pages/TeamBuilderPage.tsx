@@ -21,6 +21,7 @@ import { MatchScore } from '@/components/MatchScore';
 import { SkillTag } from '@/components/SkillTag';
 import { ProjectForm } from '@/components/ProjectForm';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import {
   generateRecommendations,
@@ -114,6 +115,7 @@ export function TeamBuilderPage() {
       />
 
       {/* Stepper */}
+      <Reveal>
       <div className="card p-4 mb-6">
         <div className="flex items-center justify-between">
           {[
@@ -138,6 +140,7 @@ export function TeamBuilderPage() {
           ))}
         </div>
       </div>
+      </Reveal>
 
       {step === 'select' && (
         <ProjectSelectStep
@@ -203,7 +206,8 @@ function ProjectSelectStep({ projects, selectedId, onSelect, onCreateNew }: {
         <button className="btn-secondary" onClick={onCreateNew}><Plus size={16} /> New Project</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {activeProjects.map((p) => (
+        {activeProjects.map((p, index) => (
+          <Reveal key={p.id} delay={index * 80}>
           <button
             key={p.id}
             onClick={() => onSelect(p.id)}
@@ -222,6 +226,7 @@ function ProjectSelectStep({ projects, selectedId, onSelect, onCreateNew }: {
               <span>{p.requiredSkills.length} skills required</span>
             </div>
           </button>
+          </Reveal>
         ))}
       </div>
     </div>
@@ -239,6 +244,7 @@ function ReviewStep({ project, employees, weights, onWeightsChange, onBack, onGe
   const coverage = getTeamSkillCoverage(project.assignedEmployeeIds, project, employees);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <Reveal delay={0} className="lg:col-span-2">
       <div className="lg:col-span-2 card p-5">
         <h3 className="text-sm font-semibold text-text-primary mb-1">{project.name}</h3>
         <p className="text-sm text-text-secondary mb-4">{project.description}</p>
@@ -284,8 +290,10 @@ function ReviewStep({ project, employees, weights, onWeightsChange, onBack, onGe
           <button className="btn-primary" onClick={onGenerate}><Sparkles size={16} /> Generate Team</button>
         </div>
       </div>
+      </Reveal>
 
       {/* Scoring weights */}
+      <Reveal delay={80}>
       <div className="card p-5 h-fit">
         <h4 className="text-sm font-semibold text-text-primary mb-1">Scoring Weights</h4>
         <p className="text-xs text-text-secondary mb-4">Adjust how the algorithm weights each factor.</p>
@@ -326,6 +334,7 @@ function ReviewStep({ project, employees, weights, onWeightsChange, onBack, onGe
           <p className="text-xs text-text-secondary">This is a deterministic scoring algorithm, not an AI model. Weights are initial design choices.</p>
         </div>
       </div>
+      </Reveal>
     </div>
   );
 }
@@ -351,6 +360,7 @@ function GenerateStep({ project, employees, recommendations, selectedTeam, onTog
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Recommendations list */}
+      <Reveal delay={0} className="lg:col-span-2">
       <div className="lg:col-span-2 card p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-text-primary">Candidate Recommendations</h3>
@@ -424,8 +434,10 @@ function GenerateStep({ project, employees, recommendations, selectedTeam, onTog
           })}
         </div>
       </div>
+      </Reveal>
 
       {/* Team summary */}
+      <Reveal delay={80}>
       <div className="card p-5 h-fit sticky top-20">
         <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
           <Users size={16} /> Proposed Team ({selectedTeam.length}/{project.targetTeamSize})
@@ -483,9 +495,11 @@ function GenerateStep({ project, employees, recommendations, selectedTeam, onTog
           </button>
         </div>
       </div>
+      </Reveal>
 
       {/* Compare panel */}
       {compareIds.length >= 2 && (
+        <Reveal delay={160} className="lg:col-span-3">
         <div className="lg:col-span-3 card p-5">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Comparison</h3>
           <div className="overflow-x-auto">
@@ -547,6 +561,7 @@ function GenerateStep({ project, employees, recommendations, selectedTeam, onTog
           </div>
           <button className="btn-ghost mt-3" onClick={() => setCompareIds([])}>Clear comparison</button>
         </div>
+        </Reveal>
       )}
     </div>
   );
@@ -563,6 +578,7 @@ function ConfirmStep({ project, employees, onReset }: {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <Reveal>
       <div className="card p-6 text-center">
         <div className="w-14 h-14 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 size={28} />
@@ -604,6 +620,7 @@ function ConfirmStep({ project, employees, onReset }: {
           <Target size={16} /> Build Another Team
         </button>
       </div>
+      </Reveal>
     </div>
   );
 }

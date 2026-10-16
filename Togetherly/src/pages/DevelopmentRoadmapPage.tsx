@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { BookOpenCheck, CheckCircle2, CirclePlay, GraduationCap, LockKeyhole, Sparkles } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import { demoEmployeeId } from '@/data/mockData';
 import { getEmployeeProjects, getSkillName } from '@/utils';
@@ -98,21 +99,24 @@ export function DevelopmentRoadmapPage() {
       />
 
       {role === 'manager' && (
+        <Reveal>
         <label className="mb-4 flex max-w-xl items-center gap-3 card p-3">
           <span className="text-sm text-text-secondary">Employee</span>
           <select className="input-field min-w-0 flex-1" value={selectedEmployeeId} onChange={(event) => setSelectedEmployeeId(event.target.value)}>
             {employees.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.department}</option>)}
           </select>
         </label>
+        </Reveal>
       )}
 
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <div className="card flex items-center gap-3 p-4"><BookOpenCheck className="text-primary" size={20} /><div><div className="text-xs text-text-secondary">Courses assigned</div><div className="mt-1 font-semibold text-text-primary">{totalCount}</div></div></div>
+        <Reveal delay={0}> className="text-primary" size={20} /><div><div className="text-xs text-text-secondary">Courses assigned</div><div className="mt-1 font-semibold text-text-primary">{totalCount}</div></div></div>
         <div className="card flex items-center gap-3 p-4"><CheckCircle2 className="text-success" size={20} /><div><div className="text-xs text-text-secondary">Completed</div><div className="mt-1 font-semibold text-text-primary">{completedCount}</div></div></div>
         <div className="card flex items-center gap-3 p-4"><Sparkles className="text-cyan" size={20} /><div><div className="text-xs text-text-secondary">Project skills to develop</div><div className="mt-1 font-semibold text-text-primary">{growthNeeds.length}</div></div></div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <Reveal delay={0}>
         <section className="card p-5">
           <div className="mb-4 flex items-center gap-3">
             <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
@@ -155,7 +159,9 @@ export function DevelopmentRoadmapPage() {
             </div>
           )}
         </section>
+        </Reveal>
 
+        <Reveal delay={80}>
         <section className="card p-5">
           <div className="mb-1 flex items-center gap-2"><TargetIcon /><h2 className="font-semibold text-text-primary">Project skill gaps</h2></div>
           <p className="mb-4 text-xs text-text-secondary">Suggested courses are based on assigned project requirements and your current skill levels.</p>
@@ -193,6 +199,7 @@ export function DevelopmentRoadmapPage() {
             Finishing a course marks it complete and increases the corresponding skill by one level (up to level 5).
           </div>
         </section>
+        </Reveal>
       </div>
     </div>
   );

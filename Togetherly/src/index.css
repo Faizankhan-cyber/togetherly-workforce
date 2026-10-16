@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -13,8 +13,10 @@
     @apply bg-base-bg text-text-primary font-sans antialiased;
     min-height: 100vh;
     background-image:
-      radial-gradient(ellipse at 8% 0%, rgba(139, 92, 246, 0.08), transparent 32rem),
-      radial-gradient(ellipse at 92% 4%, rgba(34, 211, 238, 0.045), transparent 28rem);
+      radial-gradient(ellipse 60% 50% at 8% 0%, rgba(139, 92, 246, 0.1), transparent 70%),
+      radial-gradient(ellipse 50% 40% at 92% 4%, rgba(34, 211, 238, 0.06), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(139, 92, 246, 0.04), transparent 60%);
+    background-attachment: fixed;
   }
 
   * {
@@ -55,11 +57,25 @@
 @layer components {
   .card {
     @apply bg-base-card border border-base-border rounded-2xl shadow-card;
-    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 48%);
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.022), transparent 52%);
   }
 
   .card-hover {
-    @apply card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-glow;
+    @apply card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-card-hover;
+  }
+
+  .card-glow {
+    @apply card transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30;
+  }
+
+  .card-glow:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(139, 92, 246, 0.08);
+  }
+
+  .glass {
+    background: rgba(11, 16, 32, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   .input-field {
@@ -68,6 +84,10 @@
 
   .btn-primary {
     @apply bg-primary hover:bg-primary-600 text-white font-medium text-sm px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm shadow-primary/20;
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 24px rgba(139, 92, 246, 0.25);
   }
 
   .btn-secondary {
@@ -83,11 +103,52 @@
   }
 
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-colors duration-150;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-all duration-200;
   }
 
   .nav-link-active {
     @apply bg-primary/10 text-primary border border-primary/20;
+  }
+
+  /* Reveal animation classes */
+  .reveal-transition {
+    will-change: opacity, transform;
+  }
+
+  .reveal-hidden {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+
+  .reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Animated gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #8B5CF6, #22D3EE, #8B5CF6);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 6s ease infinite;
+  }
+
+  /* Shimmer skeleton */
+  .shimmer-bg {
+    background: linear-gradient(90deg, #171D33 25%, #1E2745 50%, #171D33 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Animated grid background */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 }
 
@@ -99,5 +160,10 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .reveal-hidden {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

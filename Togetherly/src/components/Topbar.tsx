@@ -94,7 +94,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-base-bg/90 backdrop-blur-md border-b border-base-border flex items-center justify-between px-4 lg:px-6 gap-4">
+    <header className="sticky top-0 z-20 h-16 glass border-b border-base-border flex items-center justify-between px-4 lg:px-6 gap-4">
       {/* Left: Mobile menu + breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         <button

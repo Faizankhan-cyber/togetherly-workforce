@@ -12,6 +12,7 @@ import { Avatar } from '@/components/Avatar';
 import { CapacityBar } from '@/components/CapacityBar';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { FilterToolbar, SelectFilter } from '@/components/FilterToolbar';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
@@ -161,10 +162,8 @@ export function WorkloadPlannerPage() {
         }
       />
 
+      <Reveal>
       <div className="card p-4 mb-4">
-        <FilterToolbar>
-          <SelectFilter
-            label="Department"
             value={deptFilter}
             onChange={setDeptFilter}
             options={[
@@ -183,26 +182,24 @@ export function WorkloadPlannerPage() {
           />
         </FilterToolbar>
       </div>
+      </Reveal>
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="card p-4">
-          <div className="text-xs text-text-secondary mb-1">Overloaded</div>
+        <Reveal delay={0}>
           <div className="text-xl font-bold text-critical">{overloaded.length}</div>
-          <div className="text-xs text-text-secondary mt-1">≥ {settings.overloadedThreshold}% utilization</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-xs text-text-secondary mb-1">Balanced</div>
+          </div>
+        </Reveal>
+        <Reveal delay={80}>
           <div className="text-xl font-bold text-success">
             {filteredEmployees.length - overloaded.length - underutilized.length}
           </div>
-          <div className="text-xs text-text-secondary mt-1">Healthy workload</div>
-        </div>
-        <div className="card p-4">
-          <div className="text-xs text-text-secondary mb-1">Underutilized</div>
+          </div>
+        </Reveal>
+        <Reveal delay={160}>
           <div className="text-xl font-bold text-cyan">{underutilized.length}</div>
-          <div className="text-xs text-text-secondary mt-1">≤ {settings.underutilizedThreshold}% utilization</div>
-        </div>
+          </div>
+        </Reveal>
       </div>
       <p className="mb-4 -mt-2 text-xs text-text-secondary">
         Workload is an estimate: each active project assignment counts as {ESTIMATED_PROJECT_LOAD_PERCENT}% capacity because the demo data does not include timesheets.
@@ -210,6 +207,7 @@ export function WorkloadPlannerPage() {
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
+        <Reveal>
         <div className="card p-4 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={16} className="text-warning" />
@@ -238,9 +236,11 @@ export function WorkloadPlannerPage() {
             ))}
           </div>
         </div>
+        </Reveal>
       )}
 
       {/* Workload Table */}
+      <Reveal>
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -324,6 +324,7 @@ export function WorkloadPlannerPage() {
           </div>
         )}
       </div>
+      </Reveal>
 
       <ConfirmationDialog
         open={confirmOpen}

@@ -21,6 +21,13 @@ export function CapacityBar({
   const statusColor =
     clamped >= overloadedThreshold ? 'text-critical' : clamped <= underutilizedThreshold ? 'text-cyan' : 'text-success';
 
+  const gradientClass =
+    clamped >= overloadedThreshold
+      ? 'from-critical/80 to-critical'
+      : clamped <= underutilizedThreshold
+        ? 'from-cyan/80 to-cyan'
+        : 'from-success/80 to-success';
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-1.5">
@@ -29,7 +36,7 @@ export function CapacityBar({
       </div>
       <div className="relative h-2 bg-base-bg rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          className={`h-full rounded-full bg-gradient-to-r ${gradientClass} transition-all duration-700 ease-out`}
           style={{ width: `${clamped}%` }}
         />
         {overloadedThreshold < 100 && (

@@ -20,6 +20,7 @@ import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { Modal } from '@/components/Modal';
 import { FilterToolbar, SelectFilter, SearchInput } from '@/components/FilterToolbar';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import {
   getProjectStaffingProgress,
@@ -91,6 +92,7 @@ export function ProjectsPage() {
         }
       />
 
+      <Reveal>
       <div className="card p-4 mb-4">
         <FilterToolbar>
           <SearchInput value={search} onChange={setSearch} placeholder="Search projects..." />
@@ -126,8 +128,10 @@ export function ProjectsPage() {
           </button>
         </FilterToolbar>
       </div>
+      </Reveal>
 
       {filtered.length === 0 ? (
+        <Reveal>
         <div className="card">
           <EmptyState
             title="No projects found"
@@ -135,9 +139,10 @@ export function ProjectsPage() {
             action={<button className="btn-primary" onClick={handleAdd}><Plus size={16} /> Create Project</button>}
           />
         </div>
+        </Reveal>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((project) => {
+          {filtered.map((project, index) => {
             const progress = getProjectStaffingProgress(project);
             const coverage = getTeamSkillCoverage(project.assignedEmployeeIds, project, employees);
             const missingCount = coverage.filter((c) => !c.covered).length;
@@ -147,8 +152,8 @@ export function ProjectsPage() {
               .filter(Boolean);
 
             return (
+              <Reveal key={project.id} delay={index * 80}>
               <div
-                key={project.id}
                 className="card-hover p-5 cursor-pointer flex flex-col"
                 onClick={() => setDetailProject(project)}
               >
@@ -230,6 +235,7 @@ export function ProjectsPage() {
                   </div>
                 )}
               </div>
+              </Reveal>
             );
           })}
         </div>

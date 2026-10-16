@@ -22,6 +22,7 @@ import { SkillTag } from '@/components/SkillTag';
 import { ChartCard } from '@/components/ChartCard';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterToolbar, SelectFilter } from '@/components/FilterToolbar';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import {
   getSkillDistribution,
@@ -113,6 +114,7 @@ export function SkillsTrainingPage() {
       />
 
       {/* Filters */}
+      <Reveal>
       <div className="card p-4 mb-4">
         <FilterToolbar>
           <SelectFilter
@@ -144,6 +146,7 @@ export function SkillsTrainingPage() {
           />
         </FilterToolbar>
       </div>
+      </Reveal>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -174,6 +177,7 @@ export function SkillsTrainingPage() {
 
       {/* Skill Gaps & Scarce Skills */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <Reveal delay={0}>
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle size={16} className="text-critical" />
@@ -195,7 +199,9 @@ export function SkillsTrainingPage() {
             </div>
           )}
         </div>
+        </Reveal>
 
+        <Reveal delay={80}>
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp size={16} className="text-warning" />
@@ -214,9 +220,11 @@ export function SkillsTrainingPage() {
             </div>
           )}
         </div>
+        </Reveal>
       </div>
 
       {/* Skill Matrix */}
+      <Reveal>
       <div className="card p-5 mb-4 overflow-x-auto">
         <h3 className="text-sm font-semibold text-text-primary mb-3">Employee Skill Matrix</h3>
         <table className="w-full text-sm">
@@ -259,8 +267,10 @@ export function SkillsTrainingPage() {
           </tbody>
         </table>
       </div>
+      </Reveal>
 
       {/* Training Recommendations */}
+      <Reveal>
       <div className="card p-5">
         <div className="flex items-center gap-2 mb-3">
           <GraduationCap size={16} className="text-primary" />
@@ -270,7 +280,8 @@ export function SkillsTrainingPage() {
           <EmptyState title="No training assignments" description="Employees matching these filters have no training in progress." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {trainingList.map(({ employee, training }) => (
+            {trainingList.map(({ employee, training }, index) => (
+              <Reveal key={training.id} delay={index * 80}>
               <div key={training.id} className="p-3 rounded-lg bg-base-bg border border-base-border">
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
@@ -303,10 +314,12 @@ export function SkillsTrainingPage() {
                   <div className="mt-3 flex items-center gap-1 text-xs text-success"><CheckCircle2 size={14} /> Completed · skill profile updated</div>
                 )}
               </div>
+              </Reveal>
             ))}
           </div>
         )}
       </div>
+      </Reveal>
     </div>
   );
 }

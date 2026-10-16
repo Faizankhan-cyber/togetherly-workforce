@@ -64,16 +64,16 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
   return (
     <>
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={onCloseMobile} />
+        <div className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-sm animate-fade-in" onClick={onCloseMobile} />
       )}
       <aside
-        className={`fixed lg:sticky top-0 left-0 h-screen bg-base-sidebar border-r border-base-border z-40 transition-all duration-300 flex flex-col ${
+        className={`fixed lg:sticky top-0 left-0 h-screen bg-base-sidebar/95 backdrop-blur-md border-r border-base-border z-40 transition-all duration-300 flex flex-col ${
           collapsed ? 'w-[68px]' : 'w-[240px]'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo */}
         <div className={`flex items-center gap-3 h-16 px-4 border-b border-base-border flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-600 flex items-center justify-center flex-shrink-0 shadow-glow">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-600 flex items-center justify-center flex-shrink-0 shadow-glow animate-pulse-glow">
             <Sparkles size={20} className="text-white" />
           </div>
           {!collapsed && (
@@ -95,11 +95,11 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                 end={item.to === '/'}
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
-                  `nav-link ${isActive ? 'nav-link-active' : ''} ${collapsed ? 'justify-center px-2' : ''}`
+                  `nav-link group ${isActive ? 'nav-link-active' : ''} ${collapsed ? 'justify-center px-2' : ''}`
                 }
                 title={collapsed ? item.label : undefined}
               >
-                <Icon size={18} className="flex-shrink-0" />
+                <Icon size={18} className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
                 {!collapsed && <span>{item.label}</span>}
               </NavLink>
             );

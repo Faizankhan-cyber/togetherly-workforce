@@ -16,6 +16,7 @@ import { Avatar } from '@/components/Avatar';
 import { CapacityBar } from '@/components/CapacityBar';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { PageHeader } from '@/components/PageHeader';
+import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
@@ -211,6 +212,7 @@ export function WorkforceTwinPage() {
         }
       />
 
+      <Reveal>
       <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/15 via-base-card to-cyan/10 p-5 sm:p-6">
         <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-cyan/10 blur-3xl" />
         <div className="relative grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
@@ -230,8 +232,10 @@ export function WorkforceTwinPage() {
           </div>
         </div>
       </section>
+      </Reveal>
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
+        <Reveal delay={0}>
         <section className="card overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-base-border p-5">
             <div>
@@ -299,8 +303,10 @@ export function WorkforceTwinPage() {
             })}
           </div>
         </section>
+        </Reveal>
 
         <div className="space-y-4">
+          <Reveal delay={80}>
           <section className="card p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div><h2 className="font-semibold text-text-primary">Simulation summary</h2><p className="mt-1 text-xs text-text-secondary">Draft assignments do not change the saved roster.</p></div>
@@ -329,7 +335,9 @@ export function WorkforceTwinPage() {
               })}
             </div>
           </section>
+          </Reveal>
 
+          <Reveal delay={160}>
           <section className="card p-5">
             <div className="mb-3 flex items-center justify-between gap-2"><div><h2 className="font-semibold text-text-primary">Workload impact</h2><p className="mt-1 text-xs text-text-secondary">Before and after this draft allocation</p></div><GitCompareArrows size={17} className="text-cyan" /></div>
             <div className="space-y-3">
@@ -346,10 +354,12 @@ export function WorkforceTwinPage() {
             </div>
             <p className="mt-3 border-t border-base-border pt-3 text-[11px] text-text-secondary">Estimate: {ESTIMATED_PROJECT_LOAD_PERCENT}% capacity per active project assignment. Replace this demo rule with timesheet data for a production workload model.</p>
           </section>
+          </Reveal>
         </div>
       </div>
 
       {scenarios.length > 0 && (
+        <Reveal delay={240}>
         <section className="card overflow-hidden">
           <div className="flex items-center justify-between border-b border-base-border p-5">
             <div><h2 className="font-semibold text-text-primary">Compare saved alternatives</h2><p className="mt-1 text-xs text-text-secondary">Compare team match, skill coverage, and members before choosing a direction.</p></div>
@@ -372,6 +382,7 @@ export function WorkforceTwinPage() {
             </table>
           </div>
         </section>
+        </Reveal>
       )}
 
       <ConfirmationDialog
