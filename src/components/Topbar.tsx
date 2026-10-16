@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, Bell, Menu, ChevronDown, FolderKanban, Users } from 'lucide-react';
+import { Search, Bell, Menu, ChevronDown, FolderKanban, Users, LogOut, ShieldCheck, Sparkles } from 'lucide-react';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import { Avatar } from './Avatar';
 
 const pageTitles: Record<string, { title: string; breadcrumb: string[] }> = {
@@ -28,6 +29,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { activities, employees, projects, role } = useData();
+  const { user, isDemoMode, signOut, exitDemoMode } = useAuth();
   const profile = employees.find((employee) => employee.id === 'emp-001');
   const profileName = role === 'employee' && profile ? profile.name : 'Alex Morgan';
   const visibleActivities = role === 'manager'
@@ -117,8 +119,30 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
         </div>
       </div>
 
-      {/* Right: Search, notifications, profile */}
+      {/* Right: Status badge, Search, notifications, profile */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Session Status Pill */}
+        {user ? (
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+            title={`Supabase session active for ${user.email}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <ShieldCheck size={12} className="text-emerald-600" />
+            <span className="font-mono text-[10px] text-emerald-800 truncate max-w-[150px]">
+              {user.email}
+            </span>
+          </div>
+        ) : isDemoMode ? (
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+            title="Local simulated demo mode. Role switching is for interface preview only."
+          >
+            <Sparkles size={12} className="text-amber-600" />
+            <span>Demo Mode (Local)</span>
+          </div>
+        ) : null}
+
         <div ref={searchRef} className="relative hidden md:block">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           <input
@@ -195,7 +219,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
           )}
         </div>
 
-        {/* Profile */}
+        {/* Profile menu */}
         <div ref={profileRef} className="relative">
           <button
             onClick={() => setProfileOpen((v) => !v)}
@@ -206,16 +230,68 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
             <ChevronDown size={13} className="text-text-secondary hidden sm:block" />
           </button>
           {profileOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-52 card p-2 animate-fade-in shadow-dropdown z-30 bg-white">
+            <div className="absolute right-0 top-full mt-1.5 w-60 card p-2 animate-fade-in shadow-dropdown z-30 bg-white">
               <div className="px-2.5 py-2 border-b border-base-border mb-1">
-                <div className="text-xs font-bold text-text-primary truncate">{profileName}</div>
+                <div className="text-xs font-bold text-text-primary truncate">
+                  {user ? user.email : profileName}
+                </div>
                 <div className="text-[11px] text-primary font-medium truncate mt-0.5">
-                  {role === 'employee' && profile ? profile.role : 'Workforce Administrator'}
+                  {user
+                    ? 'Supabase Authenticated'
+                    : role === 'employee' && profile
+                      ? profile.role
+                      : 'Workforce Administrator'}
                 </div>
               </div>
-              <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Workspace Status</div>
-              <div className="px-2.5 py-1 text-xs text-success font-medium flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-success" /> Active Session
+
+              <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+                Session Mode
+              </div>
+              <div className="px-2.5 py-1 text-xs font-medium flex items-center justify-between">
+                {user ? (
+                  <span className="text-emerald-600 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Supabase Auth
+                  </span>
+                ) : (
+                  <span className="text-amber-600 flex items-center gap-1.5">
+                    <Sparkles size={11} />
+                    Local Demo Mode
+                  </span>
+                )}
+                <span className="text-[10px] text-text-muted font-mono">
+                  {user ? 'Verified' : 'Mock Data'}
+                </span>
+              </div>
+
+              <div className="pt-2 mt-2 border-t border-base-border">
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setProfileOpen(false);
+                      await signOut();
+                      navigate('/login');
+                    }}
+                    className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-critical hover:bg-critical/10 transition-colors"
+                  >
+                    <LogOut size={13} />
+                    Sign Out (Supabase)
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      exitDemoMode();
+                      navigate('/login');
+                    }}
+                    className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-colors"
+                  >
+                    <LogOut size={13} />
+                    Exit Demo Mode
+                  </button>
+                )}
               </div>
             </div>
           )}

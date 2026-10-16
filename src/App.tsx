@@ -3,8 +3,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Topbar } from '@/components/Topbar';
 import { ToastContainer } from '@/components/Toast';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useData } from '@/context/DataContext';
 
+import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { EmployeesPage } from '@/pages/EmployeesPage';
 import { ProjectsPage } from '@/pages/ProjectsPage';
@@ -19,7 +21,7 @@ import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { EmployeeProjectsPage } from '@/pages/EmployeeExperiencePage';
 
-export function App() {
+function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { role, toasts, dismissToast } = useData();
@@ -67,7 +69,7 @@ export function App() {
               </>
             )}
 
-            {/* Fallback route */}
+            {/* Fallback route within workspace */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -76,6 +78,25 @@ export function App() {
       {/* Floating System Toasts */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      {/* Public Authentication Route */}
+      <Route path="/login" element={<LoginPage />} />
+
+      {/* Protected Workforce Application Routes */}
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <WorkspaceLayout />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
 

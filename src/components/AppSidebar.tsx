@@ -19,7 +19,9 @@ import {
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 
 const managerNavItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -51,6 +53,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
   const { employees, role, setRole, submissions } = useData();
+  const { user, signOut, exitDemoMode } = useAuth();
   const navigate = useNavigate();
   const profile = employees.find((employee) => employee.id === 'emp-001');
   const navItems = role === 'manager' ? managerNavItems : employeeNavItems;
@@ -137,16 +140,21 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         {/* Role Switcher */}
         <div className={`p-2.5 border-t border-base-border bg-base-subtle ${collapsed ? 'flex flex-col items-center gap-1' : ''}`}>
           {!collapsed && (
-            <p className="px-1 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
-              Workspace Role
-            </p>
+            <div className="flex items-center justify-between px-1 mb-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+                Workspace Role
+              </span>
+              <span className="text-[9px] text-text-muted font-normal">
+                Preview Only
+              </span>
+            </div>
           )}
           <div className={collapsed ? 'flex flex-col gap-1' : 'grid grid-cols-2 gap-1 rounded-md border border-base-border bg-gray-100 p-0.5'}>
             <button
               type="button"
               onClick={() => changeRole('manager')}
               aria-pressed={role === 'manager'}
-              title={collapsed ? 'Manager / HR View' : undefined}
+              title={collapsed ? 'Manager / HR View (Preview)' : undefined}
               className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
                 collapsed ? 'justify-center w-8 h-8' : 'justify-center'
               } ${
@@ -162,7 +170,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
               type="button"
               onClick={() => changeRole('employee')}
               aria-pressed={role === 'employee'}
-              title={collapsed ? 'Employee View' : undefined}
+              title={collapsed ? 'Employee View (Preview)' : undefined}
               className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
                 collapsed ? 'justify-center w-8 h-8' : 'justify-center'
               } ${
@@ -175,27 +183,74 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
               {!collapsed && 'Employee'}
             </button>
           </div>
+          {!collapsed && (
+            <p className="text-[9.5px] text-text-muted mt-1 text-center font-normal leading-tight">
+              UI role switcher does not bypass backend authorization.
+            </p>
+          )}
         </div>
 
-        {/* User profile */}
-        <div className={`p-2 border-t border-base-border flex-shrink-0 bg-white ${collapsed ? 'flex justify-center' : ''}`}>
-          <div className={`flex items-center gap-2.5 ${collapsed ? '' : 'p-1.5 rounded-md hover:bg-base-hover transition-colors cursor-pointer'}`}>
+        {/* User profile & Session control */}
+        <div className={`p-2 border-t border-base-border flex-shrink-0 bg-white ${collapsed ? 'flex flex-col items-center gap-1.5' : ''}`}>
+          <div className={`flex items-center gap-2.5 ${collapsed ? '' : 'p-1.5 rounded-md hover:bg-base-hover transition-colors'}`}>
             <Avatar
-              name={role === 'employee' && profile ? profile.name : 'Alex Morgan'}
+              name={user ? user.email || 'User' : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
               color={role === 'employee' && profile ? profile.avatarColor : '#0078D4'}
               size="sm"
             />
             {!collapsed && (
-              <div className="overflow-hidden flex-1">
+              <div className="overflow-hidden flex-1 min-w-0">
                 <div className="text-xs font-bold text-text-primary truncate">
-                  {role === 'employee' && profile ? profile.name : 'Alex Morgan'}
+                  {user ? user.email : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
                 </div>
-                <div className="text-[10px] text-text-secondary truncate">
-                  {role === 'employee' && profile ? profile.role : 'Workforce Admin'}
+                <div className="text-[10px] text-text-secondary truncate flex items-center gap-1">
+                  {user ? (
+                    <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Supabase User
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 font-medium">Demo Administrator</span>
+                  )}
                 </div>
               </div>
             )}
+            {!collapsed && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (user) {
+                    await signOut();
+                  } else {
+                    exitDemoMode();
+                  }
+                  navigate('/login');
+                }}
+                className="p-1 rounded text-text-muted hover:text-critical hover:bg-critical/10 transition-colors ml-auto"
+                title={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
+                aria-label={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
+              >
+                <LogOut size={13} />
+              </button>
+            )}
           </div>
+          {collapsed && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (user) {
+                  await signOut();
+                } else {
+                  exitDemoMode();
+                }
+                navigate('/login');
+              }}
+              className="w-8 h-8 rounded flex items-center justify-center text-text-muted hover:text-critical hover:bg-critical/10 transition-colors"
+              title={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
+              aria-label={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
+            >
+              <LogOut size={13} />
+            </button>
+          )}
         </div>
 
         {/* Collapse toggle */}
