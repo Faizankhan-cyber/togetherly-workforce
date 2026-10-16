@@ -20,6 +20,7 @@ import { AllocationImpactPage } from '@/pages/AllocationImpactPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { EmployeeProjectsPage } from '@/pages/EmployeeExperiencePage';
+import { ScenarioSimulatorPage } from '@/pages/ScenarioSimulatorPage';
 
 function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -53,6 +54,7 @@ function WorkspaceLayout() {
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/team-builder" element={<TeamBuilderPage />} />
                 <Route path="/workforce-twin" element={<WorkforceTwinPage />} />
+                <Route path="/scenarios" element={<ScenarioSimulatorPage />} />
                 <Route path="/skills" element={<SkillsTrainingPage />} />
                 <Route path="/workload" element={<WorkloadPlannerPage />} />
                 <Route path="/opportunities" element={<OpportunityFinderPage />} />

@@ -148,3 +148,173 @@ export interface ToastNotification {
   type: 'success' | 'warning' | 'error' | 'info';
   message: string;
 }
+
+// ==========================================
+// Scenario Simulator Types
+// ==========================================
+
+export type ScenarioType =
+  | 'reallocation'
+  | 'new-hire'
+  | 'project-delay'
+  | 'training'
+  | 'new-project'
+  | 'capacity-reduction';
+
+export interface ReallocationConfig {
+  employeeId: string;
+  sourceProjectId: string;
+  targetProjectId: string;
+}
+
+export interface NewHireConfig {
+  name: string;
+  role: string;
+  department: string;
+  yearsExperience: number;
+  skills: EmployeeSkill[];
+  availability: AvailabilityStatus;
+  targetUtilization: number;
+  assignedProjectIds: string[];
+}
+
+export interface ProjectDelayConfig {
+  projectId: string;
+  delayWeeks: number;
+  notes?: string;
+  resourceContentionWindowWeeks: number;
+}
+
+export interface TrainingConfig {
+  employeeId: string;
+  skillId: string;
+  currentLevel: number;
+  targetLevel: number;
+  durationWeeks: number;
+  provider?: string;
+}
+
+export interface NewProjectConfig {
+  name: string;
+  description: string;
+  department: string;
+  targetTeamSize: number;
+  durationMonths: number;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  requiredSkills: ProjectRequirement[];
+  selectedEmployeeIds: string[];
+}
+
+export interface CapacityReductionConfig {
+  reductionPercent: number; // e.g. 15 for 15%
+  department: string; // 'all' or specific department
+  strategy: 'attrition' | 'budget_cut' | 'hiring_freeze';
+}
+
+export interface ScenarioModel {
+  id: string;
+  name: string;
+  description: string;
+  type: ScenarioType;
+  createdAt: string;
+  updatedAt: string;
+  config: {
+    reallocation?: ReallocationConfig;
+    newHire?: NewHireConfig;
+    projectDelay?: ProjectDelayConfig;
+    training?: TrainingConfig;
+    newProject?: NewProjectConfig;
+    capacityReduction?: CapacityReductionConfig;
+  };
+}
+
+export interface BaselineMetrics {
+  totalHeadcount: number;
+  averageUtilization: number;
+  overloadedCount: number;
+  underutilizedCount: number;
+  balancedCount: number;
+  totalActiveProjects: number;
+  staffedProjectsCount: number;
+  understaffedProjectsCount: number;
+  totalSkillGaps: number;
+}
+
+export type SimulatedMetrics = BaselineMetrics;
+
+export interface MetricDelta {
+  key: string;
+  label: string;
+  baseline: number;
+  simulated: number;
+  delta: number;
+  status: 'improvement' | 'warning' | 'risk' | 'neutral';
+  explanation: string;
+  unit?: string;
+}
+
+export interface ProjectImpact {
+  projectId: string;
+  projectName: string;
+  department: string;
+  status: ProjectStatus;
+  baselineTeamSize: number;
+  simulatedTeamSize: number;
+  targetTeamSize: number;
+  baselineGaps: number;
+  simulatedGaps: number;
+  gapDelta: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  riskReasons: string[];
+  isSimulatedNewProject?: boolean;
+  isDelayed?: boolean;
+  originalDeadline?: string;
+  simulatedDeadline?: string;
+}
+
+export interface EmployeeImpact {
+  employeeId: string;
+  name: string;
+  role: string;
+  department: string;
+  baselineUtilization: number;
+  simulatedUtilization: number;
+  baselineStatus: 'underutilized' | 'balanced' | 'overloaded';
+  simulatedStatus: 'underutilized' | 'balanced' | 'overloaded';
+  isHypothetical?: boolean;
+  notes: string;
+  projectedSkillBoost?: { skillId: string; fromLevel: number; toLevel: number };
+}
+
+export interface SkillCoverageDelta {
+  skillId: string;
+  skillName: string;
+  baselineStaffCount: number;
+  simulatedStaffCount: number;
+  baselineProjectGaps: number;
+  simulatedProjectGaps: number;
+  status: 'improved' | 'diminished' | 'unchanged';
+}
+
+export interface SimulationRecommendation {
+  id: string;
+  title: string;
+  type: 'positive' | 'warning' | 'risk' | 'info';
+  action: string;
+  reasoning: string;
+  affectedEntity: string;
+}
+
+export interface SimulationResult {
+  scenario: ScenarioModel;
+  baselineMetrics: BaselineMetrics;
+  simulatedMetrics: SimulatedMetrics;
+  metricDeltas: MetricDelta[];
+  projectImpacts: ProjectImpact[];
+  employeeImpacts: EmployeeImpact[];
+  skillCoverageDeltas: SkillCoverageDelta[];
+  recommendations: SimulationRecommendation[];
+  warnings: { title: string; detail: string; severity: 'warning' | 'critical' }[];
+  summaryNotes: string[];
+}
+

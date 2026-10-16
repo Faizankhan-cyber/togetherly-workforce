@@ -16,6 +16,7 @@ import {
   UserRound,
   BriefcaseBusiness,
   Layers,
+  GitFork,
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
@@ -29,6 +30,7 @@ const managerNavItems = [
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/team-builder', label: 'Team Builder', icon: UsersRound },
   { to: '/workforce-twin', label: 'Workforce Twin', icon: GitCompareArrows },
+  { to: '/scenarios', label: 'Scenario Simulator', icon: GitFork },
   { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
   { to: '/roadmap', label: 'Development Roadmap', icon: Map },
   { to: '/workload', label: 'Workload Planner', icon: BarChart3 },
