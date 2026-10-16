@@ -78,9 +78,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <div className="text-sm font-bold tracking-tight text-text-primary leading-tight flex items-center gap-1.5">
+              <div className="text-sm font-bold tracking-tight text-text-primary leading-tight">
                 Togetherly
-                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-primary/20 text-primary border border-primary/30 font-semibold uppercase tracking-wider">v2.0</span>
               </div>
               <div className="text-[11px] text-text-secondary leading-tight mt-0.5">Workforce Intelligence</div>
             </div>

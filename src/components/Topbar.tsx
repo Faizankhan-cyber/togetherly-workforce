@@ -213,8 +213,8 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
                 </div>
               </div>
               <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Status</div>
-              <div className="px-3 py-1 text-xs text-success flex items-center gap-2 mb-1">
-                <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Active Workspace
+              <div className="px-3 py-1 text-xs text-success font-medium mb-1">
+                Active Workspace
               </div>
             </div>
           )}

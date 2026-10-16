@@ -19,6 +19,7 @@ import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { MatchScore } from '@/components/MatchScore';
+import { ParallaxVisual } from '@/components/ParallaxVisual';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
@@ -225,8 +226,10 @@ export function WorkforceTwinPage() {
 
       {/* Live Simulation Control Hero */}
       <Reveal direction="down">
-        <section className="card p-5 sm:p-6 bg-gradient-to-r from-primary/15 via-base-card to-cyan/10 border-primary/30 shadow-xl">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <section className="card p-5 sm:p-6 bg-gradient-to-r from-primary/15 via-base-card to-cyan/10 border-primary/30 shadow-xl relative overflow-hidden">
+          <ParallaxVisual strength={0.12} className="absolute -right-12 -top-12 w-56 h-56 rounded-full bg-cyan/15 blur-3xl" />
+          <ParallaxVisual strength={-0.08} className="absolute -left-10 -bottom-10 w-44 h-44 rounded-full bg-primary/15 blur-3xl" />
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
             <div className="max-w-xl">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan mb-2">
                 <GitCompareArrows size={15} /> Active Simulation Environment

@@ -43,7 +43,7 @@ const accentColors: Record<string, { icon: string; border: string; glow: string;
   },
 };
 
-function useCountUp(end: number, duration = 900) {
+function useCountUp(end: number, duration = 850) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const started = useRef(false);
@@ -58,24 +58,36 @@ function useCountUp(end: number, duration = 900) {
       return;
     }
 
+    const startAnimation = () => {
+      if (started.current) return;
+      started.current = true;
+      const startTime = performance.now();
+      function tick(now: number) {
+        const progress = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCount(Math.round(end * eased));
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    };
+
+    // Check if already in view on mount
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      startAnimation();
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !started.current) {
-            started.current = true;
-            const startTime = performance.now();
-            function tick(now: number) {
-              const progress = Math.min((now - startTime) / duration, 1);
-              const eased = 1 - Math.pow(1 - progress, 3);
-              setCount(Math.round(end * eased));
-              if (progress < 1) requestAnimationFrame(tick);
-            }
-            requestAnimationFrame(tick);
+            startAnimation();
             observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
 
     observer.observe(node);
@@ -94,10 +106,15 @@ export function MetricCard({ label, value, icon, trend, accent = 'primary' }: Me
         ? 'text-critical bg-critical/10 border-critical/20'
         : 'text-text-secondary bg-base-hover border-base-border';
 
-  const numericValue = typeof value === 'number' ? value : parseInt(String(value), 10);
-  const isNumeric = !isNaN(numericValue) && typeof value === 'number';
+  const isPercent = typeof value === 'string' && value.endsWith('%');
+  const numericValue = typeof value === 'number'
+    ? value
+    : isPercent
+      ? parseInt(value.slice(0, -1), 10)
+      : parseInt(String(value), 10);
+  const isNumeric = !isNaN(numericValue) && (typeof value === 'number' || isPercent);
   const { count, ref } = useCountUp(isNumeric ? numericValue : 0);
-  const displayValue = isNumeric ? count : value;
+  const displayValue = isNumeric ? (isPercent ? `${count}%` : count) : value;
 
   const styleConfig = accentColors[accent] ?? accentColors.primary;
 
@@ -116,12 +133,12 @@ export function MetricCard({ label, value, icon, trend, accent = 'primary' }: Me
         {trend && (
           <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${trendBg}`}>
             <TrendIcon size={12} />
-            <span>{trend.direction === 'up' ? '+' : ''}{trend.value}%</span>
+            <span className="font-mono tabular-nums">{trend.direction === 'up' ? '+' : ''}{trend.value}%</span>
           </div>
         )}
       </div>
 
-      <div className="text-3xl font-extrabold text-text-primary tracking-tight mb-1 group-hover:text-white transition-colors">
+      <div className="text-3xl font-extrabold text-text-primary tracking-tight mb-1 font-mono tabular-nums group-hover:text-white transition-colors">
         {displayValue}
       </div>
       <div className="text-xs font-medium text-text-secondary uppercase tracking-wider">{label}</div>

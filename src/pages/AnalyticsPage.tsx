@@ -15,6 +15,7 @@ import { Download, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { ChartCard } from '@/components/ChartCard';
 import { Reveal } from '@/components/Reveal';
+import { ParallaxVisual } from '@/components/ParallaxVisual';
 import { FilterToolbar, SelectFilter } from '@/components/FilterToolbar';
 import { useData } from '@/context/DataContext';
 import {
@@ -136,7 +137,9 @@ export function AnalyticsPage() {
       />
 
       <Reveal direction="down">
-        <div className="card p-4 shadow-md">
+        <div className="card p-4 shadow-md relative overflow-hidden bg-gradient-to-r from-primary/5 via-base-card to-cyan/5 border-base-border/70">
+          <ParallaxVisual strength={0.08} className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-cyan/10 blur-2xl" />
+          <ParallaxVisual strength={-0.06} className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full bg-primary/10 blur-2xl" />
           <FilterToolbar>
             <SelectFilter
               label="Department"
@@ -182,7 +185,15 @@ export function AnalyticsPage() {
                 <XAxis dataKey="department" stroke="#64748B" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="utilization" fill="#8B5CF6" radius={[6, 6, 0, 0]} name="Avg Utilization %" />
+                <Bar
+                  dataKey="utilization"
+                  fill="#8B5CF6"
+                  radius={[6, 6, 0, 0]}
+                  name="Avg Utilization %"
+                  isAnimationActive={true}
+                  animationDuration={900}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -196,7 +207,18 @@ export function AnalyticsPage() {
           <div className="h-[210px] w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={workloadDist} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value">
+                <Pie
+                  data={workloadDist}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={4}
+                  dataKey="value"
+                  isAnimationActive={true}
+                  animationDuration={1000}
+                  animationEasing="ease-out"
+                >
                   {workloadDist.map((entry, i) => (
                     <Cell key={i} fill={entry.color} stroke="#171D33" strokeWidth={2} />
                   ))}
@@ -212,7 +234,7 @@ export function AnalyticsPage() {
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
                   <span className="text-[11px] text-text-secondary truncate">{d.name}</span>
                 </div>
-                <div className="text-sm font-bold text-text-primary">{d.value}</div>
+                <div className="text-sm font-bold text-text-primary font-mono tabular-nums">{d.value}</div>
               </div>
             ))}
           </div>
@@ -238,7 +260,15 @@ export function AnalyticsPage() {
                 <XAxis type="number" stroke="#64748B" fontSize={11} tickLine={false} />
                 <YAxis type="category" dataKey="skill" stroke="#94A3B8" fontSize={11} width={90} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#8B5CF6" radius={[0, 6, 6, 0]} name="Employees" />
+                <Bar
+                  dataKey="count"
+                  fill="#8B5CF6"
+                  radius={[0, 6, 6, 0]}
+                  name="Employees"
+                  isAnimationActive={true}
+                  animationDuration={900}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -256,7 +286,15 @@ export function AnalyticsPage() {
                 <XAxis type="number" stroke="#64748B" fontSize={11} tickLine={false} />
                 <YAxis type="category" dataKey="skill" stroke="#94A3B8" fontSize={11} width={90} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="demand" fill="#22D3EE" radius={[0, 6, 6, 0]} name="Projects" />
+                <Bar
+                  dataKey="demand"
+                  fill="#22D3EE"
+                  radius={[0, 6, 6, 0]}
+                  name="Projects"
+                  isAnimationActive={true}
+                  animationDuration={900}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -282,7 +320,15 @@ export function AnalyticsPage() {
                 <XAxis dataKey="name" stroke="#64748B" fontSize={10} angle={-15} textAnchor="end" height={60} interval={0} tickLine={false} />
                 <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="progress" fill="#22C55E" radius={[6, 6, 0, 0]} name="Staffing %" />
+                <Bar
+                  dataKey="progress"
+                  fill="#22C55E"
+                  radius={[6, 6, 0, 0]}
+                  name="Staffing %"
+                  isAnimationActive={true}
+                  animationDuration={900}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -300,7 +346,15 @@ export function AnalyticsPage() {
                 <XAxis dataKey="department" stroke="#64748B" fontSize={10} angle={-15} textAnchor="end" height={60} interval={0} tickLine={false} />
                 <YAxis stroke="#64748B" fontSize={11} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#8B5CF6" radius={[6, 6, 0, 0]} name="Headcount" />
+                <Bar
+                  dataKey="count"
+                  fill="#8B5CF6"
+                  radius={[6, 6, 0, 0]}
+                  name="Headcount"
+                  isAnimationActive={true}
+                  animationDuration={900}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -29,6 +29,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { ChartCard } from '@/components/ChartCard';
 import { Reveal } from '@/components/Reveal';
 import { Avatar } from '@/components/Avatar';
+import { ParallaxVisual } from '@/components/ParallaxVisual';
 import {
   calculateEmployeeUtilization,
   getUtilizationStatus,
@@ -144,8 +145,10 @@ export function DashboardPage() {
 
       {/* Intelligence Banner */}
       <Reveal direction="down" delay={40}>
-        <div className="card p-4 bg-gradient-to-r from-primary/10 via-base-card to-cyan/10 border-primary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3">
+        <div className="card p-4 bg-gradient-to-r from-primary/10 via-base-card to-cyan/10 border-primary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg relative overflow-hidden">
+          <ParallaxVisual strength={0.12} className="absolute -right-8 -top-8 w-44 h-44 rounded-full bg-cyan/15 blur-2xl" />
+          <ParallaxVisual strength={-0.08} className="absolute -left-10 -bottom-10 w-36 h-36 rounded-full bg-primary/15 blur-2xl" />
+          <div className="flex items-center gap-3 relative z-10">
             <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary flex-shrink-0 shadow-[0_0_12px_rgba(139,92,246,0.25)]">
               <Zap size={18} />
             </div>
@@ -243,8 +246,29 @@ export function DashboardPage() {
                     return null;
                   }}
                 />
-                <Area type="monotone" dataKey="utilization" stroke="#8B5CF6" strokeWidth={2.5} fill="url(#utilGrad)" name="Current" />
-                <Area type="monotone" dataKey="target" stroke="#22D3EE" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Target" />
+                <Area
+                  type="monotone"
+                  dataKey="utilization"
+                  stroke="#8B5CF6"
+                  strokeWidth={2.5}
+                  fill="url(#utilGrad)"
+                  name="Current"
+                  isAnimationActive={true}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="target"
+                  stroke="#22D3EE"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                  fill="none"
+                  name="Target"
+                  isAnimationActive={true}
+                  animationDuration={1400}
+                  animationEasing="ease-out"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -329,7 +353,15 @@ export function DashboardPage() {
                     return null;
                   }}
                 />
-                <Bar dataKey="progress" fill="#8B5CF6" radius={[6, 6, 0, 0]} name="Progress %" />
+                <Bar
+                  dataKey="progress"
+                  fill="#8B5CF6"
+                  radius={[6, 6, 0, 0]}
+                  name="Progress %"
+                  isAnimationActive={true}
+                  animationDuration={1100}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

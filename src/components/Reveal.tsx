@@ -17,15 +17,14 @@ export function Reveal({
   delay = 0,
   className = '',
   as: Tag = 'div',
-  threshold = 0.1,
-  rootMargin = '0px 0px -40px 0px',
+  threshold = 0.05,
+  rootMargin = '0px 0px -20px 0px',
   direction = 'up',
-  duration = 650,
+  duration = 600,
 }: RevealProps) {
   const { ref, isVisible } = useScrollReveal<HTMLDivElement>({
     threshold,
     rootMargin,
-    delay,
   });
 
   const hiddenClass = `reveal-hidden-${direction}`;
@@ -35,6 +34,7 @@ export function Reveal({
       ref={ref}
       style={{
         transitionDuration: `${duration}ms`,
+        transitionDelay: isVisible ? `${delay}ms` : '0ms',
       }}
       className={`reveal-transition ${isVisible ? 'reveal-visible' : hiddenClass} ${className}`}
     >
