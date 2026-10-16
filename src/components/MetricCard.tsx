@@ -10,40 +10,35 @@ interface MetricCardProps {
   accent?: 'primary' | 'cyan' | 'success' | 'warning' | 'critical';
 }
 
-const accentColors: Record<string, { icon: string; border: string; glow: string; topGrad: string }> = {
+const accentColors: Record<string, { icon: string; border: string; topGrad: string }> = {
   primary: {
-    icon: 'text-primary bg-primary/10 border-primary/20',
-    border: 'hover:border-primary/40',
-    glow: 'hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6),0_0_24px_-4px_rgba(139,92,246,0.18)]',
-    topGrad: 'from-primary/70 via-primary/30 to-transparent',
+    icon: 'text-primary bg-primary-50 border-primary-200',
+    border: 'hover:border-primary/50',
+    topGrad: 'bg-primary',
   },
   cyan: {
-    icon: 'text-cyan bg-cyan/10 border-cyan/20',
-    border: 'hover:border-cyan/40',
-    glow: 'hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6),0_0_24px_-4px_rgba(34,211,238,0.18)]',
-    topGrad: 'from-cyan/70 via-cyan/30 to-transparent',
+    icon: 'text-primary bg-primary-50 border-primary-200',
+    border: 'hover:border-primary/50',
+    topGrad: 'bg-primary',
   },
   success: {
-    icon: 'text-success bg-success/10 border-success/20',
-    border: 'hover:border-success/40',
-    glow: 'hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6),0_0_24px_-4px_rgba(34,197,94,0.18)]',
-    topGrad: 'from-success/70 via-success/30 to-transparent',
+    icon: 'text-success bg-green-50 border-green-200',
+    border: 'hover:border-success/50',
+    topGrad: 'bg-success',
   },
   warning: {
-    icon: 'text-warning bg-warning/10 border-warning/20',
-    border: 'hover:border-warning/40',
-    glow: 'hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6),0_0_24px_-4px_rgba(245,158,11,0.18)]',
-    topGrad: 'from-warning/70 via-warning/30 to-transparent',
+    icon: 'text-warning bg-orange-50 border-orange-200',
+    border: 'hover:border-warning/50',
+    topGrad: 'bg-warning',
   },
   critical: {
-    icon: 'text-critical bg-critical/10 border-critical/20',
-    border: 'hover:border-critical/40',
-    glow: 'hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.6),0_0_24px_-4px_rgba(248,113,113,0.18)]',
-    topGrad: 'from-critical/70 via-critical/30 to-transparent',
+    icon: 'text-critical bg-red-50 border-red-200',
+    border: 'hover:border-critical/50',
+    topGrad: 'bg-critical',
   },
 };
 
-function useCountUp(end: number, duration = 850) {
+function useCountUp(end: number, duration = 650) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const started = useRef(false);
@@ -71,7 +66,6 @@ function useCountUp(end: number, duration = 850) {
       requestAnimationFrame(tick);
     };
 
-    // Check if already in view on mount
     const rect = node.getBoundingClientRect();
     if (rect.top < window.innerHeight && rect.bottom > 0) {
       startAnimation();
@@ -101,10 +95,10 @@ export function MetricCard({ label, value, icon, trend, accent = 'primary' }: Me
   const TrendIcon = trend?.direction === 'up' ? TrendingUp : trend?.direction === 'down' ? TrendingDown : Minus;
   const trendBg =
     trend?.direction === 'up'
-      ? 'text-success bg-success/10 border-success/20'
+      ? 'text-success bg-green-50 border-green-200'
       : trend?.direction === 'down'
-        ? 'text-critical bg-critical/10 border-critical/20'
-        : 'text-text-secondary bg-base-hover border-base-border';
+        ? 'text-critical bg-red-50 border-red-200'
+        : 'text-text-secondary bg-gray-100 border-base-border';
 
   const isPercent = typeof value === 'string' && value.endsWith('%');
   const numericValue = typeof value === 'number'
@@ -121,29 +115,29 @@ export function MetricCard({ label, value, icon, trend, accent = 'primary' }: Me
   return (
     <div
       ref={ref}
-      className={`card p-5 transition-all duration-300 hover:-translate-y-1 ${styleConfig.border} ${styleConfig.glow} group`}
+      className={`card p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover ${styleConfig.border} group`}
     >
-      {/* Top accent line */}
-      <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${styleConfig.topGrad} opacity-80 group-hover:opacity-100 transition-opacity`} />
+      {/* Top accent indicator */}
+      <div className={`absolute top-0 left-0 right-0 h-[2.5px] ${styleConfig.topGrad}`} />
 
-      <div className="flex items-start justify-between mb-3.5">
-        <div className={`p-2.5 rounded-xl border ${styleConfig.icon} transition-all duration-300 group-hover:scale-110 shadow-sm`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className={`p-2 rounded-lg border ${styleConfig.icon} transition-transform duration-200 group-hover:scale-105 shadow-sm`}>
           {icon}
         </div>
         {trend && (
-          <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${trendBg}`}>
+          <div className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border ${trendBg}`}>
             <TrendIcon size={12} />
             <span className="font-mono tabular-nums">{trend.direction === 'up' ? '+' : ''}{trend.value}%</span>
           </div>
         )}
       </div>
 
-      <div className="text-3xl font-extrabold text-text-primary tracking-tight mb-1 font-mono tabular-nums group-hover:text-white transition-colors">
+      <div className="text-2xl sm:text-3xl font-bold text-text-primary tracking-tight mb-1 font-mono tabular-nums">
         {displayValue}
       </div>
-      <div className="text-xs font-medium text-text-secondary uppercase tracking-wider">{label}</div>
+      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{label}</div>
       {trend?.label && (
-        <div className="text-[11px] text-text-secondary/80 mt-1.5 flex items-center gap-1">{trend.label}</div>
+        <div className="text-[11px] text-text-muted mt-1.5 flex items-center gap-1">{trend.label}</div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export interface RevealProps {
@@ -29,16 +29,16 @@ export function Reveal({
 
   const hiddenClass = `reveal-hidden-${direction}`;
 
-  return (
-    <Tag
-      ref={ref}
-      style={{
+  return React.createElement(
+    Tag,
+    {
+      ref,
+      style: {
         transitionDuration: `${duration}ms`,
         transitionDelay: isVisible ? `${delay}ms` : '0ms',
-      }}
-      className={`reveal-transition ${isVisible ? 'reveal-visible' : hiddenClass} ${className}`}
-    >
-      {children}
-    </Tag>
+      },
+      className: `reveal-transition ${isVisible ? 'reveal-visible' : hiddenClass} ${className}`,
+    },
+    children
   );
 }

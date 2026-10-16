@@ -6,18 +6,18 @@ import {
   AlertTriangle,
   Plus,
   Sparkles,
-  Zap,
   ArrowRight,
   Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -29,7 +29,6 @@ import { MetricCard } from '@/components/MetricCard';
 import { ChartCard } from '@/components/ChartCard';
 import { Reveal } from '@/components/Reveal';
 import { Avatar } from '@/components/Avatar';
-import { ParallaxVisual } from '@/components/ParallaxVisual';
 import {
   calculateEmployeeUtilization,
   getUtilizationStatus,
@@ -72,24 +71,24 @@ export function DashboardPage() {
     {
       name: 'Overloaded',
       value: employees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'overloaded').length,
-      color: '#F87171',
+      color: '#D13438',
     },
     {
       name: 'Balanced',
       value: employees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'balanced').length,
-      color: '#22C55E',
+      color: '#107C10',
     },
     {
       name: 'Underutilized',
       value: employees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'underutilized').length,
-      color: '#22D3EE',
+      color: '#0078D4',
     },
   ];
 
   const staffingProgress = projects
     .filter((p) => p.status !== 'completed')
     .map((p) => ({
-      name: p.name.length > 18 ? p.name.slice(0, 18) + '…' : p.name,
+      name: p.name.length > 20 ? p.name.slice(0, 20) + '…' : p.name,
       fullName: p.name,
       progress: getProjectStaffingProgress(p),
       target: p.targetTeamSize,
@@ -98,71 +97,78 @@ export function DashboardPage() {
 
   const recommendedActions = [
     ...(firstUnderstaffedProject ? [{
-      message: `${firstUnderstaffedProject.name} needs ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length} more ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length === 1 ? 'member' : 'members'}`,
+      message: `${firstUnderstaffedProject.name} needs ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length} more member${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length === 1 ? '' : 's'}`,
       action: () => navigate('/team-builder', { state: { projectId: firstUnderstaffedProject.id } }),
       badge: 'Staffing Needed',
-      badgeColor: 'text-cyan bg-cyan/10 border-cyan/30',
+      badgeColor: 'text-primary bg-primary-50 border-primary-200',
     }] : []),
     {
-      message: `${overloadedEmployees.length} employees are overloaded — consider reassigning work`,
+      message: `${overloadedEmployees.length} employees are overloaded — rebalance project commitments`,
       action: () => navigate('/workload'),
-      badge: 'Workload Risk',
-      badgeColor: 'text-critical bg-critical/10 border-critical/30',
+      badge: 'Workload Alert',
+      badgeColor: 'text-critical bg-red-50 border-red-200',
     },
     {
-      message: `${skillGaps.length} skill gaps detected across active projects`,
+      message: `${skillGaps.length} critical skill gaps detected across active project requirements`,
       action: () => navigate('/skills'),
       badge: 'Skill Development',
-      badgeColor: 'text-warning bg-warning/10 border-warning/30',
+      badgeColor: 'text-warning bg-orange-50 border-orange-200',
     },
     {
-      message: `${availableEmployees.length} employees available for immediate allocation`,
+      message: `${availableEmployees.length} qualified specialists currently have available capacity`,
       action: () => navigate('/employees'),
       badge: 'Capacity Ready',
-      badgeColor: 'text-success bg-success/10 border-success/30',
+      badgeColor: 'text-success bg-green-50 border-green-200',
     },
   ];
 
+  const tooltipStyle = {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #E1E6ED',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+    fontSize: '12px',
+    color: '#172B4D',
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
-        title="Workforce Intelligence Command"
-        description="Real-time capacity tracking, predictive team allocation, and skill intelligence."
+        title="Workforce Intelligence Center"
+        description="Comprehensive real-time capacity tracking, predictive team allocation, and skill intelligence across all enterprise initiatives."
         breadcrumb={['Home', 'Dashboard']}
         actions={
           <>
             <button className="btn-secondary" onClick={() => navigate('/team-builder')}>
-              <Sparkles size={15} className="text-primary" />
+              <Sparkles size={14} className="text-primary" />
               <span>Team Builder</span>
             </button>
             <button className="btn-primary" onClick={() => navigate('/projects')}>
-              <Plus size={15} />
+              <Plus size={14} />
               <span>Create Project</span>
             </button>
           </>
         }
       />
 
-      {/* Intelligence Banner */}
-      <Reveal direction="down" delay={40}>
-        <div className="card p-4 bg-gradient-to-r from-primary/10 via-base-card to-cyan/10 border-primary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg relative overflow-hidden">
-          <ParallaxVisual strength={0.12} className="absolute -right-8 -top-8 w-44 h-44 rounded-full bg-cyan/15 blur-2xl" />
-          <ParallaxVisual strength={-0.08} className="absolute -left-10 -bottom-10 w-36 h-36 rounded-full bg-primary/15 blur-2xl" />
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary flex-shrink-0 shadow-[0_0_12px_rgba(139,92,246,0.25)]">
-              <Zap size={18} />
+      {/* Workforce Health Index Banner */}
+      <Reveal direction="down" delay={20}>
+        <div className="card p-4 bg-primary-50 border-primary-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <ShieldCheck size={18} />
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-primary">Workforce Health Index</div>
-              <div className="text-sm font-medium text-text-primary">
-                {workloadDistribution[1]?.value} of {employees.length} employees operating at optimal balanced capacity
+              <div className="text-xs font-bold uppercase tracking-wider text-primary">Workforce Health Index</div>
+              <div className="text-xs sm:text-sm font-semibold text-text-primary mt-0.5">
+                {workloadDistribution[1]?.value} of {employees.length} employees operating at balanced optimal capacity
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/workforce-twin')}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-base-bg/80 border border-base-border hover:border-primary/40 text-text-primary hover:text-white transition-all flex items-center gap-1.5"
+              className="btn-secondary text-xs"
             >
               Simulate Twin Scenarios
               <ArrowRight size={13} />
@@ -171,75 +177,75 @@ export function DashboardPage() {
         </div>
       </Reveal>
 
-      {/* Metric Cards Grid */}
+      {/* 4 Compact KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Reveal delay={60} direction="up">
+        <Reveal delay={40} direction="up">
           <MetricCard
             label="Total Employees"
             value={employees.length}
-            icon={<Users size={20} />}
+            icon={<Users size={18} />}
             accent="primary"
             trend={{ value: 12, direction: 'up', label: 'vs last quarter' }}
           />
         </Reveal>
-        <Reveal delay={120} direction="up">
+        <Reveal delay={80} direction="up">
           <MetricCard
             label="Active Projects"
             value={activeProjects.length}
-            icon={<FolderKanban size={20} />}
+            icon={<FolderKanban size={18} />}
             accent="cyan"
             trend={{ value: 8, direction: 'up', label: 'capacity scheduled' }}
           />
         </Reveal>
-        <Reveal delay={180} direction="up">
+        <Reveal delay={120} direction="up">
           <MetricCard
             label="Available Capacity"
             value={availableEmployees.length}
-            icon={<UserCheck size={20} />}
+            icon={<UserCheck size={18} />}
             accent="success"
             trend={{ value: Math.round((availableEmployees.length / Math.max(employees.length, 1)) * 100), direction: 'neutral', label: '% workforce open' }}
           />
         </Reveal>
-        <Reveal delay={240} direction="up">
+        <Reveal delay={160} direction="up">
           <MetricCard
             label="Identified Skill Gaps"
             value={skillGaps.length}
-            icon={<AlertTriangle size={20} />}
+            icon={<AlertTriangle size={18} />}
             accent="warning"
             trend={{ value: skillGaps.length, direction: skillGaps.length > 2 ? 'down' : 'neutral', label: 'across active pipelines' }}
           />
         </Reveal>
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Charts Row 1: Utilization & Balance */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <ChartCard
           title="Workforce Utilization Matrix"
-          subtitle="Simulated current workload vs target baseline capacity (%)"
+          subtitle="Simulated current workload vs baseline target capacity (%)"
           className="lg:col-span-2"
-          delay={100}
+          delay={60}
         >
-          <div className="h-[270px] w-full">
+          <div className="h-[260px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={utilizationData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="utilGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
+                  <linearGradient id="utilGradLight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0078D4" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#0078D4" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2745" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748B" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E1E6ED" vertical={false} />
+                <XAxis dataKey="name" stroke="#5E6C84" fontSize={11} tickLine={false} />
+                <YAxis stroke="#5E6C84" fontSize={11} domain={[0, 100]} tickLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0]?.payload;
                       return (
-                        <div className="card p-3 shadow-2xl border border-base-border/80 text-xs">
-                          <p className="font-semibold text-text-primary mb-1">{data?.fullName}</p>
-                          <p className="text-primary font-medium">Utilization: {data?.utilization}%</p>
-                          <p className="text-cyan font-medium">Target: {data?.target}%</p>
+                        <div className="card p-3 shadow-dropdown border border-base-border text-xs bg-white">
+                          <p className="font-bold text-text-primary mb-1">{data?.fullName}</p>
+                          <p className="text-primary font-semibold">Utilization: {data?.utilization}%</p>
+                          <p className="text-text-secondary">Target: {data?.target}%</p>
                         </div>
                       );
                     }
@@ -249,35 +255,33 @@ export function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="utilization"
-                  stroke="#8B5CF6"
-                  strokeWidth={2.5}
-                  fill="url(#utilGrad)"
+                  stroke="#0078D4"
+                  strokeWidth={2}
+                  fill="url(#utilGradLight)"
                   name="Current"
                   isAnimationActive={true}
-                  animationDuration={1200}
-                  animationEasing="ease-out"
+                  animationDuration={900}
                 />
                 <Area
                   type="monotone"
                   dataKey="target"
-                  stroke="#22D3EE"
+                  stroke="#5E6C84"
                   strokeWidth={1.5}
                   strokeDasharray="4 4"
                   fill="none"
                   name="Target"
                   isAnimationActive={true}
-                  animationDuration={1400}
-                  animationEasing="ease-out"
+                  animationDuration={1100}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex items-center justify-end gap-5 mt-2 pt-2 border-t border-base-border/40 text-xs">
-            <div className="flex items-center gap-1.5 text-text-secondary">
+          <div className="flex items-center justify-end gap-5 mt-2 pt-2 border-t border-base-border text-xs">
+            <div className="flex items-center gap-1.5 text-text-secondary font-medium">
               <span className="w-3 h-1 bg-primary rounded-full" /> Current Utilization
             </div>
-            <div className="flex items-center gap-1.5 text-text-secondary">
-              <span className="w-3 h-0.5 border-t border-dashed border-cyan" /> Target Baseline
+            <div className="flex items-center gap-1.5 text-text-secondary font-medium">
+              <span className="w-3 h-0.5 border-t border-dashed border-gray-400" /> Target Baseline
             </div>
           </div>
         </ChartCard>
@@ -285,68 +289,66 @@ export function DashboardPage() {
         <ChartCard
           title="Workload Balance"
           subtitle="Distribution of employee capacity statuses"
-          delay={150}
+          delay={90}
         >
-          <div className="h-[210px] w-full flex items-center justify-center">
+          <div className="h-[200px] w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={workloadDistribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={4}
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
                   dataKey="value"
-                  animationDuration={1200}
+                  animationDuration={900}
                 >
                   {workloadDistribution.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} stroke="#171D33" strokeWidth={2} />
+                    <Cell key={i} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#171D33', borderColor: '#29324B', borderRadius: '12px', fontSize: '12px' }}
-                />
+                <Tooltip contentStyle={tooltipStyle} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-base-border/40 text-center">
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-base-border text-center">
             {workloadDistribution.map((d) => (
-              <div key={d.name} className="p-1.5 rounded-lg bg-base-bg/60 border border-base-border/50">
+              <div key={d.name} className="p-2 rounded-lg bg-base-subtle border border-base-border">
                 <div className="flex items-center justify-center gap-1 mb-0.5">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
-                  <span className="text-[11px] text-text-secondary truncate">{d.name}</span>
+                  <span className="text-[10px] font-semibold text-text-secondary truncate">{d.name}</span>
                 </div>
-                <div className="text-base font-bold text-text-primary">{d.value}</div>
+                <div className="text-sm font-bold text-text-primary">{d.value}</div>
               </div>
             ))}
           </div>
         </ChartCard>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* Charts Row 2: Staffing Progress & Overload Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <ChartCard
-          title="Project Staffing Fulfilment"
+          title="Project Staffing Health"
           subtitle="Current assigned headcounts versus target team sizes"
           className="lg:col-span-2"
-          delay={180}
+          delay={110}
         >
-          <div className="h-[250px] w-full">
+          <div className="h-[240px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={staffingProgress} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2745" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748B" fontSize={11} interval={0} angle={-10} textAnchor="end" tickLine={false} />
-                <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E1E6ED" vertical={false} />
+                <XAxis dataKey="name" stroke="#5E6C84" fontSize={11} interval={0} angle={-10} textAnchor="end" tickLine={false} />
+                <YAxis stroke="#5E6C84" fontSize={11} domain={[0, 100]} tickLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0]?.payload;
                       return (
-                        <div className="card p-3 shadow-2xl border border-base-border/80 text-xs">
-                          <p className="font-semibold text-text-primary mb-1">{data?.fullName}</p>
-                          <p className="text-primary font-medium">Staffing Progress: {data?.progress}%</p>
-                          <p className="text-text-secondary">Members: {data?.assigned} / {data?.target}</p>
+                        <div className="card p-3 shadow-dropdown border border-base-border text-xs bg-white">
+                          <p className="font-bold text-text-primary mb-1">{data?.fullName}</p>
+                          <p className="text-primary font-semibold">Staffing Progress: {data?.progress}%</p>
+                          <p className="text-text-secondary">Assigned: {data?.assigned} of {data?.target} members</p>
                         </div>
                       );
                     }
@@ -355,12 +357,11 @@ export function DashboardPage() {
                 />
                 <Bar
                   dataKey="progress"
-                  fill="#8B5CF6"
-                  radius={[6, 6, 0, 0]}
+                  fill="#0078D4"
+                  radius={[4, 4, 0, 0]}
                   name="Progress %"
                   isAnimationActive={true}
-                  animationDuration={1100}
-                  animationEasing="ease-out"
+                  animationDuration={900}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -368,36 +369,36 @@ export function DashboardPage() {
         </ChartCard>
 
         {/* Overloaded Employees */}
-        <Reveal delay={220} direction="left">
+        <Reveal delay={130} direction="left">
           <div className="card p-5 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-base-border/40">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-base-border">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={16} className="text-critical" />
-                <h3 className="text-sm font-semibold text-text-primary">Overload Alerts</h3>
+                <h3 className="text-sm font-bold text-text-primary">Capacity Warnings</h3>
               </div>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-critical/15 text-critical border border-critical/30">
-                {overloadedEmployees.length} Critical
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-critical border border-red-200">
+                {overloadedEmployees.length} Overloaded
               </span>
             </div>
-            <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[220px]">
+            <div className="space-y-2 flex-1 overflow-y-auto max-h-[220px]">
               {overloadedEmployees.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-6 text-text-secondary">
-                  <span className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success mb-2">✓</span>
-                  <p className="text-xs">No employees exceeding thresholds.</p>
+                  <span className="w-8 h-8 rounded-full bg-green-50 text-success flex items-center justify-center font-bold mb-2">✓</span>
+                  <p className="text-xs font-medium">All personnel within safe workload limits.</p>
                 </div>
               ) : (
                 overloadedEmployees.slice(0, 5).map(({ employee, utilization }) => (
                   <div
                     key={employee.id}
                     onClick={() => navigate('/workload')}
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-base-bg/60 border border-base-border/60 hover:border-critical/40 hover:bg-base-hover cursor-pointer transition-all duration-200"
+                    className="flex items-center gap-2.5 p-2 rounded-lg bg-base-subtle border border-base-border hover:border-critical/50 hover:bg-red-50/50 cursor-pointer transition-all"
                   >
                     <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-text-primary truncate">{employee.name}</div>
+                      <div className="text-xs font-bold text-text-primary truncate">{employee.name}</div>
                       <div className="text-[11px] text-text-secondary truncate">{employee.role}</div>
                     </div>
-                    <span className="text-xs font-bold text-critical font-mono bg-critical/10 px-2 py-0.5 rounded-md border border-critical/20">
+                    <span className="text-xs font-bold text-critical font-mono bg-red-50 px-2 py-0.5 rounded border border-red-200">
                       {utilization}%
                     </span>
                   </div>
@@ -407,9 +408,9 @@ export function DashboardPage() {
             {overloadedEmployees.length > 0 && (
               <button
                 onClick={() => navigate('/workload')}
-                className="mt-3 w-full py-2 text-xs font-semibold text-primary hover:text-white bg-primary/10 hover:bg-primary/20 rounded-xl border border-primary/25 transition-all text-center flex items-center justify-center gap-1.5"
+                className="mt-3 w-full py-2 text-xs font-semibold text-primary hover:text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md border border-primary-200 transition-all text-center flex items-center justify-center gap-1.5"
               >
-                Rebalance Workload in Planner
+                Rebalance in Workload Planner
                 <ArrowRight size={13} />
               </button>
             )}
@@ -417,23 +418,23 @@ export function DashboardPage() {
         </Reveal>
       </div>
 
-      {/* Activity + Recommended Actions */}
+      {/* Activity Stream + Recommended Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Reveal delay={240}>
+        <Reveal delay={150}>
           <div className="card p-5 h-full">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-base-border/40">
+            <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-base-border">
               <div className="flex items-center gap-2">
-                <Activity size={16} className="text-cyan" />
-                <h3 className="text-sm font-semibold text-text-primary">Real-Time Event Stream</h3>
+                <Activity size={16} className="text-primary" />
+                <h3 className="text-sm font-bold text-text-primary">System Audit Log</h3>
               </div>
-              <span className="text-[11px] text-text-secondary">{activities.length} logged</span>
+              <span className="text-[11px] text-text-secondary font-medium">{activities.length} recorded</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {activities.slice(0, 5).map((act) => (
-                <div key={act.id} className="flex items-start gap-3 text-xs p-2.5 rounded-xl bg-base-bg/50 border border-base-border/40 hover:border-base-border transition-colors">
-                  <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0 shadow-[0_0_6px_#8B5CF6]" />
+                <div key={act.id} className="flex items-start gap-2.5 text-xs p-2.5 rounded-lg bg-base-subtle border border-base-border/70 hover:border-base-border transition-colors">
+                  <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-text-primary font-medium leading-relaxed">{act.message}</p>
+                    <p className="text-text-primary font-medium leading-snug">{act.message}</p>
                     <p className="text-[10px] text-text-secondary mt-1 font-mono">{formatTimestamp(act.timestamp)}</p>
                   </div>
                 </div>
@@ -442,34 +443,34 @@ export function DashboardPage() {
           </div>
         </Reveal>
 
-        <Reveal delay={280}>
+        <Reveal delay={170}>
           <div className="card p-5 h-full">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-base-border/40">
+            <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-base-border">
               <div className="flex items-center gap-2">
-                <Zap size={16} className="text-primary" />
-                <h3 className="text-sm font-semibold text-text-primary">Recommended Next Actions</h3>
+                <Sparkles size={16} className="text-primary" />
+                <h3 className="text-sm font-bold text-text-primary">Recommended Next Actions</h3>
               </div>
-              <span className="text-[11px] text-primary font-medium">Algorithmic suggestions</span>
+              <span className="text-[11px] text-primary font-semibold">Priority Guidance</span>
             </div>
             <div className="space-y-2.5">
               {recommendedActions.map((action, i) => (
                 <button
                   key={i}
                   onClick={action.action}
-                  className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-base-bg/70 border border-base-border hover:border-primary/40 hover:bg-base-hover hover:shadow-md transition-all duration-200 text-left group"
+                  className="w-full flex items-center justify-between gap-3 p-3 rounded-lg bg-base-subtle border border-base-border hover:border-primary/50 hover:bg-primary-50/50 transition-all text-left group"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-semibold text-text-primary group-hover:text-white transition-colors">
+                    <div className="text-xs font-semibold text-text-primary group-hover:text-primary transition-colors">
                       {action.message}
                     </div>
                     {action.badge && (
-                      <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${action.badgeColor}`}>
+                      <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded border ${action.badgeColor}`}>
                         {action.badge}
                       </span>
                     )}
                   </div>
-                  <div className="w-7 h-7 rounded-lg bg-base-card border border-base-border flex items-center justify-center text-text-secondary group-hover:text-primary group-hover:border-primary/40 group-hover:translate-x-1 transition-all flex-shrink-0">
-                    <ArrowRight size={14} />
+                  <div className="w-6 h-6 rounded bg-white border border-base-border flex items-center justify-center text-text-secondary group-hover:text-primary group-hover:border-primary/40 transition-all flex-shrink-0 shadow-xs">
+                    <ArrowRight size={13} />
                   </div>
                 </button>
               ))}

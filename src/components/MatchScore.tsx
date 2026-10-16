@@ -11,7 +11,7 @@ export function MatchScore({ score, size = 'md', showPercent = false }: MatchSco
   const offset = circumference - (Math.min(Math.max(score, 0), 100) / 100) * circumference;
 
   const color =
-    score >= 75 ? '#22C55E' : score >= 50 ? '#22D3EE' : score >= 30 ? '#F59E0B' : '#F87171';
+    score >= 75 ? '#107C10' : score >= 50 ? '#0078D4' : score >= 30 ? '#CA5010' : '#D13438';
   const fontSize = size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-xl' : 'text-sm';
   const sizePx = radius * 2 + strokeWidth * 2;
 
@@ -27,7 +27,7 @@ export function MatchScore({ score, size = 'md', showPercent = false }: MatchSco
           cy={radius + strokeWidth}
           r={radius}
           fill="none"
-          stroke="#1E2745"
+          stroke="#E1E6ED"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -40,11 +40,11 @@ export function MatchScore({ score, size = 'md', showPercent = false }: MatchSco
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="transition-all duration-700 ease-out"
+          className="transition-all duration-500 ease-out"
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className={`font-extrabold ${fontSize} text-text-primary tracking-tight leading-none`}>
+        <span className={`font-bold ${fontSize} text-text-primary tracking-tight leading-none`}>
           {score}{showPercent && <span className="text-[10px] text-text-secondary">%</span>}
         </span>
       </div>

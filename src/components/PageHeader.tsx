@@ -10,23 +10,23 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, breadcrumb }: PageHeaderProps) {
   return (
-    <Reveal direction="down" duration={500}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-base-border/40">
+    <Reveal direction="down" duration={350}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 mb-5 pb-3.5 border-b border-base-border">
         <div>
           {breadcrumb && breadcrumb.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-text-secondary mb-1.5 font-medium">
+            <div className="flex items-center gap-1.5 text-[11px] text-text-secondary mb-1 font-medium">
               {breadcrumb.map((crumb, i) => (
                 <span key={i} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="text-base-border text-[10px]">/</span>}
+                  {i > 0 && <span className="text-gray-300 text-[10px]">/</span>}
                   <span className={i === breadcrumb.length - 1 ? 'text-primary font-semibold' : ''}>{crumb}</span>
                 </span>
               ))}
             </div>
           )}
-          <h1 className="text-2xl font-extrabold text-text-primary tracking-tight">{title}</h1>
-          {description && <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">{description}</p>}
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">{title}</h1>
+          {description && <p className="text-xs text-text-secondary mt-0.5 max-w-2xl leading-relaxed">{description}</p>}
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2.5 flex-shrink-0">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2 flex-shrink-0">{actions}</div>}
       </div>
     </Reveal>
   );

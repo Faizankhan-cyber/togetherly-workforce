@@ -1,0 +1,82 @@
+import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AppSidebar } from '@/components/AppSidebar';
+import { Topbar } from '@/components/Topbar';
+import { ToastContainer } from '@/components/Toast';
+import { useData } from '@/context/DataContext';
+
+import { DashboardPage } from '@/pages/DashboardPage';
+import { EmployeesPage } from '@/pages/EmployeesPage';
+import { ProjectsPage } from '@/pages/ProjectsPage';
+import { TeamBuilderPage } from '@/pages/TeamBuilderPage';
+import { WorkforceTwinPage } from '@/pages/WorkforceTwinPage';
+import { SkillsTrainingPage } from '@/pages/SkillsTrainingPage';
+import { DevelopmentRoadmapPage } from '@/pages/DevelopmentRoadmapPage';
+import { WorkloadPlannerPage } from '@/pages/WorkloadPlannerPage';
+import { OpportunityFinderPage } from '@/pages/OpportunityFinderPage';
+import { AllocationImpactPage } from '@/pages/AllocationImpactPage';
+import { AnalyticsPage } from '@/pages/AnalyticsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { EmployeeProjectsPage } from '@/pages/EmployeeExperiencePage';
+
+export function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { role, toasts, dismissToast } = useData();
+
+  return (
+    <div className="flex min-h-screen bg-base-bg text-text-primary antialiased selection:bg-primary/30 selection:text-white">
+      {/* Sidebar */}
+      <AppSidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+        <Topbar onOpenMobileNav={() => setMobileSidebarOpen(true)} />
+
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+          <Routes>
+            {/* Common / Shared entry */}
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
+
+            {/* Manager specific routes */}
+            {role === 'manager' && (
+              <>
+                <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/team-builder" element={<TeamBuilderPage />} />
+                <Route path="/workforce-twin" element={<WorkforceTwinPage />} />
+                <Route path="/skills" element={<SkillsTrainingPage />} />
+                <Route path="/workload" element={<WorkloadPlannerPage />} />
+                <Route path="/opportunities" element={<OpportunityFinderPage />} />
+                <Route path="/impact-report" element={<AllocationImpactPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </>
+            )}
+
+            {/* Employee specific routes */}
+            {role === 'employee' && (
+              <>
+                <Route path="/my-projects" element={<EmployeeProjectsPage />} />
+              </>
+            )}
+
+            {/* Fallback route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+
+      {/* Floating System Toasts */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </div>
+  );
+}
+
+export default App;

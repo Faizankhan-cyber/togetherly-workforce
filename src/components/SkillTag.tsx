@@ -12,20 +12,20 @@ export function SkillTag({ skillId, level, showLevel = false, variant = 'default
 
   const variantStyles =
     variant === 'matched'
-      ? 'bg-success/10 text-success border-success/30'
+      ? 'bg-green-50 text-success border-green-200'
       : variant === 'missing'
-        ? 'bg-critical/10 text-critical border-critical/30'
-        : 'bg-base-bg/80 text-text-primary border-base-border/80 hover:border-primary/40';
+        ? 'bg-red-50 text-critical border-red-200'
+        : 'bg-gray-50 text-text-primary border-base-border hover:border-primary/50';
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${variantStyles}`}>
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors ${variantStyles}`}>
       <span className="truncate">{name}</span>
       {showLevel && typeof level === 'number' && (
         <span className="flex items-center gap-0.5 ml-1">
           {[1, 2, 3, 4, 5].map((star) => (
             <span
               key={star}
-              className={`w-1.5 h-1.5 rounded-full ${star <= level ? 'bg-primary' : 'bg-base-border'}`}
+              className={`w-1.5 h-1.5 rounded-full ${star <= level ? 'bg-primary' : 'bg-gray-300'}`}
             />
           ))}
         </span>

@@ -94,37 +94,37 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 h-16 glass border-b border-base-border/80 flex items-center justify-between px-4 lg:px-6 gap-4">
+    <header className="sticky top-0 z-20 h-14 bg-white border-b border-base-border flex items-center justify-between px-4 lg:px-6 gap-4 shadow-sm">
       {/* Left: Mobile menu + breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onOpenMobileNav}
-          className="lg:hidden text-text-secondary hover:text-text-primary p-2 rounded-xl hover:bg-base-hover transition-colors"
+          className="lg:hidden text-text-secondary hover:text-text-primary p-1.5 rounded-md hover:bg-base-hover transition-colors"
           aria-label="Open mobile navigation"
         >
-          <Menu size={20} />
+          <Menu size={18} />
         </button>
         <div className="min-w-0">
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-text-secondary mb-0.5">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-secondary mb-0.5 font-medium">
             {breadcrumb.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-base-border font-mono text-[10px]">/</span>}
-                <span className={i === breadcrumb.length - 1 ? 'text-primary font-medium' : 'hover:text-text-primary transition-colors'}>{crumb}</span>
+                {i > 0 && <span className="text-gray-300 font-mono text-[10px]">/</span>}
+                <span className={i === breadcrumb.length - 1 ? 'text-primary font-semibold' : 'hover:text-text-primary transition-colors'}>{crumb}</span>
               </span>
             ))}
           </div>
-          <h2 className="text-base font-bold text-text-primary tracking-tight truncate">{title}</h2>
+          <h2 className="text-sm sm:text-base font-bold text-text-primary tracking-tight truncate">{title}</h2>
         </div>
       </div>
 
       {/* Right: Search, notifications, profile */}
       <div className="flex items-center gap-2 sm:gap-3">
         <div ref={searchRef} className="relative hidden md:block">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           <input
             type="text"
-            placeholder={role === 'manager' ? 'Quick search employees, projects…' : 'Search assigned projects…'}
-            className="input-field pl-9 pr-3 py-1.5 w-64 text-xs transition-all focus:w-72"
+            placeholder={role === 'manager' ? 'Search employees, projects…' : 'Search assigned projects…'}
+            className="input-field pl-8 pr-3 py-1.5 w-60 text-xs transition-all focus:w-72 bg-base-bg focus:bg-white"
             value={searchQuery}
             onFocus={() => setSearchOpen(true)}
             onChange={(event) => { setSearchQuery(event.target.value); setSearchOpen(true); }}
@@ -136,8 +136,8 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
             aria-expanded={searchOpen && !!searchQuery}
           />
           {searchOpen && searchQuery.trim() && (
-            <div className="absolute right-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-2xl border border-base-border bg-base-card/95 backdrop-blur-xl shadow-2xl animate-fade-in-up">
-              <div className="p-2 border-b border-base-border/50 text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+            <div className="absolute right-0 top-full z-30 mt-1.5 w-80 overflow-hidden rounded-lg border border-base-border bg-white shadow-dropdown animate-fade-in">
+              <div className="p-2 border-b border-base-border text-[10px] font-semibold uppercase tracking-wider text-text-secondary bg-base-subtle">
                 Search Results
               </div>
               {searchResults.length === 0 ? (
@@ -147,9 +147,11 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
                   key={`${result.type}-${result.id}`}
                   type="button"
                   onClick={() => openSearchResult(result)}
-                  className="flex w-full items-center gap-3 border-b border-base-border/40 px-3.5 py-2.5 text-left last:border-b-0 hover:bg-base-hover transition-colors"
+                  className="flex w-full items-center gap-2.5 border-b border-base-border/50 px-3 py-2 text-left last:border-b-0 hover:bg-base-hover transition-colors"
                 >
-                  <span className="rounded-lg bg-primary/10 border border-primary/20 p-2 text-primary">{result.type === 'employee' ? <Users size={14} /> : <FolderKanban size={14} />}</span>
+                  <span className="rounded bg-primary-50 p-1.5 text-primary">
+                    {result.type === 'employee' ? <Users size={13} /> : <FolderKanban size={13} />}
+                  </span>
                   <span className="min-w-0">
                     <span className="block truncate text-xs font-semibold text-text-primary">{result.label}</span>
                     <span className="block truncate text-[11px] text-text-secondary">{result.type === 'employee' ? 'Employee' : 'Project'} · {result.detail}</span>
@@ -164,27 +166,26 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
         <div ref={notifRef} className="relative">
           <button
             onClick={() => setNotifOpen((v) => !v)}
-            className="relative text-text-secondary hover:text-text-primary p-2 rounded-xl hover:bg-base-hover transition-colors border border-transparent hover:border-base-border"
+            className="relative text-text-secondary hover:text-text-primary p-1.5 rounded-md hover:bg-base-hover transition-colors"
             aria-label="View notifications"
           >
-            <Bell size={18} />
+            <Bell size={17} />
             {visibleActivities.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan rounded-full ring-2 ring-base-bg shadow-[0_0_8px_#22D3EE]" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full ring-2 ring-white" />
             )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-84 sm:w-96 card p-0 animate-fade-in-up overflow-hidden shadow-2xl z-30">
-              <div className="px-4 py-3 border-b border-base-border/70 flex items-center justify-between bg-base-bg/40">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-text-primary">System Activity</h3>
-                <span className="text-[11px] text-text-secondary">{visibleActivities.length} updates</span>
+            <div className="absolute right-0 top-full mt-1.5 w-80 sm:w-88 card p-0 animate-fade-in overflow-hidden shadow-dropdown z-30 bg-white">
+              <div className="px-3.5 py-2.5 border-b border-base-border flex items-center justify-between bg-base-subtle">
+                <h3 className="text-xs font-bold text-text-primary">System Activity</h3>
+                <span className="text-[11px] text-text-secondary font-medium">{visibleActivities.length} updates</span>
               </div>
-              <div className="max-h-80 overflow-y-auto divide-y divide-base-border/40">
-                {visibleActivities.length === 0 && <p className="px-4 py-6 text-xs text-text-secondary text-center">No recent updates for your profile.</p>}
+              <div className="max-h-72 overflow-y-auto divide-y divide-base-border/60">
+                {visibleActivities.length === 0 && <p className="px-4 py-6 text-xs text-text-secondary text-center">No recent updates.</p>}
                 {visibleActivities.slice(0, 8).map((act) => (
-                  <div key={act.id} className="px-4 py-3 hover:bg-base-hover/70 transition-colors">
-                    <p className="text-xs text-text-primary font-medium leading-relaxed">{act.message}</p>
-                    <p className="text-[10px] text-text-secondary mt-1 flex items-center gap-1.5 font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/70" />
+                  <div key={act.id} className="px-3.5 py-2.5 hover:bg-base-hover transition-colors">
+                    <p className="text-xs text-text-primary font-medium leading-snug">{act.message}</p>
+                    <p className="text-[10px] text-text-secondary mt-1 font-mono">
                       {new Date(act.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -198,23 +199,23 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
         <div ref={profileRef} className="relative">
           <button
             onClick={() => setProfileOpen((v) => !v)}
-            className="flex items-center gap-2 p-1 rounded-xl hover:bg-base-hover transition-colors border border-transparent hover:border-base-border"
+            className="flex items-center gap-1.5 p-1 rounded-md hover:bg-base-hover transition-colors"
             aria-label="User profile menu"
           >
-            <Avatar name={profileName} color={role === 'employee' && profile ? profile.avatarColor : '#8B5CF6'} size="sm" />
-            <ChevronDown size={14} className="text-text-secondary hidden sm:block" />
+            <Avatar name={profileName} color={role === 'employee' && profile ? profile.avatarColor : '#0078D4'} size="sm" />
+            <ChevronDown size={13} className="text-text-secondary hidden sm:block" />
           </button>
           {profileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 card p-1.5 animate-fade-in-up shadow-2xl z-30">
-              <div className="px-3 py-2 border-b border-base-border/60 mb-1">
+            <div className="absolute right-0 top-full mt-1.5 w-52 card p-2 animate-fade-in shadow-dropdown z-30 bg-white">
+              <div className="px-2.5 py-2 border-b border-base-border mb-1">
                 <div className="text-xs font-bold text-text-primary truncate">{profileName}</div>
                 <div className="text-[11px] text-primary font-medium truncate mt-0.5">
                   {role === 'employee' && profile ? profile.role : 'Workforce Administrator'}
                 </div>
               </div>
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Status</div>
-              <div className="px-3 py-1 text-xs text-success font-medium mb-1">
-                Active Workspace
+              <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Workspace Status</div>
+              <div className="px-2.5 py-1 text-xs text-success font-medium flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" /> Active Session
               </div>
             </div>
           )}

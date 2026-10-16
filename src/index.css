@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,17 +5,12 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   body {
     @apply bg-base-bg text-text-primary font-sans antialiased;
     min-height: 100vh;
-    background-image:
-      radial-gradient(ellipse 85% 55% at 15% -5%, rgba(139, 92, 246, 0.12), transparent 60%),
-      radial-gradient(ellipse 65% 45% at 85% 8%, rgba(34, 211, 238, 0.08), transparent 60%),
-      radial-gradient(ellipse 55% 35% at 50% 100%, rgba(139, 92, 246, 0.05), transparent 70%);
-    background-attachment: fixed;
   }
 
   * {
@@ -25,97 +18,91 @@
   }
 
   :focus-visible {
-    outline: 2px solid #22D3EE;
-    outline-offset: 2px;
+    outline: 2px solid #0078D4;
+    outline-offset: 1px;
   }
 
   button:disabled {
     cursor: not-allowed;
-    opacity: 0.48;
-    filter: saturate(0.55);
+    opacity: 0.5;
   }
 
-  /* Custom scrollbar */
+  /* Microsoft 365 / Azure custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0B1020;
+    background: #F5F7FA;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #29324B;
-    border-radius: 9999px;
+    background: #C8D1DC;
+    border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #3E4B70;
+    background: #94A3B8;
   }
 }
 
 @layer components {
+  /* Enterprise surface cards */
   .card {
-    @apply bg-base-card border border-base-border rounded-2xl shadow-card relative overflow-hidden;
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 100%);
+    @apply bg-base-card border border-base-border rounded-xl shadow-card relative overflow-hidden;
   }
 
   .card-hover {
-    @apply card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-card-hover;
+    @apply card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-card-hover;
   }
 
   .card-glow {
-    @apply card transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40;
-  }
-
-  .card-glow:hover {
-    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px -4px rgba(139, 92, 246, 0.15);
+    @apply card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40;
   }
 
   .card-glow-cyan {
-    @apply card transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan/40;
-  }
-
-  .card-glow-cyan:hover {
-    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px -4px rgba(34, 211, 238, 0.15);
+    @apply card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40;
   }
 
   .glass {
-    background: rgba(17, 24, 43, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
+  /* Form controls */
   .input-field {
-    @apply bg-base-bg/80 border border-base-border rounded-xl px-3.5 py-2 text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-inner;
+    @apply bg-white border border-base-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-150;
   }
 
+  /* Enterprise action buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700 active:scale-[0.98] text-white font-medium text-sm px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-sm shadow-primary/25 hover:shadow-primary/40 hover:shadow-lg;
+    @apply bg-primary hover:bg-primary-600 active:bg-primary-700 active:scale-[0.99] text-white font-medium text-xs px-3.5 py-2 rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm;
   }
 
   .btn-secondary {
-    @apply bg-base-card hover:bg-base-hover border border-base-border hover:border-primary/30 active:scale-[0.98] text-text-primary font-medium text-sm px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2;
+    @apply bg-white hover:bg-base-hover active:bg-primary-50 border border-base-border hover:border-primary/40 text-text-primary font-medium text-xs px-3.5 py-2 rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm;
   }
 
   .btn-ghost {
-    @apply text-text-secondary hover:text-text-primary hover:bg-base-hover font-medium text-sm px-3 py-2 rounded-xl transition-colors duration-200 flex items-center gap-2;
+    @apply text-text-secondary hover:text-text-primary hover:bg-base-hover font-medium text-xs px-2.5 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5;
   }
 
   .btn-danger {
-    @apply bg-critical/10 hover:bg-critical/20 text-critical border border-critical/30 hover:border-critical/50 font-medium text-sm px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2;
+    @apply bg-critical/10 hover:bg-critical/20 text-critical border border-critical/30 hover:border-critical/50 font-medium text-xs px-3.5 py-2 rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5;
   }
 
+  /* Sidebar navigation */
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-all duration-200;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-all duration-150;
   }
 
   .nav-link-active {
-    @apply bg-primary/15 text-primary border border-primary/30 shadow-sm shadow-primary/10;
+    @apply bg-primary-50 text-primary font-semibold border-l-2 border-primary;
   }
 
-  /* Reveal animation classes */
+  /* Smooth scroll reveal */
   .reveal-transition {
     will-change: opacity, transform;
     transition-property: opacity, transform;
@@ -124,27 +111,27 @@
 
   .reveal-hidden-up {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(8px);
   }
 
   .reveal-hidden-down {
     opacity: 0;
-    transform: translateY(-18px);
+    transform: translateY(-8px);
   }
 
   .reveal-hidden-left {
     opacity: 0;
-    transform: translateX(18px);
+    transform: translateX(8px);
   }
 
   .reveal-hidden-right {
     opacity: 0;
-    transform: translateX(-18px);
+    transform: translateX(-8px);
   }
 
   .reveal-hidden-scale {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.98);
   }
 
   .reveal-hidden-none {
@@ -156,37 +143,11 @@
     transform: translate(0, 0) scale(1);
   }
 
-  /* Animated gradient text */
-  .gradient-text {
-    background: linear-gradient(135deg, #8B5CF6 0%, #C4B5FD 35%, #22D3EE 70%, #8B5CF6 100%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: gradientShift 6s ease infinite;
-  }
-
-  .gradient-text-cyan {
-    background: linear-gradient(135deg, #22D3EE 0%, #67E8F9 50%, #8B5CF6 100%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
   /* Shimmer skeleton */
   .shimmer-bg {
-    background: linear-gradient(90deg, #171D33 25%, #1E2745 50%, #171D33 75%);
+    background: linear-gradient(90deg, #F5F7FA 25%, #E1E6ED 50%, #F5F7FA 75%);
     background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
-  }
-
-  /* Animated subtle grid */
-  .grid-bg {
-    background-image:
-      linear-gradient(rgba(139, 92, 246, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(139, 92, 246, 0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
+    animation: shimmer 1.5s linear infinite;
   }
 }
 
