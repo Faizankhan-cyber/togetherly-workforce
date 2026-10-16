@@ -1,0 +1,5 @@
+{
+  "name": "Togetherly - Workforce Intelligence Platform",
+  "description": "Intelligent workforce planning, project matching, capacity tracking, and skill development platform.",
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

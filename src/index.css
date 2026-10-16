@@ -1,0 +1,212 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-base-bg text-text-primary font-sans antialiased;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 85% 55% at 15% -5%, rgba(139, 92, 246, 0.12), transparent 60%),
+      radial-gradient(ellipse 65% 45% at 85% 8%, rgba(34, 211, 238, 0.08), transparent 60%),
+      radial-gradient(ellipse 55% 35% at 50% 100%, rgba(139, 92, 246, 0.05), transparent 70%);
+    background-attachment: fixed;
+  }
+
+  * {
+    @apply border-base-border;
+  }
+
+  :focus-visible {
+    outline: 2px solid #22D3EE;
+    outline-offset: 2px;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+    filter: saturate(0.55);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0B1020;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #29324B;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3E4B70;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-base-card border border-base-border rounded-2xl shadow-card relative overflow-hidden;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 100%);
+  }
+
+  .card-hover {
+    @apply card transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:shadow-card-hover;
+  }
+
+  .card-glow {
+    @apply card transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40;
+  }
+
+  .card-glow:hover {
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px -4px rgba(139, 92, 246, 0.15);
+  }
+
+  .card-glow-cyan {
+    @apply card transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan/40;
+  }
+
+  .card-glow-cyan:hover {
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px -4px rgba(34, 211, 238, 0.15);
+  }
+
+  .glass {
+    background: rgba(17, 24, 43, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .input-field {
+    @apply bg-base-bg/80 border border-base-border rounded-xl px-3.5 py-2 text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-inner;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700 active:scale-[0.98] text-white font-medium text-sm px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-sm shadow-primary/25 hover:shadow-primary/40 hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-base-card hover:bg-base-hover border border-base-border hover:border-primary/30 active:scale-[0.98] text-text-primary font-medium text-sm px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text-primary hover:bg-base-hover font-medium text-sm px-3 py-2 rounded-xl transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .btn-danger {
+    @apply bg-critical/10 hover:bg-critical/20 text-critical border border-critical/30 hover:border-critical/50 font-medium text-sm px-4 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-base-hover transition-all duration-200;
+  }
+
+  .nav-link-active {
+    @apply bg-primary/15 text-primary border border-primary/30 shadow-sm shadow-primary/10;
+  }
+
+  /* Reveal animation classes */
+  .reveal-transition {
+    will-change: opacity, transform;
+    transition-property: opacity, transform;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .reveal-hidden-up {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  .reveal-hidden-down {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+
+  .reveal-hidden-left {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  .reveal-hidden-right {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+
+  .reveal-hidden-scale {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  .reveal-hidden-none {
+    opacity: 0;
+  }
+
+  .reveal-visible {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  /* Animated gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #8B5CF6 0%, #C4B5FD 35%, #22D3EE 70%, #8B5CF6 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 6s ease infinite;
+  }
+
+  .gradient-text-cyan {
+    background: linear-gradient(135deg, #22D3EE 0%, #67E8F9 50%, #8B5CF6 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Shimmer skeleton */
+  .shimmer-bg {
+    background: linear-gradient(90deg, #171D33 25%, #1E2745 50%, #171D33 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Animated subtle grid */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(139, 92, 246, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .reveal-hidden-up,
+  .reveal-hidden-down,
+  .reveal-hidden-left,
+  .reveal-hidden-right,
+  .reveal-hidden-scale,
+  .reveal-hidden-none {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
