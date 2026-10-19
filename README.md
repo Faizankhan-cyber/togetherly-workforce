@@ -6,7 +6,7 @@ Togetherly is a workforce intelligence platform designed to help organizations m
 
 The platform brings workforce information and decision-support tools into one dashboard, helping managers identify suitable employees for projects, discover skill gaps, evaluate team composition, and improve workforce utilization.
 
-🔗 **Live Demo:** https://togetherly-workforce.vercel.app/
+🔗 **Live Demo:** (https://togetherly-omega.vercel.app/)
 
 ---
 
@@ -227,7 +227,7 @@ The project demonstrates how a centralized platform and explainable matching log
 
 **Project:** Togetherly  
 **Category:** Workforce Management / Workforce Intelligence  
-**Deployment:** [Live Demo](https://togetherly-workforce.vercel.app/)
+**Deployment:** [Live Demo](https://togetherly-omega.vercel.app/)
 
 ---
 
