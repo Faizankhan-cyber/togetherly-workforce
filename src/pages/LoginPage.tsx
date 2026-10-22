@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 
 export function LoginPage() {
@@ -25,6 +26,9 @@ export function LoginPage() {
     enterDemoMode,
     isConfigured,
     configError,
+    connectionVerification,
+    isVerifyingConnection,
+    verifyConnection,
     authError,
     clearAuthError,
   } = useAuth();
@@ -50,7 +54,7 @@ export function LoginPage() {
         setLocalError(configError);
       } else {
         setLocalError(
-          'Supabase environment variables are not configured. Please use Demo Mode below or configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+          'Supabase environment variables are not configured. Please use Demo Mode below or configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.'
         );
       }
       return;
@@ -111,6 +115,10 @@ export function LoginPage() {
 
   const errorMessage = localError || authError;
 
+  // Determine accurate connection badge
+  const isConnectionVerified = connectionVerification?.connected === true;
+  const isConnectionFailed = isConfigured && connectionVerification && !connectionVerification.connected;
+
   return (
     <div className="min-h-screen bg-base-bg flex flex-col justify-between selection:bg-primary/20 selection:text-primary">
       {/* Top micro-bar */}
@@ -127,10 +135,25 @@ export function LoginPage() {
               <AlertTriangle size={11} className="text-amber-600" />
               Config Check Required
             </span>
+          ) : isVerifyingConnection ? (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-blue-50 border-blue-200 text-blue-700">
+              <RefreshCw size={11} className="animate-spin text-blue-600" />
+              Testing Supabase Connection…
+            </span>
+          ) : isConnectionVerified ? (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-emerald-50 border-emerald-200 text-emerald-800">
+              <CheckCircle2 size={11} className="text-emerald-600" />
+              Supabase Auth Connected
+            </span>
+          ) : isConnectionFailed ? (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-red-50 border-red-200 text-red-700">
+              <AlertCircle size={11} className="text-red-600" />
+              Connection Check Failed
+            </span>
           ) : (
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-gray-50 border-gray-200 text-gray-600">
               <Server size={11} />
-              {isConfigured ? 'Supabase Auth Ready' : 'Demo Mode Available'}
+              Demo Mode Available
             </span>
           )}
         </div>
@@ -154,7 +177,7 @@ export function LoginPage() {
 
           {/* Form Card */}
           <div className="card bg-white p-6 sm:p-8 shadow-card border-base-border">
-            {/* Supabase status indicator */}
+            {/* Supabase status indicator - Only displays 'Supabase Connected' after real verification */}
             <div className="mb-5 flex items-center justify-between text-[11px] pb-3 border-b border-base-border">
               <span className="text-text-secondary font-medium">Authentication Gateway:</span>
               {configError ? (
@@ -165,21 +188,56 @@ export function LoginPage() {
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
                   Configuration Notice
                 </span>
-              ) : isConfigured ? (
+              ) : isVerifyingConnection ? (
+                <span className="inline-flex items-center gap-1 text-primary font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+                  Checking Connection…
+                </span>
+              ) : isConnectionVerified ? (
                 <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Supabase Connected
                 </span>
+              ) : isConnectionFailed ? (
+                <span
+                  className="inline-flex items-center gap-1 text-red-600 font-semibold cursor-pointer"
+                  onClick={() => verifyConnection()}
+                  title={connectionVerification?.error || 'Connection failed. Click to recheck.'}
+                >
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  Connection Offline (Retry)
+                </span>
               ) : (
                 <span
                   className="inline-flex items-center gap-1 text-amber-600 font-semibold"
-                  title="VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY not configured"
+                  title="VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY not configured"
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
                   Demo Mode (Local Data)
                 </span>
               )}
             </div>
+
+            {/* Connection Check Failed Banner */}
+            {isConnectionFailed && connectionVerification?.error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-start justify-between gap-2 animate-fade-in">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={15} className="flex-shrink-0 mt-0.5 text-red-600" />
+                  <div className="leading-snug">
+                    <span className="font-semibold block mb-0.5">Connection Verification Failed</span>
+                    {connectionVerification.error}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => verifyConnection()}
+                  disabled={isVerifyingConnection}
+                  className="text-red-700 underline hover:text-red-900 font-semibold text-[11px] flex-shrink-0"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
 
             {/* Config Error Banner */}
             {configError && (
@@ -341,7 +399,7 @@ export function LoginPage() {
                 className="btn-primary w-full py-2.5 text-xs font-semibold mt-2"
               >
                 {isSubmitting ? (
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex items-center justify-center gap-1.5">
                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {mode === 'signin' ? 'Authenticating…' : 'Registering Account…'}
                   </span>
@@ -394,9 +452,11 @@ export function LoginPage() {
           <div className="mt-4 px-2 text-center text-[11px] text-text-muted flex items-center justify-center gap-1.5">
             <Info size={12} />
             <span>
-              {isConfigured
-                ? 'Secured by Supabase Auth with persistent JWT sessions.'
-                : 'Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live authentication.'}
+              {isConnectionVerified
+                ? 'Secured by live Supabase Auth with persistent JWT sessions.'
+                : isConfigured
+                ? 'Connecting to configured Supabase project…'
+                : 'Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable live authentication.'}
             </span>
           </div>
         </div>

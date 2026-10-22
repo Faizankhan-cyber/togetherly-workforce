@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured, getSupabaseConfigStatus, type SupabaseConfigStatus } from '@/lib/supabase';
+import {
+  supabase,
+  isSupabaseConfigured,
+  getSupabaseConfigStatus,
+  verifySupabaseConnection,
+  type SupabaseConfigStatus,
+  type SupabaseConnectionVerification,
+} from '@/lib/supabase';
 import type { Employee } from '@/types';
 
 export type IdentityStatus = 'unauthenticated' | 'demo' | 'pending_assignment' | 'mapped';
@@ -13,6 +20,9 @@ interface AuthContextType {
   configStatus: SupabaseConfigStatus;
   configError: string | null;
   configWarning?: string | null;
+  connectionVerification: SupabaseConnectionVerification | null;
+  isVerifyingConnection: boolean;
+  verifyConnection: () => Promise<SupabaseConnectionVerification>;
   isDemoMode: boolean;
   identityStatus: IdentityStatus;
   mappedEmployee: Employee | null;
@@ -36,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Active connection verification state
+  const [connectionVerification, setConnectionVerification] = useState<SupabaseConnectionVerification | null>(null);
+  const [isVerifyingConnection, setIsVerifyingConnection] = useState<boolean>(false);
+
   const configStatus = getSupabaseConfigStatus();
   const configured = configStatus.isConfigured;
 
@@ -46,6 +60,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     return sessionStorage.getItem(DEMO_MODE_STORAGE_KEY) === 'true';
   });
+
+  // Verify connection against live Supabase Auth endpoint
+  const verifyConnection = useCallback(async (): Promise<SupabaseConnectionVerification> => {
+    if (!isSupabaseConfigured()) {
+      const unconfiguredResult: SupabaseConnectionVerification = {
+        connected: false,
+        checkedAt: new Date().toISOString(),
+        error: configStatus.configError || 'Supabase credentials are not configured.',
+      };
+      setConnectionVerification(unconfiguredResult);
+      return unconfiguredResult;
+    }
+
+    setIsVerifyingConnection(true);
+    try {
+      const result = await verifySupabaseConnection();
+      setConnectionVerification(result);
+      return result;
+    } finally {
+      setIsVerifyingConnection(false);
+    }
+  }, [configStatus.configError]);
+
+  // Initial connection check on mount
+  useEffect(() => {
+    if (configured) {
+      verifyConnection();
+    }
+  }, [configured, verifyConnection]);
 
   // Listen for Supabase Auth state changes and restore existing sessions
   useEffect(() => {
@@ -61,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
       if (error) {
         console.warn('Supabase getSession warning:', error.message);
-        // Do not block app on initial session check failure
       }
 
       if (initialSession) {
@@ -113,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentConfig = getSupabaseConfigStatus();
     if (!currentConfig.isConfigured || !supabase) {
       const err = currentConfig.configError ||
-        'Supabase is not configured. Please use Demo Workspace or check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.';
+        'Supabase is not configured. Please use Demo Workspace or configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.';
       setAuthError(err);
       return { success: false, error: err };
     }
@@ -132,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (lower.includes('email not confirmed')) {
           friendlyMessage = 'Your email address has not been confirmed yet. Please check your inbox for the verification link.';
         } else if (lower.includes('invalid path') || error.status === 404) {
-          friendlyMessage = 'Supabase API configuration error: Invalid URL path. Please verify that VITE_SUPABASE_URL points to the project root (https://<project-ref>.supabase.co).';
+          friendlyMessage = 'Supabase API configuration error: Invalid URL path. Ensure VITE_SUPABASE_URL is strictly the origin root (e.g. https://<project-ref>.supabase.co).';
         } else if (lower.includes('rate limit')) {
           friendlyMessage = 'Too many authentication attempts. Please wait a few moments before trying again.';
         } else if (lower.includes('fetch') || lower.includes('network')) {
@@ -195,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (lower.includes('user already registered')) {
           friendlyMessage = 'An account with this email address already exists. Please sign in instead.';
         } else if (lower.includes('invalid path') || error.status === 404) {
-          friendlyMessage = 'Supabase API configuration error: Invalid URL path. Please verify that VITE_SUPABASE_URL points to the project root (https://<project-ref>.supabase.co).';
+          friendlyMessage = 'Supabase API configuration error: Invalid URL path. Ensure VITE_SUPABASE_URL points to the project root (https://<project-ref>.supabase.co).';
         } else if (lower.includes('rate limit')) {
           friendlyMessage = 'Registration rate limit exceeded. Please wait a few moments before trying again.';
         } else if (lower.includes('fetch') || lower.includes('network')) {
@@ -281,7 +323,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Determine identity mapping status
-  // In the current phase, database migrations have NOT been applied to the remote database.
+  // Database migrations have NOT been applied to the remote database.
   // Therefore, any newly authenticated Supabase user who does not have an admin-provisioned
   // app_metadata claim (e.g. employee_id) is marked as 'pending_assignment'.
   // This prevents unauthorized access to workforce intelligence until real authorization exists.
@@ -324,6 +366,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     configStatus,
     configError: configStatus.configError,
     configWarning: configStatus.warning,
+    connectionVerification,
+    isVerifyingConnection,
+    verifyConnection,
     isDemoMode,
     identityStatus,
     mappedEmployee,

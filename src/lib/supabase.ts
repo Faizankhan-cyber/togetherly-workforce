@@ -4,16 +4,16 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * Detailed configuration inspection status for Supabase integration.
  */
 export interface SupabaseConfigStatus {
-  /** True only when both URL and anon key are present, validly formatted, and sanitized */
+  /** True only when both URL and key are present, validly formatted, and sanitized */
   isConfigured: boolean;
-  /** True when environment variables are supplied and not failing validation */
+  /** True when configuration is valid */
   isValid: boolean;
   /** The sanitized project root URL (e.g. https://<project-ref>.supabase.co) */
   sanitizedUrl: string | null;
   /** Whether VITE_SUPABASE_URL is defined */
   hasUrl: boolean;
-  /** Whether VITE_SUPABASE_ANON_KEY is defined */
-  hasAnonKey: boolean;
+  /** Whether VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY is defined */
+  hasKey: boolean;
   /** Descriptive error message if configuration is malformed, missing, or invalid */
   configError: string | null;
   /** Non-fatal diagnostic warning or normalization note */
@@ -21,19 +21,69 @@ export interface SupabaseConfigStatus {
 }
 
 /**
- * Safely retrieves an environment variable across both Vite client (import.meta.env)
- * and server/test/Node environments (process.env) without throwing if undefined.
+ * Result of active real-time connection check against Supabase Auth endpoints.
  */
-const getEnv = (key: string): string | undefined => {
+export interface SupabaseConnectionVerification {
+  connected: boolean;
+  checkedAt: string;
+  error?: string;
+  httpStatus?: number;
+  details?: {
+    emailAuthEnabled?: boolean;
+    signupEnabled?: boolean;
+  };
+}
+
+/**
+ * Safely reads from global process.env if available in server or test execution environments.
+ */
+const getProcessEnv = (): Record<string, string | undefined> | undefined => {
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      return (import.meta.env as Record<string, string | undefined>)[key];
+    return (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
+      ?.process?.env;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Retrieves the raw URL environment variable across Vite client and node runtime.
+ */
+const getRawEnvUrl = (): string | undefined => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) {
+      return import.meta.env.VITE_SUPABASE_URL;
     }
   } catch {
-    // Ignore and fallback to process.env
+    // Ignore and fallback
   }
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key];
+  const procEnv = getProcessEnv();
+  if (procEnv) {
+    return procEnv.VITE_SUPABASE_URL || procEnv.SUPABASE_URL;
+  }
+  return undefined;
+};
+
+/**
+ * Retrieves the raw publishable or anon key across Vite client and node runtime.
+ */
+const getRawEnvKey = (): string | undefined => {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (key) return key;
+    }
+  } catch {
+    // Ignore and fallback
+  }
+  const procEnv = getProcessEnv();
+  if (procEnv) {
+    return (
+      procEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      procEnv.VITE_SUPABASE_ANON_KEY ||
+      procEnv.SUPABASE_PUBLISHABLE_KEY ||
+      procEnv.SUPABASE_ANON_KEY
+    );
   }
   return undefined;
 };
@@ -41,12 +91,13 @@ const getEnv = (key: string): string | undefined => {
 /**
  * Normalizes, validates, and sanitizes a Supabase project URL.
  *
- * Common misconfigurations handled:
- * 1. Accidental quotes around string: e.g. "https://..." or 'https://...'
- * 2. Extraneous path segments like /rest/v1 or /auth/v1 copied from docs or API settings
- * 3. Trailing slashes
- * 4. Supabase dashboard URLs mistakenly passed instead of API URLs
- * 5. Template placeholders (e.g. your-project.supabase.co)
+ * CRITICAL FIX FOR: "Invalid path specified in request URL"
+ * This error occurs when a URL like `https://<ref>.supabase.co/rest/v1/` or `https://<ref>.supabase.co/auth/v1`
+ * is passed to Supabase's `createClient`. The GoTrue client appends `/auth/v1/...` resulting in invalid
+ * paths like `/rest/v1/auth/v1/token`.
+ *
+ * This sanitizer strips all subpaths, trailing slashes, and quotes, ensuring the client receives
+ * strictly the project root origin (`https://<project-ref>.supabase.co`).
  */
 export function sanitizeSupabaseUrl(rawUrl?: string): {
   url: string | null;
@@ -111,7 +162,7 @@ export function sanitizeSupabaseUrl(rawUrl?: string): {
 
   if (parsed.hostname.toLowerCase().endsWith('.supabase.co')) {
     if (parsed.pathname && parsed.pathname !== '/') {
-      warning = `Stripped path segment "${parsed.pathname}" from VITE_SUPABASE_URL. Using base origin.`;
+      warning = `Normalized URL: removed path segment "${parsed.pathname}" to resolve base origin.`;
     }
     cleanUrl = parsed.origin;
   } else {
@@ -130,9 +181,12 @@ export function sanitizeSupabaseUrl(rawUrl?: string): {
 }
 
 /**
- * Validates and sanitizes a Supabase anon/publishable API key.
+ * Validates and sanitizes a Supabase anon or publishable API key.
  *
- * Never exposes or logs the secret key.
+ * Accepts either:
+ * - Public publishable keys: `sb_publishable_...`
+ * - Standard JWT anon keys: `eyJ...`
+ * Never exposes or accepts private service-role keys.
  */
 export function sanitizeSupabaseKey(rawKey?: string): {
   key: string | null;
@@ -141,7 +195,7 @@ export function sanitizeSupabaseKey(rawKey?: string): {
   if (!rawKey || typeof rawKey !== 'string' || !rawKey.trim()) {
     return {
       key: null,
-      error: 'VITE_SUPABASE_ANON_KEY environment variable is missing.',
+      error: 'VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_ANON_KEY is missing.',
     };
   }
 
@@ -151,12 +205,13 @@ export function sanitizeSupabaseKey(rawKey?: string): {
   // Guard against template placeholders
   if (
     trimmed.includes('your-anon-key') ||
+    trimmed.includes('your-publishable-key') ||
     trimmed.includes('placeholder') ||
     trimmed === 'your-key-here'
   ) {
     return {
       key: null,
-      error: 'VITE_SUPABASE_ANON_KEY contains an unreplaced template placeholder.',
+      error: 'Supabase API key contains an unreplaced template placeholder.',
     };
   }
 
@@ -165,7 +220,7 @@ export function sanitizeSupabaseKey(rawKey?: string): {
     return {
       key: null,
       error:
-        'VITE_SUPABASE_ANON_KEY appears to be a private service-role secret key. Never expose service-role secrets in client applications.',
+        'Detected a private service-role secret key. Never expose service-role secrets in client applications. Use your public publishable or anon key.',
     };
   }
 
@@ -173,7 +228,7 @@ export function sanitizeSupabaseKey(rawKey?: string): {
   if (trimmed.length < 20) {
     return {
       key: null,
-      error: 'VITE_SUPABASE_ANON_KEY is too short to be a valid Supabase API key.',
+      error: 'Supabase key is too short to be a valid API key.',
     };
   }
 
@@ -187,19 +242,19 @@ export function sanitizeSupabaseKey(rawKey?: string): {
  * Evaluates the current environment variables and returns a complete diagnostic report.
  */
 export const getSupabaseConfigStatus = (): SupabaseConfigStatus => {
-  const rawUrl = getEnv('VITE_SUPABASE_URL');
-  const rawKey = getEnv('VITE_SUPABASE_ANON_KEY');
+  const rawUrl = getRawEnvUrl();
+  const rawKey = getRawEnvKey();
 
   const hasUrl = Boolean(rawUrl && rawUrl.trim());
-  const hasAnonKey = Boolean(rawKey && rawKey.trim());
+  const hasKey = Boolean(rawKey && rawKey.trim());
 
-  if (!hasUrl && !hasAnonKey) {
+  if (!hasUrl && !hasKey) {
     return {
       isConfigured: false,
       isValid: false,
       sanitizedUrl: null,
       hasUrl: false,
-      hasAnonKey: false,
+      hasKey: false,
       configError: null, // Graceful demo mode fallback when neither is configured
     };
   }
@@ -215,7 +270,7 @@ export const getSupabaseConfigStatus = (): SupabaseConfigStatus => {
     isValid: isConfigured,
     sanitizedUrl: urlResult.url,
     hasUrl,
-    hasAnonKey,
+    hasKey,
     configError: error,
     warning: urlResult.warning,
   };
@@ -230,16 +285,17 @@ export const isSupabaseConfigured = (): boolean => {
 
 // Evaluate configuration
 const configStatus = getSupabaseConfigStatus();
+const sanitizedKeyResult = sanitizeSupabaseKey(getRawEnvKey());
 
 /**
  * Shared Supabase client instance.
  *
- * Initialized with sanitized origin URL and clean API key.
+ * Initialized with sanitized origin URL and clean public API key.
  * If credentials are missing or invalid, value is `null`, enabling demo mode fallback.
  */
 export const supabase: SupabaseClient | null =
-  configStatus.isConfigured && configStatus.sanitizedUrl
-    ? createClient(configStatus.sanitizedUrl, sanitizeSupabaseKey(getEnv('VITE_SUPABASE_ANON_KEY')).key!, {
+  configStatus.isConfigured && configStatus.sanitizedUrl && sanitizedKeyResult.key
+    ? createClient(configStatus.sanitizedUrl, sanitizedKeyResult.key, {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
@@ -257,8 +313,97 @@ export const getSupabaseClient = (): SupabaseClient => {
     const status = getSupabaseConfigStatus();
     throw new Error(
       status.configError ||
-        'Supabase is not configured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment.'
+        'Supabase is not configured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set in your environment.'
     );
   }
   return supabase;
 };
+
+/**
+ * Performs a genuine, live network verification check against the Supabase project
+ * using the configured credentials.
+ *
+ * Calls `${sanitizedUrl}/auth/v1/settings` with the public API key.
+ * This guarantees that:
+ * 1. The URL is valid and reachable
+ * 2. The API key is accepted by the Supabase project
+ * 3. The Auth service is active and responsive
+ *
+ * Does not display "Connected" unless this check succeeds with HTTP 200.
+ */
+export async function verifySupabaseConnection(timeoutMs = 7000): Promise<SupabaseConnectionVerification> {
+  const status = getSupabaseConfigStatus();
+  const timestamp = new Date().toISOString();
+
+  if (!status.isConfigured || !status.sanitizedUrl || !sanitizedKeyResult.key) {
+    return {
+      connected: false,
+      checkedAt: timestamp,
+      error: status.configError || 'Supabase credentials are not configured.',
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${status.sanitizedUrl}/auth/v1/settings`, {
+      method: 'GET',
+      headers: {
+        apikey: sanitizedKeyResult.key,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return {
+        connected: true,
+        checkedAt: timestamp,
+        httpStatus: response.status,
+        details: {
+          emailAuthEnabled: Boolean(data?.external?.email),
+          signupEnabled: !data?.disable_signup,
+        },
+      };
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        connected: false,
+        checkedAt: timestamp,
+        httpStatus: response.status,
+        error: 'Invalid API key or unauthorized access. Please verify your publishable or anon key.',
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        connected: false,
+        checkedAt: timestamp,
+        httpStatus: response.status,
+        error: 'Supabase Auth endpoint not found (HTTP 404). Check project URL.',
+      };
+    }
+
+    const errorBody = await response.text().catch(() => '');
+    return {
+      connected: false,
+      checkedAt: timestamp,
+      httpStatus: response.status,
+      error: `Supabase returned HTTP ${response.status}: ${errorBody || response.statusText}`,
+    };
+  } catch (err: unknown) {
+    clearTimeout(timeoutId);
+    const isAbort = (err as Error)?.name === 'AbortError';
+    return {
+      connected: false,
+      checkedAt: timestamp,
+      error: isAbort
+        ? 'Connection timed out while reaching Supabase. Please verify project status.'
+        : 'Network connection failed. Unable to reach Supabase project.',
+    };
+  }
+}
