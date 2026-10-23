@@ -1,0 +1,5 @@
+{
+  "summary":  "Exact, unmodified export of supabase/migrations/20261016_initial_schema.sql (582 lines, 24,466 bytes) containing the Togetherly Workforce Intelligence initial schema, RLS helper functions, RLS policies, and storage bucket policies.",
+  "updatedAt":  "2026-10-23T13:14:23.568054397Z",
+  "userFacing":  true
+}

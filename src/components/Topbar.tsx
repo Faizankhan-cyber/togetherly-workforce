@@ -19,6 +19,10 @@ const pageTitles: Record<string, { title: string; breadcrumb: string[] }> = {
   '/my-projects': { title: 'My Projects', breadcrumb: ['Home', 'My Projects'] },
   '/analytics': { title: 'Analytics & Reports', breadcrumb: ['Home', 'Analytics & Reports'] },
   '/settings': { title: 'Settings', breadcrumb: ['Home', 'Settings'] },
+  '/admin/employee-requests': {
+    title: 'Employee Verification',
+    breadcrumb: ['Home', 'Administration', 'Employee Verification'],
+  },
 };
 
 interface TopbarProps {
@@ -134,12 +138,25 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
             </span>
           </div>
         ) : isDemoMode ? (
-          <div
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
-            title="Local simulated demo mode. Role switching is for interface preview only."
-          >
-            <Sparkles size={12} className="text-amber-600" />
-            <span>Demo Mode (Local)</span>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+              title="Local simulated demo mode. Sign in with Supabase to access live database records and administrator verification."
+            >
+              <Sparkles size={12} className="text-amber-600" />
+              <span>Demo Mode (Local)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                exitDemoMode();
+                navigate('/login');
+              }}
+              className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-primary text-white hover:bg-primary-hover transition-colors shadow-xs"
+              title="Exit local demo mode and sign in with Supabase"
+            >
+              Sign In
+            </button>
           </div>
         ) : null}
 

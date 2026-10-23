@@ -16,7 +16,22 @@ import {
   EyeOff,
   AlertTriangle,
   RefreshCw,
+  UserRound,
+  Building2,
+  BriefcaseBusiness,
 } from 'lucide-react';
+
+const DEPARTMENT_OPTIONS = [
+  'Engineering',
+  'Product',
+  'Design',
+  'Data & AI',
+  'Cloud & Infrastructure',
+  'Security',
+  'Quality Assurance',
+  'Operations',
+  'Human Resources',
+];
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -34,6 +49,9 @@ export function LoginPage() {
   } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [fullName, setFullName] = useState('');
+  const [requestedDepartment, setRequestedDepartment] = useState('Engineering');
+  const [requestedJobTitle, setRequestedJobTitle] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -72,6 +90,14 @@ export function LoginPage() {
     }
 
     if (mode === 'signup') {
+      if (!fullName.trim()) {
+        setLocalError('Please enter your full name for employee verification.');
+        return;
+      }
+      if (!requestedDepartment.trim()) {
+        setLocalError('Please select your requested department.');
+        return;
+      }
       if (password.length < 6) {
         setLocalError('Password must be at least 6 characters.');
         return;
@@ -91,11 +117,15 @@ export function LoginPage() {
           navigate('/');
         }
       } else {
-        const result = await signUpWithEmail(trimmedEmail, password);
+        const result = await signUpWithEmail(trimmedEmail, password, {
+          fullName: fullName.trim(),
+          requestedDepartment: requestedDepartment.trim(),
+          requestedJobTitle: requestedJobTitle.trim() || undefined,
+        });
         if (result.success) {
           if (result.requiresEmailConfirmation) {
             setSignupSuccessMsg(
-              'Account created! A verification link has been sent to your email. Please verify your address before signing in.'
+              'Registration submitted! Please verify your email address via the link sent to your inbox. Your application has been queued for administrator approval.'
             );
             setMode('signin');
           } else {
@@ -302,6 +332,75 @@ export function LoginPage() {
 
             {/* Auth Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === 'signup' && (
+                <div className="space-y-3.5 animate-fade-in">
+                  <div>
+                    <label className="block text-xs font-semibold text-text-primary mb-1">
+                      Full Name <span className="text-critical">*</span>
+                    </label>
+                    <div className="relative">
+                      <UserRound
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                      />
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Alex Morgan"
+                        autoComplete="name"
+                        required={mode === 'signup'}
+                        className="input-field pl-9 w-full py-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-text-primary mb-1">
+                        Requested Department <span className="text-critical">*</span>
+                      </label>
+                      <div className="relative">
+                        <Building2
+                          size={14}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                        />
+                        <select
+                          value={requestedDepartment}
+                          onChange={(e) => setRequestedDepartment(e.target.value)}
+                          className="input-field pl-8 pr-2 w-full py-2 text-xs bg-white cursor-pointer"
+                        >
+                          {DEPARTMENT_OPTIONS.map((dept) => (
+                            <option key={dept} value={dept}>
+                              {dept}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-text-primary mb-1">
+                        Job Title <span className="text-[10px] text-text-muted font-normal">(Optional)</span>
+                      </label>
+                      <div className="relative">
+                        <BriefcaseBusiness
+                          size={14}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+                        />
+                        <input
+                          type="text"
+                          value={requestedJobTitle}
+                          onChange={(e) => setRequestedJobTitle(e.target.value)}
+                          placeholder="e.g. Frontend Engineer"
+                          className="input-field pl-8 w-full py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-text-primary mb-1">
                   Work Email

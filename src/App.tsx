@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Topbar } from '@/components/Topbar';
 import { ToastContainer } from '@/components/Toast';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute';
 import { useData } from '@/context/DataContext';
 
 import { LoginPage } from '@/pages/LoginPage';
@@ -21,6 +21,7 @@ import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { EmployeeProjectsPage } from '@/pages/EmployeeExperiencePage';
 import { ScenarioSimulatorPage } from '@/pages/ScenarioSimulatorPage';
+import { EmployeeVerificationPage } from '@/pages/EmployeeVerificationPage';
 
 function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -46,6 +47,16 @@ function WorkspaceLayout() {
             {/* Common / Shared entry */}
             <Route path="/" element={<DashboardPage />} />
             <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
+
+            {/* Administrator-only route protected by real database administrator authorization (not demo role switcher) */}
+            <Route
+              path="/admin/employee-requests"
+              element={
+                <AdminRoute>
+                  <EmployeeVerificationPage />
+                </AdminRoute>
+              }
+            />
 
             {/* Manager specific routes */}
             {role === 'manager' && (

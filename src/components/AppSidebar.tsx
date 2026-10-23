@@ -17,6 +17,8 @@ import {
   BriefcaseBusiness,
   Layers,
   GitFork,
+  UserCheck,
+  Lock,
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
@@ -55,11 +57,15 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
   const { employees, role, setRole, submissions } = useData();
-  const { user, signOut, exitDemoMode } = useAuth();
+  const { user, isAdmin, isDemoMode, signOut, exitDemoMode } = useAuth();
   const navigate = useNavigate();
   const profile = employees.find((employee) => employee.id === 'emp-001');
   const navItems = role === 'manager' ? managerNavItems : employeeNavItems;
   const pendingCount = submissions.filter((s) => s.status === 'pending-verification').length;
+  // Visible to authenticated users whose verified database-backed system role is 'admin'
+  // (and visible as a locked gateway link when in unauthenticated Demo Mode so users can access admin sign-in).
+  // Strictly hidden for any authenticated non-admin employee (user && !isAdmin).
+  const showAdminSection = isAdmin || (isDemoMode && !user);
 
   function changeRole(nextRole: 'manager' | 'employee') {
     setRole(nextRole);
@@ -137,6 +143,55 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
               </NavLink>
             );
           })}
+
+          {/* Administrator Portal Navigation - Protected by real Supabase Administrator authorization (never the demo role switcher) */}
+          {showAdminSection && (
+            <div className="pt-3 mt-3 border-t border-base-border">
+              {!collapsed && (
+                <div className="px-3 pb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                    Administration
+                  </span>
+                  {isAdmin ? (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Admin
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200"
+                      title="Requires authenticated Supabase Administrator session"
+                    >
+                      <Lock size={9} /> Auth
+                    </span>
+                  )}
+                </div>
+              )}
+              <NavLink
+                to="/admin/employee-requests"
+                onClick={onCloseMobile}
+                className={({ isActive }) =>
+                  `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary-50 text-primary font-semibold border-l-2 border-primary'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'
+                  } ${collapsed ? 'justify-center px-2' : ''}`
+                }
+                title={collapsed ? 'Employee Verification' : undefined}
+              >
+                {({ isActive }) => (
+                  <>
+                    <UserCheck
+                      size={16}
+                      className={`flex-shrink-0 ${
+                        isActive ? 'text-primary' : 'text-text-secondary'
+                      }`}
+                    />
+                    {!collapsed && <span className="truncate flex-1">Employee Verification</span>}
+                  </>
+                )}
+              </NavLink>
+            </div>
+          )}
         </nav>
 
         {/* Role Switcher */}

@@ -1,5 +1,29 @@
 export type Role = 'manager' | 'employee';
 
+export type SystemRole = 'employee' | 'manager' | 'hr' | 'admin';
+
+export type RegistrationRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface EmployeeRegistrationRequest {
+  id: string;
+  authUserId: string;
+  applicantName: string;
+  email: string;
+  requestedDepartment: string;
+  requestedJobTitle?: string | null;
+  assignedRole?: SystemRole | null;
+  assignedDepartment?: string | null;
+  assignedJobTitle?: string | null;
+  employeeId?: string | null;
+  status: RegistrationRequestStatus;
+  reviewerId?: string | null;
+  reviewerName?: string | null;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type AvailabilityStatus = 'available' | 'busy' | 'unavailable' | 'partially-available';
 
 export type ProjectStatus = 'planning' | 'active' | 'completed' | 'on-hold';
@@ -72,8 +96,10 @@ export interface TrainingAssignment {
 
 export interface Employee {
   id: string;
+  authUserId?: string | null;
   name: string;
   role: string;
+  systemRole?: SystemRole;
   department: string;
   email: string;
   avatarColor: string;
