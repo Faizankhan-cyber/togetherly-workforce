@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -9,6 +9,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   GitCompareArrows,
   Lightbulb,
   FileBarChart,
@@ -23,31 +24,64 @@ import {
   Gauge,
   BrainCircuit,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 
-const managerNavItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/employees', label: 'Employees', icon: Users },
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/team-builder', label: 'Team Builder', icon: UsersRound },
-  { to: '/workforce-twin', label: 'Workforce Twin', icon: GitCompareArrows },
-  { to: '/scenarios', label: 'Scenario Simulator', icon: GitFork },
-  { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
-  { to: '/roadmap', label: 'Development Roadmap', icon: Map },
-  { to: '/workload', label: 'Workload Planner', icon: BarChart3 },
-  { to: '/intelligence', label: 'TinyFish Intelligence', icon: Sparkles },
-  { to: '/opportunities', label: 'Opportunity Finder', icon: Lightbulb },
-  { to: '/impact-report', label: 'Allocation Impact', icon: FileBarChart },
-  { to: '/analytics', label: 'Analytics & Reports', icon: BarChart3 },
+type SidebarNavItem = { to: string; label: string; icon: LucideIcon };
+type SidebarNavGroup = { name: string; items: SidebarNavItem[] };
+
+const managerNavGroups: SidebarNavGroup[] = [
+  {
+    name: 'Workspace',
+    items: [
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/employees', label: 'Employees', icon: Users },
+      { to: '/projects', label: 'Projects', icon: FolderKanban },
+    ],
+  },
+  {
+    name: 'Intelligence & Optimization',
+    items: [
+      { to: '/team-builder', label: 'Team Builder', icon: UsersRound },
+      { to: '/workforce-twin', label: 'Workforce Twin', icon: GitCompareArrows },
+      { to: '/scenarios', label: 'Scenario Simulator', icon: GitFork },
+      { to: '/workload', label: 'Workload Planner', icon: BarChart3 },
+      { to: '/opportunities', label: 'Opportunity Finder', icon: Lightbulb },
+      { to: '/impact-report', label: 'Allocation Impact', icon: FileBarChart },
+    ],
+  },
+  {
+    name: 'People & Development',
+    items: [
+      { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
+      { to: '/roadmap', label: 'Development Roadmap', icon: Map },
+    ],
+  },
+  {
+    name: 'Insights',
+    items: [
+      { to: '/analytics', label: 'Analytics & Reports', icon: BarChart3 },
+    ],
+  },
+];
+
+// TinyFish Intelligence is intentionally a standalone top-level destination.
+const tinyFishNavItem: SidebarNavItem = {
+  to: '/intelligence',
+  label: 'TinyFish Intelligence',
+  icon: Sparkles,
+};
+
+const managerAdministrationItems: SidebarNavItem[] = [
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
 ];
 
-const employeeNavItems = [
+const employeeNavItems: SidebarNavItem[] = [
   { to: '/', label: 'My Dashboard', icon: LayoutDashboard },
   { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
   { to: '/my-workload', label: 'My Workload', icon: Gauge },
@@ -68,17 +102,67 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
   const { employees, role, setRole, submissions } = useData();
   const { user, isAdmin, isDemoMode, identityStatus, mappedEmployee, signOut, exitDemoMode } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    Workspace: true,
+    'Intelligence & Optimization': false,
+    'People & Development': false,
+    Insights: false,
+    Administration: false,
+  });
   const demoProfile = employees.find((employee) => employee.id === 'emp-001');
   const authenticatedProfile = user && identityStatus === 'mapped' && mappedEmployee?.authUserId === user.id
     ? (employees.find((employee) => employee.authUserId === user.id) ?? mappedEmployee)
     : null;
   const profile = user ? authenticatedProfile : demoProfile;
-  const navItems = role === 'manager' ? managerNavItems : employeeNavItems;
+  const navItems = employeeNavItems;
   const pendingCount = submissions.filter((s) => s.status === 'pending-verification').length;
   // Visible to authenticated users whose verified database-backed system role is 'admin'
   // (and visible as a locked gateway link when in unauthenticated Demo Mode so users can access admin sign-in).
   // Strictly hidden for any authenticated non-admin employee (user && !isAdmin).
   const showAdminSection = isAdmin || (isDemoMode && !user);
+
+  useEffect(() => {
+    const activeGroup = managerNavGroups.find((group) => group.items.some((item) => item.to === location.pathname));
+    if (activeGroup) {
+      setExpandedGroups((previous) => ({ ...previous, [activeGroup.name]: true }));
+      return;
+    }
+    if (managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests') {
+      setExpandedGroups((previous) => ({ ...previous, Administration: true }));
+    }
+  }, [location.pathname]);
+
+  function renderNavItem(item: SidebarNavItem, featured = false) {
+    const Icon = item.icon;
+    const hasPending = item.to === '/skills' && pendingCount > 0;
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.to === '/'}
+        onClick={onCloseMobile}
+        className={({ isActive }) =>
+          `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+            isActive
+              ? (featured ? 'bg-violet-50 text-violet-700 font-semibold border-l-2 border-violet-600' : 'bg-primary-50 text-primary font-semibold border-l-2 border-primary')
+              : (featured ? 'text-violet-700 hover:bg-violet-50' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover')
+          } ${collapsed ? 'justify-center px-2' : ''}`
+        }
+        title={collapsed ? item.label : undefined}
+        aria-label={collapsed ? item.label : undefined}
+      >
+        {({ isActive }) => (
+          <>
+            <Icon size={16} className={`flex-shrink-0 ${isActive ? (featured ? 'text-violet-700' : 'text-primary') : (featured ? 'text-violet-600' : 'text-text-secondary')}`} />
+            {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+            {hasPending && !collapsed && <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500 text-white">{pendingCount}</span>}
+            {hasPending && collapsed && <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1.5 right-1.5 ring-2 ring-white" />}
+          </>
+        )}
+      </NavLink>
+    );
+  }
 
   function changeRole(nextRole: 'manager' | 'employee') {
     setRole(nextRole);
@@ -114,96 +198,90 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           )}
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const hasPending = item.to === '/skills' && pendingCount > 0;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                onClick={onCloseMobile}
-                className={({ isActive }) =>
-                  `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 text-primary font-semibold border-l-2 border-primary'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'
-                  } ${collapsed ? 'justify-center px-2' : ''}`
-                }
-                title={collapsed ? item.label : undefined}
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon
-                      size={16}
-                      className={`flex-shrink-0 ${
-                        isActive ? 'text-primary' : 'text-text-secondary'
-                      }`}
-                    />
-                    {!collapsed && <span className="truncate flex-1">{item.label}</span>}
-                    {hasPending && !collapsed && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500 text-white">
-                        {pendingCount}
-                      </span>
-                    )}
-                    {hasPending && collapsed && (
-                      <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1.5 right-1.5 ring-2 ring-white" />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-
-          {/* Administrator Portal Navigation - Protected by real Supabase Administrator authorization (never the demo role switcher) */}
-          {showAdminSection && (
-            <div className="pt-3 mt-3 border-t border-base-border">
-              {!collapsed && (
-                <div className="px-3 pb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                    Administration
-                  </span>
-                  {isAdmin ? (
-                    <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Admin
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200"
-                      title="Requires authenticated Supabase Administrator session"
+        {/* Navigation: grouped for managers, focused personal menu for employees. */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+          {role === 'manager' ? (
+            <>
+              {collapsed ? (
+                <>
+                  {managerNavGroups.flatMap((group) => group.items).map((item) => renderNavItem(item))}
+                  <div className="my-2 border-t border-violet-100" />
+                  {renderNavItem(tinyFishNavItem, true)}
+                  {managerAdministrationItems.map((item) => renderNavItem(item))}
+                  {showAdminSection && renderNavItem({ to: '/admin/employee-requests', label: 'Employee Verification', icon: UserCheck })}
+                </>
+              ) : (
+                <>
+                  {managerNavGroups.slice(0, 2).map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? false;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+                  <div className="my-2 rounded-lg border border-violet-100 bg-violet-50/50 p-1">
+                    {renderNavItem(tinyFishNavItem, true)}
+                  </div>
+                  {managerNavGroups.slice(2).map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? false;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+                  <section className="mt-2 border-t border-base-border pt-2">
+                    <button
+                      type="button"
+                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests' ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                      onClick={() => setExpandedGroups((previous) => ({ ...previous, Administration: !previous.Administration }))}
+                      aria-expanded={expandedGroups.Administration}
                     >
-                      <Lock size={9} /> Auth
-                    </span>
-                  )}
-                </div>
+                      <span>Administration</span>
+                      <ChevronDown size={13} className={`transition-transform ${expandedGroups.Administration ? '' : '-rotate-90'}`} />
+                    </button>
+                    {expandedGroups.Administration && <div className="space-y-0.5">
+                      {managerAdministrationItems.map((item) => renderNavItem(item))}
+                      {showAdminSection && <>
+                        {!collapsed && <div className="px-3 pt-2 pb-1 flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Admin Portal</span>{isAdmin ? <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Admin</span> : <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200"><Lock size={9}/> Auth</span>}</div>}
+                        <NavLink to="/admin/employee-requests" onClick={onCloseMobile} title={collapsed ? 'Employee Verification' : undefined} className={({isActive}) => `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${isActive ? 'bg-primary-50 text-primary font-semibold border-l-2 border-primary' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'} ${collapsed ? 'justify-center px-2' : ''}`}>
+                          {({isActive}) => <><UserCheck size={16} className={isActive ? 'text-primary' : 'text-text-secondary'}/>{!collapsed && <span className="truncate flex-1">Employee Verification</span>}</>}
+                        </NavLink>
+                      </>}
+                    </div>}
+                  </section>
+                </>
               )}
-              <NavLink
-                to="/admin/employee-requests"
-                onClick={onCloseMobile}
-                className={({ isActive }) =>
-                  `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 text-primary font-semibold border-l-2 border-primary'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'
-                  } ${collapsed ? 'justify-center px-2' : ''}`
-                }
-                title={collapsed ? 'Employee Verification' : undefined}
-              >
-                {({ isActive }) => (
-                  <>
-                    <UserCheck
-                      size={16}
-                      className={`flex-shrink-0 ${
-                        isActive ? 'text-primary' : 'text-text-secondary'
-                      }`}
-                    />
-                    {!collapsed && <span className="truncate flex-1">Employee Verification</span>}
-                  </>
-                )}
-              </NavLink>
-            </div>
+            </>
+          ) : (
+            <>
+              {employeeNavItems.map((item) => renderNavItem(item))}
+              {showAdminSection && <div className="mt-3 border-t border-base-border pt-2">
+                {!collapsed && <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Administration</div>}
+                {renderNavItem({to:'/admin/employee-requests',label:'Employee Verification',icon:UserCheck})}
+              </div>}
+            </>
           )}
         </nav>
 
