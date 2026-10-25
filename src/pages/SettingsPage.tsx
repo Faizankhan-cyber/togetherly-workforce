@@ -11,11 +11,13 @@ import { PageHeader } from '@/components/PageHeader';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { Reveal } from '@/components/Reveal';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import type { AppSettings } from '@/types';
 import { defaultSettings } from '@/data/mockData';
 
 export function SettingsPage() {
-  const { settings, updateSettings, resetData, showToast } = useData();
+  const { settings, updateSettings, resetData, showToast, role: workspaceRole } = useData();
+  const { user, identityStatus, mappedEmployee, systemRole, isDemoMode } = useAuth();
   const [local, setLocal] = useState<AppSettings>(settings);
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -31,6 +33,27 @@ export function SettingsPage() {
   }
 
   const hasChanges = JSON.stringify(local) !== JSON.stringify(settings);
+
+  // Authenticated identity is authoritative. Never fall back to a demo profile
+  // for a signed-in user, or one account can display someone else's details.
+  const authenticatedProfile = user && identityStatus === 'mapped' && mappedEmployee?.authUserId === user.id
+    ? mappedEmployee
+    : null;
+  const profileName = user
+    ? authenticatedProfile?.name || String(user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Signed-in user')
+    : 'Alex Morgan';
+  const profileEmail = user
+    ? authenticatedProfile?.email || user.email || 'Not available'
+    : 'alex.morgan@togetherly.io';
+  const profileJobTitle = user
+    ? authenticatedProfile?.role || (identityStatus === 'pending_assignment' ? 'Awaiting approval' : 'Not assigned')
+    : 'Operations Lead';
+  const profileDepartment = user
+    ? authenticatedProfile?.department || (identityStatus === 'pending_assignment' ? 'Pending assignment' : 'Not assigned')
+    : 'Operations';
+  const profileAccessRole = user
+    ? (authenticatedProfile?.systemRole || systemRole || 'unassigned').replace(/_/g, ' ')
+    : (workspaceRole === 'manager' ? 'Manager demo' : 'Employee demo');
 
   return (
     <div className="space-y-6">
@@ -58,22 +81,32 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5 block">Full Name</label>
-                <input className="input-field w-full" defaultValue="Alex Morgan" />
+                <input className="input-field w-full bg-base-bg/60" value={profileName} readOnly aria-readonly="true" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5 block">Email</label>
-                <input className="input-field w-full" defaultValue="alex.morgan@togetherly.io" />
+                <input className="input-field w-full bg-base-bg/60" value={profileEmail} readOnly aria-readonly="true" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5 block">Role</label>
-                <input className="input-field w-full" defaultValue="Operations Lead" />
+                <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5 block">Job Title</label>
+                <input className="input-field w-full bg-base-bg/60" value={profileJobTitle} readOnly aria-readonly="true" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5 block">Department</label>
-                <input className="input-field w-full" defaultValue="Operations" />
+                <input className="input-field w-full bg-base-bg/60" value={profileDepartment} readOnly aria-readonly="true" />
               </div>
             </div>
-            <p className="text-[11px] text-text-secondary mt-3">Profile mock settings reflect currently active session administrator.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold capitalize text-primary">Access: {profileAccessRole}</span>
+              {!user && <span className="rounded-full border border-warning/25 bg-warning/5 px-2.5 py-1 text-[11px] text-warning">Demo profile</span>}
+            </div>
+            <p className="text-[11px] text-text-secondary mt-3">
+              {user
+                ? authenticatedProfile
+                  ? 'Profile details are loaded from your linked employee record. Contact an authorized manager or HR reviewer to correct official details.'
+                  : 'Your account is not currently linked to an employee record. This page will not substitute another person’s profile.'
+                : `Demo profile for the ${isDemoMode ? 'demo' : 'current preview'} session.`}
+            </p>
           </div>
         </Reveal>
 
