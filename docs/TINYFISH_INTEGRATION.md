@@ -1,21 +1,39 @@
-# TinyFish live market intelligence
+# TinyFish Intelligence in Togetherly
 
-Togetherly's Opportunity Finder uses TinyFish Search to retrieve current external sources for skills, hiring demand, and market opportunities. Internal employee-to-project match scores remain calculated by Togetherly.
+TinyFish is the live web-intelligence layer for Togetherly. The dedicated TinyFish Intelligence workspace combines three connected capabilities:
 
-## Vercel environment variables
+1. Search discovers fresh public sources and returns ranked titles, snippets, and URLs.
+2. Fetch turns up to 10 selected public URLs into clean Markdown content for review.
+3. Agent runs a goal-directed browser workflow on a starting URL and returns structured results. Agent is metered, and the UI asks users to acknowledge this before starting.
 
-Configure these in Vercel → Project → Settings → Environment Variables, then redeploy:
+Search results can be sent directly to Fetch or Agent. All calls go through Vercel serverless functions so TINYFISH_API_KEY never enters the browser bundle.
 
-- `TINYFISH_API_KEY`: API key from the TinyFish dashboard. Keep it server-side; do not use a `VITE_` prefix.
-- `SUPABASE_URL` (or the existing `VITE_SUPABASE_URL`): Supabase project URL.
-- `SUPABASE_ANON_KEY` (or the existing publishable/anon key variable): Supabase publishable/anon key used to validate the signed-in session.
+## Required Vercel environment
 
-The API route verifies the Supabase access token before calling TinyFish. It validates query length, limits displayed results, uses a request timeout, and never returns the API key to the browser.
+- TINYFISH_API_KEY: TinyFish API key, server-only. Never add a VITE_ prefix.
+- VITE_SUPABASE_URL or SUPABASE_URL.
+- One of VITE_SUPABASE_PUBLISHABLE_KEY, VITE_SUPABASE_ANON_KEY, SUPABASE_PUBLISHABLE_KEY, or SUPABASE_ANON_KEY.
 
-## Local development
+Redeploy after changing environment variables.
 
-The regular Vite dev server does not run Vercel serverless functions. Use the Vercel CLI local development server to test `/api/tinyfish/search` locally, with the environment variables above available to that process. Do not put the TinyFish key in client-side environment variables.
+## Endpoints
 
-## Current scope
+- POST /api/tinyfish/search: validates the Supabase session, calls TinyFish Search, and returns at most 10 normalized results.
+- POST /api/tinyfish/fetch: validates the session and accepts 1–10 public HTTP(S) URLs; returns extracted text and per-URL errors.
+- POST /api/tinyfish/agent: validates the session and starts a metered asynchronous Agent run. The goal is wrapped in read-only research guardrails; max run duration is set to 90 seconds.
+- GET /api/tinyfish/agent-run?runId=...: validates the session and retrieves Agent run status/result.
 
-This first integration uses TinyFish Search only. It does not run browser automation or claim that web search results are verified vacancies. Managers should open source links and validate any opportunity before acting.
+All endpoints reject requests without a valid Supabase access token. Local/private/credential-bearing URLs are rejected by Fetch and Agent inputs.
+
+## Architecture
+
+Search → choose source → Fetch retrieves evidence from known pages. Search → choose source → Agent delegates multi-step read-only website research. Managers can use results to inform workforce planning. TinyFish content is untrusted external data and must not automatically modify employee records, project allocations, or internal match scores.
+
+## Development notes
+
+Vite's normal dev server does not run Vercel serverless functions. Use Vercel CLI development mode to test /api/tinyfish/* routes locally, with environment variables available to the server process.
+
+Official TinyFish API docs:
+- https://docs.tinyfish.ai/search-api
+- https://docs.tinyfish.ai/fetch-api
+- https://docs.tinyfish.ai/agent-api

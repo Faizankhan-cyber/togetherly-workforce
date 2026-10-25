@@ -16,6 +16,7 @@ import { SkillsTrainingPage } from '@/pages/SkillsTrainingPage';
 import { DevelopmentRoadmapPage } from '@/pages/DevelopmentRoadmapPage';
 import { WorkloadPlannerPage } from '@/pages/WorkloadPlannerPage';
 import { OpportunityFinderPage } from '@/pages/OpportunityFinderPage';
+import { TinyFishIntelligencePage } from '@/pages/TinyFishIntelligencePage';
 import { AllocationImpactPage } from '@/pages/AllocationImpactPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
@@ -68,6 +69,7 @@ function WorkspaceLayout() {
                 <Route path="/scenarios" element={<ScenarioSimulatorPage />} />
                 <Route path="/skills" element={<SkillsTrainingPage />} />
                 <Route path="/workload" element={<WorkloadPlannerPage />} />
+                <Route path="/intelligence" element={<TinyFishIntelligencePage />} />
                 <Route path="/opportunities" element={<OpportunityFinderPage />} />
                 <Route path="/impact-report" element={<AllocationImpactPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />

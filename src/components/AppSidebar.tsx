@@ -19,6 +19,7 @@ import {
   GitFork,
   UserCheck,
   Lock,
+  Sparkles,
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
@@ -36,6 +37,7 @@ const managerNavItems = [
   { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
   { to: '/roadmap', label: 'Development Roadmap', icon: Map },
   { to: '/workload', label: 'Workload Planner', icon: BarChart3 },
+  { to: '/intelligence', label: 'TinyFish Intelligence', icon: Sparkles },
   { to: '/opportunities', label: 'Opportunity Finder', icon: Lightbulb },
   { to: '/impact-report', label: 'Allocation Impact', icon: FileBarChart },
   { to: '/analytics', label: 'Analytics & Reports', icon: BarChart3 },
