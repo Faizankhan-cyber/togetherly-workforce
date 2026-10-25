@@ -33,6 +33,7 @@ export function TalentVerificationPage() {
   const [claims, setClaims] = useState<EmployeeProfileClaim[]>([]);
   const [skills, setSkills] = useState<SkillOption[]>([]);
   const [audit, setAudit] = useState<Array<Record<string, unknown>>>([]);
+  const [evidenceLinks, setEvidenceLinks] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'pending-verification' | 'all' | 'verified' | 'rejected' | 'needs-more-evidence'>('pending-verification');
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -53,8 +54,21 @@ export function TalentVerificationPage() {
       supabase.from('skills').select('id, name, category').order('name', { ascending: true }),
       supabase.from('employee_profile_claim_audit').select('*').order('created_at', { ascending: false }),
     ]);
-    if (claimResult.error) setErrorMessage(claimResult.error.message);
-    else setClaims((claimResult.data ?? []) as EmployeeProfileClaim[]);
+    if (claimResult.error) {
+      setErrorMessage(claimResult.error.message);
+    } else {
+      const loadedClaims = (claimResult.data ?? []) as EmployeeProfileClaim[];
+      setClaims(loadedClaims);
+      const signedLinks: Record<string, string> = {};
+      await Promise.all(loadedClaims.map(async (claim) => {
+        if (!claim.evidence_storage_path || !supabase) return;
+        const { data, error } = await supabase.storage
+          .from('employee-profile-evidence')
+          .createSignedUrl(claim.evidence_storage_path, 300);
+        if (!error && data?.signedUrl) signedLinks[claim.id] = data.signedUrl;
+      }));
+      setEvidenceLinks(signedLinks);
+    }
     if (skillResult.error) setErrorMessage(skillResult.error.message);
     else setSkills((skillResult.data ?? []) as SkillOption[]);
     if (auditResult.error) setErrorMessage(auditResult.error.message);
@@ -139,7 +153,8 @@ export function TalentVerificationPage() {
           {claim.organization && <p className="mt-3 text-xs text-text-secondary"><span className="font-semibold text-text-primary">Organization / provider:</span> {claim.organization}</p>}
           {claim.start_date || claim.end_date ? <p className="mt-1 text-xs text-text-secondary">Dates: {claim.start_date || 'Not supplied'} – {claim.end_date || 'Present / not supplied'}</p> : null}
           {claim.description && <div className="mt-3 rounded-lg border border-base-border/60 bg-base-bg/50 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Employee explanation</p><p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-text-primary">{claim.description}</p></div>}
-          {claim.evidence_url && <a href={claim.evidence_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">{claim.evidence_label || 'Open supporting evidence'} <ExternalLink size={13}/></a>}
+          {claim.evidence_url && <a href={claim.evidence_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">{claim.evidence_label || 'Open supporting evidence link'} <ExternalLink size={13}/></a>}
+          {evidenceLinks[claim.id] && <a href={evidenceLinks[claim.id]} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Open private evidence document (expires in 5 minutes) <ExternalLink size={13}/></a>}
           {claim.reviewer_notes && <div className="mt-3 rounded-lg border border-base-border/70 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Previous reviewer feedback{claim.reviewer_name ? ` · ${claim.reviewer_name}` : ''}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{claim.reviewer_notes}</p></div>}
           {claim.status === 'pending-verification' && <div className="mt-4 border-t border-base-border/60 pt-4">
             <label className="mb-1.5 block text-xs font-semibold text-text-secondary" htmlFor={`review-note-${claim.id}`}>Reviewer note {isSelf ? '(self-review blocked)' : '(required for reject / more evidence)'}</label>

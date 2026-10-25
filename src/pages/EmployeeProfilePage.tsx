@@ -43,6 +43,8 @@ export function EmployeeProfilePage() {
   const [description, setDescription] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [evidenceLabel, setEvidenceLabel] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceLinks, setEvidenceLinks] = useState<Record<string, string>>({});
   const [editingClaimId, setEditingClaimId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -58,8 +60,21 @@ export function EmployeeProfilePage() {
       supabase.from('skills').select('id, name, category').order('name', { ascending: true }),
       supabase.from('employee_profile_claim_audit').select('*').eq('employee_id', employee.id).order('created_at', { ascending: false }),
     ]);
-    if (claimResult.error) setLoadError(claimResult.error.message);
-    else setClaims((claimResult.data ?? []) as EmployeeProfileClaim[]);
+    if (claimResult.error) {
+      setLoadError(claimResult.error.message);
+    } else {
+      const loadedClaims = (claimResult.data ?? []) as EmployeeProfileClaim[];
+      setClaims(loadedClaims);
+      const signedLinks: Record<string, string> = {};
+      await Promise.all(loadedClaims.map(async (claim) => {
+        if (!claim.evidence_storage_path || !supabase) return;
+        const { data, error } = await supabase.storage
+          .from('employee-profile-evidence')
+          .createSignedUrl(claim.evidence_storage_path, 300);
+        if (!error && data?.signedUrl) signedLinks[claim.id] = data.signedUrl;
+      }));
+      setEvidenceLinks(signedLinks);
+    }
     if (skillResult.error) setLoadError(skillResult.error.message);
     else setSkills((skillResult.data ?? []) as SkillOption[]);
     if (auditResult.error) setLoadError(auditResult.error.message);
@@ -79,7 +94,7 @@ export function EmployeeProfilePage() {
   function clearForm() {
     setClaimType('skill'); setSkillId(''); setClaimedLevel(3); setClaimedYears(''); setTitle('');
     setOrganization(''); setStartDate(''); setEndDate(''); setDescription(''); setEvidenceUrl('');
-    setEvidenceLabel(''); setEditingClaimId(null);
+    setEvidenceLabel(''); setEvidenceFile(null); setEditingClaimId(null);
   }
 
   function editClaim(claim: EmployeeProfileClaim) {
@@ -91,7 +106,7 @@ export function EmployeeProfilePage() {
     setTitle(claim.title ?? ''); setOrganization(claim.organization ?? '');
     setStartDate(claim.start_date ?? ''); setEndDate(claim.end_date ?? '');
     setDescription(claim.description ?? ''); setEvidenceUrl(claim.evidence_url ?? '');
-    setEvidenceLabel(claim.evidence_label ?? ''); setEditingClaimId(claim.id);
+    setEvidenceLabel(claim.evidence_label ?? ''); setEvidenceFile(null); setEditingClaimId(claim.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -101,11 +116,28 @@ export function EmployeeProfilePage() {
     if (claimType === 'skill' && !skillId) { showToast('error', 'Select a skill first.'); return; }
     if (claimType === 'experience' && (!claimedYears || Number(claimedYears) < 0 || Number(claimedYears) > 80)) { showToast('error', 'Enter total professional experience between 0 and 80 years.'); return; }
     if ((claimType === 'experience' || claimType === 'certification') && !title.trim()) { showToast('error', 'Enter a title or certification name.'); return; }
-    if (!description.trim() && !evidenceUrl.trim()) { showToast('error', 'Add a short explanation or a link to supporting evidence so the reviewer has something to assess.'); return; }
+    if (!description.trim() && !evidenceUrl.trim() && !evidenceFile) { showToast('error', 'Add a short explanation or supporting evidence so the reviewer has something to assess.'); return; }
     if (startDate && endDate && endDate < startDate) { showToast('error', 'End date cannot be earlier than start date.'); return; }
+    const allowedEvidenceTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+    if (evidenceFile && !allowedEvidenceTypes.includes(evidenceFile.type)) { showToast('error', 'Evidence must be a PDF, PNG, JPEG, or WEBP file.'); return; }
+    if (evidenceFile && evidenceFile.size > 10 * 1024 * 1024) { showToast('error', 'Evidence files must be 10 MB or smaller.'); return; }
 
     setSubmitting(true);
-    const { error } = await supabase.rpc('submit_employee_profile_claim', {
+    let evidenceStoragePath: string | null = null;
+    if (evidenceFile) {
+      const safeName = evidenceFile.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-120) || 'evidence';
+      evidenceStoragePath = `${employee.id}/${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('employee-profile-evidence')
+        .upload(evidenceStoragePath, evidenceFile, { contentType: evidenceFile.type, upsert: false });
+      if (uploadError) {
+        setSubmitting(false);
+        showToast('error', uploadError.message || 'Could not upload private evidence.');
+        return;
+      }
+    }
+
+    const { error } = await supabase.rpc('submit_employee_profile_claim_with_evidence', {
       p_claim_type: claimType,
       p_skill_id: claimType === 'skill' ? skillId : null,
       p_claimed_level: claimType === 'skill' ? claimedLevel : null,
@@ -116,9 +148,13 @@ export function EmployeeProfilePage() {
       p_end_date: endDate || null,
       p_description: description.trim() || null,
       p_evidence_url: evidenceUrl.trim() || null,
-      p_evidence_label: evidenceLabel.trim() || null,
+      p_evidence_label: evidenceLabel.trim() || (evidenceFile ? evidenceFile.name : null),
       p_claim_id: editingClaimId,
+      p_evidence_storage_path: evidenceStoragePath,
     });
+    if (error && evidenceStoragePath) {
+      await supabase.storage.from('employee-profile-evidence').remove([evidenceStoragePath]);
+    }
     setSubmitting(false);
     if (error) { showToast('error', error.message || 'Could not submit your profile claim.'); return; }
     showToast('success', editingClaimId ? 'Your claim was resubmitted for review.' : 'Your claim was submitted for review.');
@@ -156,6 +192,7 @@ export function EmployeeProfilePage() {
             </div>
             <div><label className="mb-1.5 block text-xs font-semibold text-text-secondary">Explanation / supporting details</label><textarea className="input-field min-h-24 w-full" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe where you used this skill, what you delivered, or any context the reviewer should consider." /></div>
             <div><label className="mb-1.5 block text-xs font-semibold text-text-secondary">Evidence URL (optional)</label><input className="input-field w-full" type="url" value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} placeholder="https://..." /><p className="mt-1 text-[11px] text-text-secondary">Use a portfolio, public project, certification verification page, or another appropriate link. Do not link confidential work or expose sensitive data.</p></div>
+            <div className="rounded-xl border border-base-border/70 bg-base-bg/50 p-4"><label className="mb-1.5 block text-xs font-semibold text-text-secondary">Attach a private evidence document (optional)</label><input className="input-field w-full" type="file" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)} /><p className="mt-1.5 text-[11px] text-text-secondary">PDF, PNG, JPEG or WEBP · maximum 10 MB. Documents are stored privately and only available to you and authorized reviewers through expiring links.</p>{evidenceFile && <p className="mt-2 text-xs font-semibold text-primary">Selected: {evidenceFile.name} · {(evidenceFile.size / (1024 * 1024)).toFixed(2)} MB</p>}</div>
             <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Submitting…' : editingClaimId ? 'Resubmit for Review' : 'Submit for Review'} <ArrowUpRight size={14}/></button>{editingClaimId && <button type="button" className="btn-secondary" onClick={clearForm}><RotateCcw size={14}/> Cancel Resubmission</button>}</div>
           </form>
         </section>
@@ -163,7 +200,7 @@ export function EmployeeProfilePage() {
 
       <section className="card p-5">
         <div className="flex items-center gap-2 border-b border-base-border/60 pb-3"><FileCheck2 size={18} className="text-primary"/><div><h2 className="text-sm font-bold text-text-primary">My submitted claims</h2><p className="mt-1 text-xs text-text-secondary">Track reviewer decisions and resubmit claims when additional information is requested.</p></div></div>
-        {loading ? <p className="py-8 text-center text-xs text-text-secondary">Loading your claims…</p> : loadError && claims.length === 0 ? <div className="py-6 text-center text-xs text-critical">{loadError}</div> : claims.length === 0 ? <div className="py-9 text-center"><Sparkles size={26} className="mx-auto text-text-muted"/><p className="mt-3 text-sm font-semibold text-text-primary">No claims submitted yet</p><p className="mt-1 text-xs text-text-secondary">Your verified skills will appear on My Skills after a reviewer approves them.</p></div> : <div className="mt-4 space-y-3">{claims.map((claim) => { const events = audit.filter((item) => item.claim_id === claim.id); const claimTitle = claim.claim_type === 'skill' ? skillNameById.get(claim.skill_id ?? '') ?? claim.title ?? 'Skill claim' : claim.title ?? claim.claim_type; return <article key={claim.id} className="rounded-xl border border-base-border/70 bg-base-bg/50 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-sm font-bold text-text-primary">{claimTitle}</div><div className="mt-1 text-[11px] text-text-secondary">{claim.claim_type === 'skill' ? `Claimed level ${claim.claimed_level}/5` : claim.claim_type === 'experience' ? `${claim.claimed_years} years claimed` : claim.organization || 'Certification / credential'} · Submitted {new Date(claim.submitted_at).toLocaleDateString()}</div></div><span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyles[claim.status] ?? 'border-base-border text-text-secondary'}`}>{statusLabels[claim.status] ?? claim.status}</span></div>{claim.description && <p className="mt-3 whitespace-pre-wrap text-xs text-text-secondary">{claim.description}</p>}{claim.evidence_url && <a href={claim.evidence_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">{claim.evidence_label || 'View evidence link'} <ExternalLink size={12}/></a>}{claim.reviewer_notes && <div className="mt-3 rounded-lg border border-warning/20 bg-warning/5 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-warning">Reviewer feedback{claim.reviewer_name ? ` · ${claim.reviewer_name}` : ''}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{claim.reviewer_notes}</p></div>}{['rejected','needs-more-evidence'].includes(claim.status) && <button type="button" className="btn-secondary mt-3 text-xs" onClick={() => editClaim(claim)}><RotateCcw size={13}/> Update and resubmit</button>}{events.length > 0 && <details className="mt-3"><summary className="cursor-pointer text-[11px] font-semibold text-text-secondary">Review history ({events.length} events)</summary><div className="mt-2 space-y-2">{events.map((event) => <div key={String(event.id)} className="border-l-2 border-base-border pl-3 py-1"><p className="text-[11px] font-semibold text-text-primary">{String(event.action).replace(/-/g,' ')} · {String(event.actor_name)}</p><p className="text-[10px] text-text-secondary">{new Date(String(event.created_at)).toLocaleString()}{event.note ? ` · ${String(event.note)}` : ''}</p></div>)}</div></details>}</article>; })}</div>}
+        {loading ? <p className="py-8 text-center text-xs text-text-secondary">Loading your claims…</p> : loadError && claims.length === 0 ? <div className="py-6 text-center text-xs text-critical">{loadError}</div> : claims.length === 0 ? <div className="py-9 text-center"><Sparkles size={26} className="mx-auto text-text-muted"/><p className="mt-3 text-sm font-semibold text-text-primary">No claims submitted yet</p><p className="mt-1 text-xs text-text-secondary">Your verified skills will appear on My Skills after a reviewer approves them.</p></div> : <div className="mt-4 space-y-3">{claims.map((claim) => { const events = audit.filter((item) => item.claim_id === claim.id); const claimTitle = claim.claim_type === 'skill' ? skillNameById.get(claim.skill_id ?? '') ?? claim.title ?? 'Skill claim' : claim.title ?? claim.claim_type; return <article key={claim.id} className="rounded-xl border border-base-border/70 bg-base-bg/50 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-sm font-bold text-text-primary">{claimTitle}</div><div className="mt-1 text-[11px] text-text-secondary">{claim.claim_type === 'skill' ? `Claimed level ${claim.claimed_level}/5` : claim.claim_type === 'experience' ? `${claim.claimed_years} years claimed` : claim.organization || 'Certification / credential'} · Submitted {new Date(claim.submitted_at).toLocaleDateString()}</div></div><span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyles[claim.status] ?? 'border-base-border text-text-secondary'}`}>{statusLabels[claim.status] ?? claim.status}</span></div>{claim.description && <p className="mt-3 whitespace-pre-wrap text-xs text-text-secondary">{claim.description}</p>}{claim.evidence_url && <a href={claim.evidence_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">{claim.evidence_label || 'View evidence link'} <ExternalLink size={12}/></a>}{evidenceLinks[claim.id] && <a href={evidenceLinks[claim.id]} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">View private evidence document <ExternalLink size={12}/></a>}{claim.reviewer_notes && <div className="mt-3 rounded-lg border border-warning/20 bg-warning/5 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-warning">Reviewer feedback{claim.reviewer_name ? ` · ${claim.reviewer_name}` : ''}</p><p className="mt-1 whitespace-pre-wrap text-xs text-text-secondary">{claim.reviewer_notes}</p></div>}{['rejected','needs-more-evidence'].includes(claim.status) && <button type="button" className="btn-secondary mt-3 text-xs" onClick={() => editClaim(claim)}><RotateCcw size={13}/> Update and resubmit</button>}{events.length > 0 && <details className="mt-3"><summary className="cursor-pointer text-[11px] font-semibold text-text-secondary">Review history ({events.length} events)</summary><div className="mt-2 space-y-2">{events.map((event) => <div key={String(event.id)} className="border-l-2 border-base-border pl-3 py-1"><p className="text-[11px] font-semibold text-text-primary">{String(event.action).replace(/-/g,' ')} · {String(event.actor_name)}</p><p className="text-[10px] text-text-secondary">{new Date(String(event.created_at)).toLocaleString()}{event.note ? ` · ${String(event.note)}` : ''}</p></div>)}</div></details>}</article>; })}</div>}
       </section>
       <p className="text-[11px] text-text-secondary">Only verified skill claims are promoted into the canonical skills inventory used for team matching. Verified experience updates the official experience field. Certification claims remain in the verified claim record and should be checked by your reviewer.</p>
     </div>

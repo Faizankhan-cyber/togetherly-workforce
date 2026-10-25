@@ -55,6 +55,7 @@ export interface EmployeeProfileClaim {
   description: string | null;
   evidence_url: string | null;
   evidence_label: string | null;
+  evidence_storage_path: string | null;
   status: EmployeeProfileClaimStatus;
   reviewer_employee_id: string | null;
   reviewer_name: string | null;
