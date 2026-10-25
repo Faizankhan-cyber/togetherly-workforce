@@ -1151,34 +1151,7 @@ export function EmployeeVerificationPage() {
                         <strong>{selectedDepartment}</strong> department?
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="button"
-                        disabled={isSubmittingDecision}
-                        onClick={() => setReviewActionMode('idle')}
-                        className="btn-secondary text-xs px-3 py-1.5"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSubmittingDecision}
-                        onClick={() => void handleConfirmApprove()}
-                        className="btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5"
-                      >
-                        {isSubmittingDecision ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Approving & Provisioning…</span>
-                          </>
-                        ) : (
-                          <>
-                            <Check size={14} />
-                            <span>Confirm Approval</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+
                   </div>
                 )}
 
@@ -1196,34 +1169,7 @@ export function EmployeeVerificationPage() {
                         will be denied access to Togetherly workforce modules.
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="button"
-                        disabled={isSubmittingDecision}
-                        onClick={() => setReviewActionMode('reject-form')}
-                        className="btn-secondary text-xs px-3 py-1.5"
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSubmittingDecision}
-                        onClick={() => void handleConfirmReject()}
-                        className="btn-danger text-xs px-3.5 py-1.5 flex items-center gap-1.5"
-                      >
-                        {isSubmittingDecision ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Rejecting Application…</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle size={14} />
-                            <span>Confirm Rejection</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+
                   </div>
                 )}
               </div>
@@ -1241,7 +1187,65 @@ export function EmployeeVerificationPage() {
               </button>
 
               <div className="flex flex-wrap items-center gap-2.5">
-                {reviewActionMode === 'reject-form' ? (
+                {reviewActionMode === 'confirm-approve' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setReviewActionMode('idle')}
+                      disabled={isSubmittingDecision}
+                      className="btn-secondary text-xs px-3.5 py-2"
+                    >
+                      Cancel Approval
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleConfirmApprove()}
+                      disabled={isSubmittingDecision}
+                      className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isSubmittingDecision ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Approving & Provisioning…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check size={14} />
+                          <span>Confirm Approval</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : reviewActionMode === 'confirm-reject' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setReviewActionMode('reject-form')}
+                      disabled={isSubmittingDecision}
+                      className="btn-secondary text-xs px-3.5 py-2"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleConfirmReject()}
+                      disabled={isSubmittingDecision}
+                      className="btn-danger text-xs px-4 py-2 flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isSubmittingDecision ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Rejecting Application…</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={14} />
+                          <span>Confirm Rejection</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : reviewActionMode === 'reject-form' ? (
                   <>
                     <button
                       type="button"
@@ -1266,10 +1270,7 @@ export function EmployeeVerificationPage() {
                     <button
                       type="button"
                       disabled={
-                        isSubmittingDecision ||
-                        reviewActionMode === 'confirm-approve' ||
-                        reviewActionMode === 'confirm-reject' ||
-                        selectedRequest.authUserId === user?.id
+                        isSubmittingDecision || selectedRequest.authUserId === user?.id
                       }
                       onClick={handleInitiateReject}
                       title={
@@ -1285,11 +1286,7 @@ export function EmployeeVerificationPage() {
 
                     <button
                       type="button"
-                      disabled={
-                        isSubmittingDecision ||
-                        reviewActionMode === 'confirm-approve' ||
-                        reviewActionMode === 'confirm-reject'
-                      }
+                      disabled={isSubmittingDecision}
                       onClick={handleInitiateApprove}
                       className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 disabled:opacity-50"
                     >
