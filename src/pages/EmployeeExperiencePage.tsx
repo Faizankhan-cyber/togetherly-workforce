@@ -26,7 +26,7 @@ import { Reveal } from '@/components/Reveal';
 import { TrainingSubmissionModal } from '@/components/TrainingSubmissionModal';
 import { EvidenceReviewModal } from '@/components/EvidenceReviewModal';
 import { useData } from '@/context/DataContext';
-import { demoEmployeeId } from '@/data/mockData';
+import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
 import {
   calculateEmployeeUtilization,
   daysUntil,
@@ -38,12 +38,12 @@ import type { ProjectRequirement, TrainingSubmission } from '@/types';
 
 export function EmployeeDashboardPage() {
   const { employees, projects, settings, submissions } = useData();
+  const employee = useCurrentEmployee();
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);
   const [resubmitClaim, setResubmitClaim] = useState<TrainingSubmission | undefined>(undefined);
   const [initialClaimData, setInitialClaimData] = useState<Partial<TrainingSubmission> | undefined>(undefined);
 
-  const employee = employees.find((item) => item.id === demoEmployeeId);
   const employeeSubmissions = useMemo(() => {
     return employee ? submissions.filter((s) => s.employeeId === employee.id) : [];
   }, [employee, submissions]);
@@ -68,8 +68,8 @@ export function EmployeeDashboardPage() {
   if (!employee) {
     return (
       <div className="card p-8 text-center">
-        <h1 className="text-lg font-semibold text-text-primary">Demo employee profile unavailable</h1>
-        <p className="mt-2 text-sm text-text-secondary">Reset the demo data in Settings to restore the employee preview.</p>
+        <h1 className="text-lg font-semibold text-text-primary">Employee profile unavailable</h1>
+        <p className="mt-2 text-sm text-text-secondary">Your signed-in account has not been linked to an employee profile yet. Contact your manager or HR administrator.</p>
       </div>
     );
   }
@@ -509,7 +509,7 @@ export function EmployeeProjectsPage() {
   const { employees, projects } = useData();
   const location = useLocation();
   const selectedProjectId = (location.state as { projectId?: string } | null)?.projectId;
-  const employee = employees.find((item) => item.id === demoEmployeeId);
+  const employee = useCurrentEmployee();
   const assignedProjects = employee ? getEmployeeProjects(employee.id, projects) : [];
 
   return (
@@ -520,7 +520,7 @@ export function EmployeeProjectsPage() {
         breadcrumb={['Home', 'My Projects']}
       />
       {!employee || assignedProjects.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-text-secondary">No project assignments to display.</div>
+        <div className="card p-8 text-center text-sm text-text-secondary">No project assignments are linked to your employee profile yet.</div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {assignedProjects.map((project, index) => {

@@ -19,6 +19,7 @@ import { TrainingSubmissionModal } from '@/components/TrainingSubmissionModal';
 import { EvidenceReviewModal } from '@/components/EvidenceReviewModal';
 import { useData } from '@/context/DataContext';
 import { demoEmployeeId } from '@/data/mockData';
+import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
 import { getEmployeeProjects, getSkillName } from '@/utils';
 import type { TrainingSubmission } from '@/types';
 
@@ -44,14 +45,15 @@ const coursesBySkill: Record<string, { course: string; provider: string }> = {
 
 export function DevelopmentRoadmapPage() {
   const { employees, projects, submissions, role, addTrainingAssignment, updateTrainingAssignment, showToast } = useData();
+  const currentEmployee = useCurrentEmployee();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(demoEmployeeId);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);
   const [resubmitClaim, setResubmitClaim] = useState<TrainingSubmission | undefined>(undefined);
   const [initialClaimData, setInitialClaimData] = useState<Partial<TrainingSubmission> | undefined>(undefined);
 
-  const employeeId = role === 'employee' ? demoEmployeeId : selectedEmployeeId;
-  const employee = employees.find((item) => item.id === employeeId);
+  const employeeId = role === 'employee' ? (currentEmployee?.id ?? '') : selectedEmployeeId;
+  const employee = role === 'employee' ? currentEmployee : employees.find((item) => item.id === employeeId);
   const employeeProjects = useMemo(
     () => employee ? getEmployeeProjects(employee.id, projects).filter((project) => project.status !== 'completed') : [],
     [employee, projects]
@@ -81,7 +83,7 @@ export function DevelopmentRoadmapPage() {
     return (
       <div className="card p-8 text-center">
         <h1 className="font-semibold text-text-primary">Employee not found</h1>
-        <p className="mt-2 text-sm text-text-secondary">Reset the demo data to restore the selected employee.</p>
+        <p className="mt-2 text-sm text-text-secondary">The signed-in account is not linked to an employee profile. Contact your manager or HR administrator.</p>
       </div>
     );
   }

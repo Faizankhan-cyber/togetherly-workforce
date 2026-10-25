@@ -59,9 +59,13 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
   const { employees, role, setRole, submissions } = useData();
-  const { user, isAdmin, isDemoMode, signOut, exitDemoMode } = useAuth();
+  const { user, isAdmin, isDemoMode, identityStatus, mappedEmployee, signOut, exitDemoMode } = useAuth();
   const navigate = useNavigate();
-  const profile = employees.find((employee) => employee.id === 'emp-001');
+  const demoProfile = employees.find((employee) => employee.id === 'emp-001');
+  const authenticatedProfile = user && identityStatus === 'mapped' && mappedEmployee?.authUserId === user.id
+    ? (employees.find((employee) => employee.authUserId === user.id) ?? mappedEmployee)
+    : null;
+  const profile = user ? authenticatedProfile : demoProfile;
   const navItems = role === 'manager' ? managerNavItems : employeeNavItems;
   const pendingCount = submissions.filter((s) => s.status === 'pending-verification').length;
   // Visible to authenticated users whose verified database-backed system role is 'admin'
@@ -255,19 +259,19 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         <div className={`p-2 border-t border-base-border flex-shrink-0 bg-white ${collapsed ? 'flex flex-col items-center gap-1.5' : ''}`}>
           <div className={`flex items-center gap-2.5 ${collapsed ? '' : 'p-1.5 rounded-md hover:bg-base-hover transition-colors'}`}>
             <Avatar
-              name={user ? user.email || 'User' : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
+              name={user ? profile?.name || user.email || 'User' : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
               color={role === 'employee' && profile ? profile.avatarColor : '#0078D4'}
               size="sm"
             />
             {!collapsed && (
               <div className="overflow-hidden flex-1 min-w-0">
                 <div className="text-xs font-bold text-text-primary truncate">
-                  {user ? user.email : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
+                  {user ? (profile?.name || user.email) : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
                 </div>
                 <div className="text-[10px] text-text-secondary truncate flex items-center gap-1">
                   {user ? (
                     <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Supabase User
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {profile?.role || 'Supabase User'}
                     </span>
                   ) : (
                     <span className="text-amber-600 font-medium">Demo Administrator</span>
