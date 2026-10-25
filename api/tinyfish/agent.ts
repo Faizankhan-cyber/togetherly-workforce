@@ -79,7 +79,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 25000);
     let response: Response;
     try {
-      response = await fetch('https://agent.tinyfish.ai/v1/automation/run-async', { method: 'POST', headers: { 'X-API-Key': tinyFishKey, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ url, goal: safeGoal, agent_config: { max_duration_seconds: 90 } }), signal: controller.signal });
+      response = await fetch('https://agent.tinyfish.ai/v1/automation/run-async', { method: 'POST', headers: { 'X-API-Key': tinyFishKey, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ url, goal: safeGoal, browser_profile: 'lite', agent_config: { max_duration_seconds: 240 } }), signal: controller.signal });
     } finally { clearTimeout(timeout); }
     const responseText = await response.text();
     let data: { run_id?: string | null; error?: unknown; message?: string; detail?: string };

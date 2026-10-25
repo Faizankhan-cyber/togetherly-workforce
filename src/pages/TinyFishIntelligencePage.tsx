@@ -9,12 +9,53 @@ type SearchResult = { title: string; url: string; snippet: string; siteName?: st
 type SearchResponse = { query: string; results: SearchResult[]; totalResults?: number };
 type FetchResult = { url: string; final_url?: string; title?: string; description?: string; text?: string; format?: string };
 type FetchResponse = { results?: FetchResult[]; errors?: Array<{ url?: string; error?: string; message?: string }> };
-type AgentRun = { run_id?: string; status?: string; goal?: string; result?: unknown; error?: { message?: string; code?: string } | string; num_of_steps?: number };
+type AgentRun = {
+  run_id?: string;
+  status?: string;
+  goal?: string;
+  result?: unknown | null;
+  error?: { message?: string; code?: string; category?: string; help_url?: string; help_message?: string } | string | null;
+  num_of_steps?: number | null;
+  finished_at?: string | null;
+  streaming_url?: string | null;
+  video_url?: string | null;
+  steps?: Array<{ id?: string; status?: string; action?: string; purpose?: string; timestamp?: string; error?: unknown }>;
+};
 type Mode = 'search' | 'fetch' | 'agent';
 
 function hostLabel(value: string): string { try { return new URL(value).hostname; } catch { return value; } }
 function isHttpUrl(value: string): boolean {
   try { const parsed = new URL(value); return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && Boolean(parsed.hostname); } catch { return false; }
+}
+
+function isTerminalAgentStatus(status?: string): boolean {
+  return ['COMPLETED', 'FAILED', 'CANCELLED', 'TIMED_OUT', 'TIMEOUT', 'EXPIRED'].includes((status || '').toUpperCase());
+}
+
+function getLatestAgentStep(run: AgentRun): string {
+  const steps = Array.isArray(run.steps) ? run.steps : [];
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    const detail = steps[index].action || steps[index].purpose;
+    if (typeof detail === 'string' && detail.trim()) return detail.trim();
+  }
+  return '';
+}
+
+function getAgentErrorText(error: AgentRun['error']): string {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') return error.message || error.help_message || error.code || 'Unknown Agent error';
+  return '';
+}
+
+function getAgentGoalFailure(result: unknown): string {
+  if (!result || typeof result !== 'object') return '';
+  const value = result as { status?: unknown; reason?: unknown; message?: unknown; error?: unknown; success?: unknown };
+  const status = typeof value.status === 'string' ? value.status.toLowerCase() : '';
+  if (status === 'failure' || status === 'failed' || value.success === false) {
+    const reason = [value.reason, value.message, value.error].find((item) => typeof item === 'string' && item.trim());
+    return typeof reason === 'string' ? reason : 'The browser run finished, but the research goal was not achieved.';
+  }
+  return '';
 }
 
 export function TinyFishIntelligencePage() {
@@ -121,32 +162,87 @@ export function TinyFishIntelligencePage() {
     finally { setFetchLoading(false); }
   }
 
+  async function pollAgentRun(runId: string, maxAttempts = 75): Promise<AgentRun | null> {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, attempt === 0 ? 2000 : 4000));
+      const current = await apiRequest<AgentRun>('/api/tinyfish/agent-run?runId=' + encodeURIComponent(runId), { method: 'GET' });
+      const run: AgentRun = { ...current, run_id: current.run_id || runId };
+      setAgentRun(run);
+      const status = (run.status || 'RUNNING').toUpperCase();
+
+      if (isTerminalAgentStatus(status)) {
+        if (status === 'COMPLETED') {
+          const goalFailure = getAgentGoalFailure(run.result);
+          setAgentProgress(goalFailure
+            ? 'The browser run completed, but the research goal was not achieved: ' + goalFailure
+            : run.result != null
+              ? 'Research completed. Review the findings and verify the cited sources before using them.'
+              : 'The browser run completed but returned no result payload. Review the run details below.');
+        } else {
+          const detail = getAgentErrorText(run.error);
+          setAgentProgress('Agent run ended with status ' + status + (detail ? ': ' + detail : '.'));
+        }
+        return run;
+      }
+
+      const latestStep = getLatestAgentStep(run);
+      setAgentProgress('Agent is working through the website…' + (latestStep ? ' Current step: ' + latestStep : ''));
+    }
+
+    setAgentProgress('The Agent is still running. The run ID is saved below. Use “Check status” to resume polling; do not start a duplicate run.');
+    return null;
+  }
+
+  async function checkAgentStatus() {
+    if (!agentRun?.run_id || agentLoading) return;
+    setAgentLoading(true);
+    setAgentError('');
+    setAgentProgress('Reconnecting to the existing Agent run…');
+    try {
+      await pollAgentRun(agentRun.run_id, 45);
+    } catch (error) {
+      setAgentError(error instanceof Error ? error.message : 'Unable to check Agent status.');
+      setAgentProgress('The run ID is preserved. Retry “Check status” to continue checking the same run.');
+    } finally {
+      setAgentLoading(false);
+    }
+  }
+
   async function runAgent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isHttpUrl(agentUrl)) { setAgentError('Enter a valid public website URL starting with http:// or https://.'); return; }
     if (agentGoal.trim().length < 20) { setAgentError('Give the agent a specific research goal (at least 20 characters).'); return; }
     if (!agentAcknowledged) { setAgentError('Acknowledge that TinyFish Agent runs are metered before starting.'); return; }
-    setAgentLoading(true); setAgentError(''); setAgentRun(null); setAgentProgress('Starting a TinyFish Agent run…');
+    if (agentRun?.run_id && !isTerminalAgentStatus(agentRun.status)) {
+      setAgentError('An Agent run is already active. Check its status before starting another run.');
+      return;
+    }
+
+    setAgentLoading(true);
+    setAgentError('');
+    setAgentRun(null);
+    setAgentProgress('Starting a TinyFish Agent run…');
     try {
-      const started = await apiRequest<AgentRun>('/api/tinyfish/agent', { method: 'POST', body: JSON.stringify({ url: agentUrl.trim(), goal: agentGoal.trim() }) });
+      const started = await apiRequest<AgentRun>('/api/tinyfish/agent', {
+        method: 'POST',
+        body: JSON.stringify({ url: agentUrl.trim(), goal: agentGoal.trim() }),
+      });
       if (!started.run_id) throw new Error('TinyFish did not return a run ID.');
       setAgentRun({ run_id: started.run_id, status: 'PENDING' });
-      let finalRun: AgentRun | null = null;
-      for (let attempt = 0; attempt < 50; attempt += 1) {
-        setAgentProgress(attempt < 2 ? 'Agent is opening the page and planning its research…' : 'Agent is working through the website…');
-        await new Promise((resolve) => window.setTimeout(resolve, 2000));
-        const current = await apiRequest<AgentRun>('/api/tinyfish/agent-run?runId=' + encodeURIComponent(started.run_id), { method: 'GET' });
-        setAgentRun(current);
-        const status = (current.status || '').toUpperCase();
-        if (status === 'COMPLETED' || status === 'FAILED' || status === 'CANCELLED') { finalRun = current; break; }
-      }
-      if (!finalRun) setAgentProgress('The run is still processing. Its current status and run ID are shown below; retry the check shortly.');
-      else if (finalRun.status?.toUpperCase() === 'COMPLETED') setAgentProgress('Agent run completed. Review its output and verify sources before acting.');
-      else { const detail = typeof finalRun.error === 'string' ? finalRun.error : finalRun.error?.message; setAgentProgress('Agent run ended with status ' + finalRun.status + (detail ? ': ' + detail : '.')); }
-    } catch (error) { setAgentError(error instanceof Error ? error.message : 'Agent run failed.'); setAgentProgress(''); }
-    finally { setAgentLoading(false); }
+      setAgentProgress('Agent accepted the task. Waiting for browser execution…');
+      await pollAgentRun(started.run_id, 75);
+    } catch (error) {
+      setAgentError(error instanceof Error ? error.message : 'Agent run failed.');
+      setAgentProgress(agentRun?.run_id ? 'The run ID is preserved. Use “Check status” to reconnect to this run.' : '');
+    } finally {
+      setAgentLoading(false);
+    }
   }
 
+  const agentStatus = (agentRun?.status || '').toUpperCase();
+  const agentIsTerminal = isTerminalAgentStatus(agentStatus);
+  const agentIsActive = Boolean(agentRun?.run_id && !agentIsTerminal);
+  const agentGoalFailure = agentRun?.status?.toUpperCase() === 'COMPLETED' ? getAgentGoalFailure(agentRun.result) : '';
   const tabs: Array<{ id: Mode; title: string; description: string; icon: typeof Search }> = [
     { id: 'search', title: 'Search', description: 'Discover sources', icon: Search },
     { id: 'fetch', title: 'Fetch', description: 'Read page content', icon: FileSearch },
@@ -189,10 +285,11 @@ export function TinyFishIntelligencePage() {
 
       {mode === 'agent' && <Reveal direction="up"><section className="card p-5 sm:p-6">
         <div className="mb-4 flex items-start gap-3"><WandSparkles size={20} className="mt-0.5 text-primary" /><div><h2 className="text-sm font-bold text-text-primary">3. Delegate a multi-step task to TinyFish Agent</h2><p className="mt-1 text-xs text-text-secondary">Agent navigates the target website and returns structured findings. Start from a Search result or enter a public URL.</p></div></div>
-        <form onSubmit={runAgent} className="space-y-4"><div className="space-y-1.5"><label htmlFor="tinyfish-agent-url" className="block text-xs font-semibold text-text-primary">Starting URL</label><input id="tinyfish-agent-url" value={agentUrl} onChange={(event) => setAgentUrl(event.target.value)} maxLength={2048} className="input-field w-full text-sm" placeholder="https://example.com" /></div><div className="space-y-1.5"><label htmlFor="tinyfish-agent-goal" className="block text-xs font-semibold text-text-primary">Agent goal</label><textarea id="tinyfish-agent-goal" rows={5} value={agentGoal} onChange={(event) => setAgentGoal(event.target.value)} maxLength={1500} className="input-field w-full text-sm" placeholder="Describe the public information to gather and the output format." /><p className="text-[11px] text-text-muted">Be specific about what to inspect, which fields matter, and the expected output.</p></div><label className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-text-secondary"><input type="checkbox" checked={agentAcknowledged} onChange={(event) => setAgentAcknowledged(event.target.checked)} className="mt-0.5" /><span><strong className="text-text-primary">I understand Agent runs may consume TinyFish credits.</strong> This integration requests read-only research. Do not use it to submit forms, send messages, make purchases, or change accounts or records.</span></label><button type="submit" disabled={agentLoading || !agentAcknowledged} className="btn-primary justify-center text-xs">{agentLoading ? <LoaderCircle size={15} className="animate-spin" /> : <WandSparkles size={15} />}{agentLoading ? 'Agent working…' : 'Start agent research'}</button></form>
+        <form onSubmit={runAgent} className="space-y-4"><div className="space-y-1.5"><label htmlFor="tinyfish-agent-url" className="block text-xs font-semibold text-text-primary">Starting URL</label><input id="tinyfish-agent-url" value={agentUrl} onChange={(event) => setAgentUrl(event.target.value)} maxLength={2048} className="input-field w-full text-sm" placeholder="https://example.com" /></div><div className="space-y-1.5"><label htmlFor="tinyfish-agent-goal" className="block text-xs font-semibold text-text-primary">Agent goal</label><textarea id="tinyfish-agent-goal" rows={5} value={agentGoal} onChange={(event) => setAgentGoal(event.target.value)} maxLength={1500} className="input-field w-full text-sm" placeholder="Describe the public information to gather and the output format." /><p className="text-[11px] text-text-muted">Be specific about what to inspect, which fields matter, and the expected output.</p></div><label className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-text-secondary"><input type="checkbox" checked={agentAcknowledged} onChange={(event) => setAgentAcknowledged(event.target.checked)} className="mt-0.5" /><span><strong className="text-text-primary">I understand Agent runs may consume TinyFish credits.</strong> This integration requests read-only research. Do not use it to submit forms, send messages, make purchases, or change accounts or records.</span></label><button type="submit" disabled={agentLoading || !agentAcknowledged || agentIsActive} className="btn-primary justify-center text-xs">{agentLoading ? <LoaderCircle size={15} className="animate-spin" /> : <WandSparkles size={15} />}{agentLoading ? 'Agent working…' : agentIsActive ? 'Agent run still active' : 'Start agent research'}</button></form>
+        {agentIsActive && !agentLoading && <button type="button" onClick={checkAgentStatus} className="btn-secondary mt-3 justify-center text-xs"><LoaderCircle size={14} /> Check status of existing run</button>}
         {agentError && <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-critical/30 bg-critical/5 p-3 text-xs text-critical"><AlertCircle size={15} />{agentError}</div>}
         {agentProgress && <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-text-secondary"><LoaderCircle size={15} className={agentLoading ? 'mt-0.5 animate-spin text-primary' : 'mt-0.5 text-primary'} /><span>{agentProgress}{agentRun?.run_id && <span className="mt-1 block break-all font-mono text-[10px]">Run ID: {agentRun.run_id} · Status: {agentRun.status || 'PENDING'}</span>}</span></div>}
-        {agentRun && (agentRun.result !== undefined || agentRun.error) && <div className="mt-5 overflow-hidden rounded-xl border border-base-border"><div className="flex items-center gap-2 border-b border-base-border bg-base-bg/60 p-3">{agentRun.status?.toUpperCase() === 'COMPLETED' ? <CheckCircle2 size={16} className="text-success" /> : <AlertCircle size={16} className="text-warning" />}<h3 className="text-sm font-bold text-text-primary">Agent output</h3>{typeof agentRun.num_of_steps === 'number' && <span className="ml-auto text-[10px] text-text-muted">{agentRun.num_of_steps} steps</span>}</div><pre className="max-h-[520px] overflow-auto whitespace-pre-wrap break-words p-4 text-xs leading-relaxed text-text-secondary">{JSON.stringify(agentRun.result ?? agentRun.error ?? agentRun, null, 2)}</pre></div>}
+        {agentRun && agentIsTerminal && <div className="mt-5 overflow-hidden rounded-xl border border-base-border"><div className="flex items-center gap-2 border-b border-base-border bg-base-bg/60 p-3">{agentStatus === 'COMPLETED' && !agentGoalFailure ? <CheckCircle2 size={16} className="text-success" /> : <AlertCircle size={16} className="text-warning" />}<h3 className="text-sm font-bold text-text-primary">{agentStatus === 'COMPLETED' && !agentGoalFailure ? 'Agent research result' : 'Agent run details'}</h3>{typeof agentRun.num_of_steps === 'number' && <span className="ml-auto text-[10px] text-text-muted">{agentRun.num_of_steps} steps</span>}</div>{agentGoalFailure && <div role="status" className="border-b border-warning/30 bg-warning/5 p-3 text-xs text-text-secondary">The browser completed, but the requested research goal was not achieved: {agentGoalFailure}</div>}<pre className="max-h-[520px] overflow-auto whitespace-pre-wrap break-words p-4 text-xs leading-relaxed text-text-secondary">{JSON.stringify(agentRun.result ?? agentRun.error ?? { status: agentRun.status, message: 'The Agent finished without returning a result payload.' }, null, 2)}</pre>{agentRun.streaming_url && isHttpUrl(agentRun.streaming_url) && <div className="border-t border-base-border p-3"><a href={agentRun.streaming_url} target="_blank" rel="noreferrer noopener" className="btn-secondary inline-flex text-xs"><ExternalLink size={13} /> Open browser stream</a></div>}{agentRun.video_url && isHttpUrl(agentRun.video_url) && <div className="border-t border-base-border p-3"><a href={agentRun.video_url} target="_blank" rel="noreferrer noopener" className="btn-secondary inline-flex text-xs"><ExternalLink size={13} /> Open run recording</a></div>}</div>}
       </section></Reveal>}
 
       <div className="flex items-start gap-2 rounded-lg border border-base-border bg-base-bg/50 p-3 text-[11px] leading-relaxed text-text-muted"><ShieldCheck size={14} className="mt-0.5 shrink-0" /><p>Use public sources. Treat website content as untrusted input, verify critical facts against the original page, and never let an external result automatically change employee records or staffing decisions. Agent is metered; Search and Fetch are retrieval tools.</p></div>
