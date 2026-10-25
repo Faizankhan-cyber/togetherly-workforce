@@ -109,6 +109,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
     'People & Development': false,
     Insights: false,
     Administration: false,
+    'My Work': true,
+    'Growth & Profile': false,
   });
   const demoProfile = employees.find((employee) => employee.id === 'emp-001');
   const authenticatedProfile = user && identityStatus === 'mapped' && mappedEmployee?.authUserId === user.id
@@ -123,6 +125,18 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
   const showAdminSection = isAdmin || (isDemoMode && !user);
 
   useEffect(() => {
+    if (role === 'employee') {
+      const employeeGroup = location.pathname === '/my-projects' || location.pathname === '/my-workload'
+        ? 'My Work'
+        : location.pathname === '/my-skills' || location.pathname === '/roadmap' || location.pathname === '/my-profile'
+          ? 'Growth & Profile'
+          : null;
+      if (employeeGroup) {
+        setExpandedGroups((previous) => ({ ...previous, [employeeGroup]: true }));
+      }
+      return;
+    }
+
     const activeGroup = managerNavGroups.find((group) => group.items.some((item) => item.to === location.pathname));
     if (activeGroup) {
       setExpandedGroups((previous) => ({ ...previous, [activeGroup.name]: true }));
@@ -131,7 +145,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
     if (managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests') {
       setExpandedGroups((previous) => ({ ...previous, Administration: true }));
     }
-  }, [location.pathname]);
+  }, [location.pathname, role]);
 
   function renderNavItem(item: SidebarNavItem, featured = false) {
     const Icon = item.icon;
@@ -276,7 +290,48 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
             </>
           ) : (
             <>
-              {employeeNavItems.map((item) => renderNavItem(item))}
+              {collapsed ? (
+                <>
+                  {employeeNavItems.filter((item) => item.to !== '/my-settings').map((item) => renderNavItem(item))}
+                  <div className="my-2 border-t border-base-border" />
+                  {renderNavItem(employeeNavItems.find((item) => item.to === '/my-settings')!)}
+                </>
+              ) : (
+                <>
+                  {/* Personal dashboard remains directly visible at the top. */}
+                  {renderNavItem(employeeNavItems.find((item) => item.to === '/')!)}
+
+                  {[{
+                    name: 'My Work',
+                    items: employeeNavItems.filter((item) => ['/my-projects', '/my-workload'].includes(item.to)),
+                  }, {
+                    name: 'Growth & Profile',
+                    items: employeeNavItems.filter((item) => ['/my-skills', '/roadmap', '/my-profile'].includes(item.to)),
+                  }].map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? false;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+
+                  {/* Personal settings are deliberately separate from the collapsible groups. */}
+                  <section className="mt-2 border-t border-base-border pt-2">
+                    {renderNavItem(employeeNavItems.find((item) => item.to === '/my-settings')!)}
+                  </section>
+                </>
+              )}
               {showAdminSection && <div className="mt-3 border-t border-base-border pt-2">
                 {!collapsed && <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Administration</div>}
                 {renderNavItem({to:'/admin/employee-requests',label:'Employee Verification',icon:UserCheck})}
