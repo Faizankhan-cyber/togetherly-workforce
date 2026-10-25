@@ -373,7 +373,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const emp = employees.find((e) => e.id === id);
     if (!emp) return { success: false, error: 'Employee not found in the current roster.' };
 
-    if (databaseEmployeeIdsRef.current.has(id)) {
+    const isDatabaseEmployee = databaseEmployeeIdsRef.current.has(id);
+    if (isDatabaseEmployee) {
       if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) {
         const message = 'An authenticated manager or HR reviewer is required to remove a database employee.';
         showToast('error', message);
@@ -407,9 +408,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     if (emp) {
       addActivity(`Removed employee from organization: ${emp.name}${reason ? ` · Reason: ${reason.trim()}` : ''}`, 'system');
-      showToast('success', databaseEmployeeIdsRef.current.has(id)
-        ? `Removed ${emp.name} from the demo directory.`
-        : `Removed ${emp.name} from the active organization roster. Their employee record and audit history are preserved.`);
+      showToast('success', isDatabaseEmployee
+        ? `Removed ${emp.name} from the active organization roster. Their employee record and audit history are preserved.`
+        : `Removed ${emp.name} from the demo directory.`);
     }
     return { success: true };
   };
