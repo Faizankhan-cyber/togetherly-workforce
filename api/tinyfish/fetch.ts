@@ -25,6 +25,32 @@ function getSupabaseProjectUrl(): string {
     return '';
   }
 }
+function isSafePublicUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password) return false;
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.test')) return false;
+
+    // Block private, loopback, link-local, carrier-grade NAT, documentation, and reserved IP ranges.
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const octets = ipv4.slice(1).map(Number);
+      if (octets.some((part) => part < 0 || part > 255)) return false;
+      const [a, b, c] = octets;
+      if (a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) ||
+          (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+          (a === 192 && b === 168) || (a === 192 && b === 0 && c === 0) ||
+          (a === 192 && b === 0 && c === 2) || (a === 198 && (b === 18 || b === 19 || b === 51 && c === 100)) ||
+          (a === 203 && b === 0 && c === 113)) return false;
+    }
+    if (host === '::' || host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('Vary', 'Authorization');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed. Use POST.' }); }
