@@ -37,26 +37,65 @@ export function TinyFishIntelligencePage() {
   const [agentProgress, setAgentProgress] = useState('');
 
   async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-    let accessToken = '';
-    if (supabase) {
+    async function currentAccessToken(forceRefresh = false): Promise<string> {
+      if (!supabase) {
+        if (!session?.access_token) throw new Error('Sign in with your authenticated Supabase account to use TinyFish. Demo mode is not connected to this API.');
+        return session.access_token;
+      }
+
       const { data, error } = await supabase.auth.getSession();
       if (error) throw new Error('Unable to read your Supabase session: ' + error.message);
-      let currentSession = data.session ?? session;
+      let activeSession = data.session;
       const nowSeconds = Math.floor(Date.now() / 1000);
-      if (currentSession?.expires_at && currentSession.expires_at <= nowSeconds + 60) {
-        const refreshed = await supabase.auth.refreshSession();
-        if (refreshed.error) throw new Error('Your Supabase session could not be refreshed: ' + refreshed.error.message);
-        currentSession = refreshed.data.session;
+      const shouldRefresh = forceRefresh || !activeSession || (typeof activeSession.expires_at === 'number' && activeSession.expires_at <= nowSeconds + 60);
+
+      if (shouldRefresh) {
+        const refreshed = await supabase.auth.refreshSession(activeSession ? { refresh_token: activeSession.refresh_token } : undefined);
+        if (refreshed.error || !refreshed.data.session?.access_token) {
+          // Clear a locally cached session that Supabase no longer recognizes.
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+          throw new Error('Your saved Supabase session is no longer valid and could not be refreshed. The local session has been cleared. Sign in again, then retry.');
+        }
+        activeSession = refreshed.data.session;
       }
-      accessToken = currentSession?.access_token ?? '';
-    } else {
-      accessToken = session?.access_token ?? '';
+
+      const token = activeSession?.access_token ?? '';
+      if (!token) throw new Error('No active Supabase access token. Sign in again to use TinyFish.');
+      return token;
     }
-    if (!accessToken) throw new Error('Sign in with your authenticated Supabase account to use TinyFish. Demo mode is not connected to this API.');
-    const response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...(init.headers || {}), Authorization: 'Bearer ' + accessToken } });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload && typeof payload.error === 'string' ? payload.error : 'TinyFish request failed. Please retry.');
-    return payload as T;
+
+    async function send(token: string): Promise<{ response: Response; payload: unknown }> {
+      const response = await fetch(path, {
+        ...init,
+        headers: { 'Content-Type': 'application/json', ...(init.headers || {}), Authorization: 'Bearer ' + token },
+      });
+      const payload = await response.json().catch(() => ({}));
+      return { response, payload };
+    }
+
+    let token = await currentAccessToken();
+    let result = await send(token);
+    const firstPayload = result.payload as { error?: unknown } | null;
+    const errorText = typeof firstPayload?.error === 'string' ? firstPayload.error : '';
+
+    // Supabase can retain a token in browser storage after its backing session was revoked.
+    // Refresh and retry exactly once when the server identifies that specific condition.
+    if ((result.response.status === 401 || result.response.status === 403) && /session_id claim in JWT does not exist/i.test(errorText) && supabase) {
+      token = await currentAccessToken(true);
+      result = await send(token);
+      const retriedPayload = result.payload as { error?: unknown } | null;
+      const retriedError = typeof retriedPayload?.error === 'string' ? retriedPayload.error : '';
+      if ((result.response.status === 401 || result.response.status === 403) && /session_id claim in JWT does not exist/i.test(retriedError)) {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        throw new Error('Supabase rejected the refreshed session too. The local session has been cleared. Sign in again. If this repeats immediately after signing in, the Supabase Auth session itself is being invalidated and must be investigated in the Supabase project.');
+      }
+    }
+
+    if (!result.response.ok) {
+      const payload = result.payload as { error?: unknown } | null;
+      throw new Error(typeof payload?.error === 'string' ? payload.error : 'TinyFish request failed. Please retry.');
+    }
+    return result.payload as T;
   }
 
   async function searchWeb(event: FormEvent<HTMLFormElement>) {
