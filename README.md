@@ -76,6 +76,18 @@ These weights represent the prototype’s matching approach and can be adjusted 
 
 The dashboard provides an overview of workforce information, projects, and relevant workforce indicators.
 
+### TinyFish Intelligence
+
+TinyFish is Togetherly’s live web-intelligence layer, connecting external web research to workforce planning:
+
+- **Search:** discover current public sources on hiring demand, emerging skills, and technology trends.
+- **Fetch:** extract clean, readable content from selected public pages.
+- **Agent:** delegate a goal-directed, read-only multi-step research task to a web agent and review its structured result.
+- **Connected workflow:** search results can be opened with Fetch or used as the Agent starting point.
+
+TinyFish research supports decisions; it does not automatically change employee records, project allocations, or internal match scores. Agent runs can consume TinyFish credits.
+
+
 ### Role-Based Demo Views
 
 A demo role switcher provides manager/HR and employee views to demonstrate how information and actions can differ by role.
@@ -104,6 +116,7 @@ The matching mechanism is a decision-support approach. Its recommendations shoul
 | Workforce Twin | Employee matching and team composition |
 | Skills & Training | Skill gaps and learning opportunities |
 | Workload Planner | Workload analysis and allocation planning |
+| TinyFish Intelligence | Live web research via Search, Fetch, and Agent |
 | Analytics & Reports | Workforce insights |
 | Settings | Application preferences |
 | Employee View | Employee-focused demo experience |
@@ -118,6 +131,7 @@ The matching mechanism is a decision-support approach. Its recommendations shoul
 | Tailwind CSS | Styling and responsive layouts |
 | Lucide React | Icons |
 | Recharts | Data visualization |
+| TinyFish Search, Fetch, Agent | External live web intelligence and goal-based research workflows |
 | React Router | Page navigation |
 | Local storage / shared application state | Prototype data persistence |
 
