@@ -16,6 +16,7 @@ import {
   Link as LinkIcon,
   AlertCircle,
   Eye,
+  ShieldCheck,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Avatar } from '@/components/Avatar';
@@ -81,6 +82,21 @@ export function EmployeeDashboardPage() {
         description="Your real-time project assignments, capacity load, and personalized development roadmaps."
         breadcrumb={['Home', 'My Dashboard']}
       />
+
+      {(employee.skills.length === 0 || employee.yearsExperience === 0) && (
+        <section className="card border-primary/25 bg-primary/5 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary"><ShieldCheck size={18} /></div>
+              <div>
+                <h2 className="text-sm font-bold text-text-primary">Complete your talent profile</h2>
+                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-text-secondary">Submit your skills, experience and certifications with supporting details. Your manager or HR reviewer will verify them before they count toward team-matching decisions.</p>
+              </div>
+            </div>
+            <Link to="/my-profile" className="btn-primary w-fit">Complete My Profile <ArrowRight size={14}/></Link>
+          </div>
+        </section>
+      )}
 
       {/* Hero Welcome Card */}
       <Reveal direction="down">
