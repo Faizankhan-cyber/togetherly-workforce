@@ -3,6 +3,7 @@ import { AlertCircle, ArrowDownToLine, ArrowRight, CheckCircle2, ExternalLink, F
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 type SearchResult = { title: string; url: string; snippet: string; siteName?: string };
 type SearchResponse = { query: string; results: SearchResult[]; totalResults?: number };
@@ -36,8 +37,23 @@ export function TinyFishIntelligencePage() {
   const [agentProgress, setAgentProgress] = useState('');
 
   async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-    if (!session?.access_token) throw new Error('Sign in with your authenticated Supabase account to use TinyFish. Demo mode is not connected to this API.');
-    const response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token, ...(init.headers || {}) } });
+    let accessToken = '';
+    if (supabase) {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw new Error('Unable to read your Supabase session: ' + error.message);
+      let currentSession = data.session ?? session;
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (currentSession?.expires_at && currentSession.expires_at <= nowSeconds + 60) {
+        const refreshed = await supabase.auth.refreshSession();
+        if (refreshed.error) throw new Error('Your Supabase session could not be refreshed: ' + refreshed.error.message);
+        currentSession = refreshed.data.session;
+      }
+      accessToken = currentSession?.access_token ?? '';
+    } else {
+      accessToken = session?.access_token ?? '';
+    }
+    if (!accessToken) throw new Error('Sign in with your authenticated Supabase account to use TinyFish. Demo mode is not connected to this API.');
+    const response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', ...(init.headers || {}), Authorization: 'Bearer ' + accessToken } });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload && typeof payload.error === 'string' ? payload.error : 'TinyFish request failed. Please retry.');
     return payload as T;

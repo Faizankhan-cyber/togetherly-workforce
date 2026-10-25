@@ -23,7 +23,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the Vercel function environment. Redeploy after adding it.' });
   try {
     const auth = await fetch(supabaseUrl + '/auth/v1/user', { headers: { apikey: supabaseKey, Authorization: 'Bearer ' + token } });
-    if (!auth.ok) return res.status(401).json({ error: 'Your session is invalid or expired. Sign in again.' });
+    if (!auth.ok) {
+      const authDetail = await auth.json().catch(() => ({})) as { message?: string; msg?: string; error?: string; error_description?: string };
+      const reason = [authDetail.message, authDetail.msg, authDetail.error_description, authDetail.error].find((value) => typeof value === 'string' && value.trim());
+      const safeReason = reason ? String(reason).replace(/[\r\n]+/g, ' ').slice(0, 180) : '';
+      return res.status(401).json({ error: 'Supabase Auth rejected the session or API key (HTTP ' + auth.status + (safeReason ? ': ' + safeReason : '') + '). Check that Vercel uses the same Supabase project URL and public key as the frontend, then sign in again.' });
+    }
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const url = typeof body === 'object' && body !== null && 'url' in body ? (body as { url?: unknown }).url : undefined;
     const goal = typeof body === 'object' && body !== null && 'goal' in body ? (body as { goal?: unknown }).goal : undefined;
