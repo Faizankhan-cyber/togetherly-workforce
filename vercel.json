@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/tinyfish/fetch.ts": {
+      "maxDuration": 60
+    },
+    "api/tinyfish/agent.ts": {
+      "maxDuration": 30
+    },
+    "api/tinyfish/agent-run.ts": {
+      "maxDuration": 15
+    }
+  }
+}

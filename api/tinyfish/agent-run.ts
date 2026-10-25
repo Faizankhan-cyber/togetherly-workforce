@@ -48,7 +48,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const runId = Array.isArray(rawRunId) ? rawRunId[0] : rawRunId;
     if (!runId || !/^[a-zA-Z0-9_-]{8,128}$/.test(runId)) return res.status(400).json({ error: 'A valid Agent runId is required.' });
     const response = await fetch('https://agent.tinyfish.ai/v1/runs/' + encodeURIComponent(runId), { headers: { 'X-API-Key': tinyFishKey, Accept: 'application/json' } });
-    if (!response.ok) return res.status(response.status === 404 ? 404 : 502).json({ error: response.status === 404 ? 'Agent run not found. Check the run ID.' : 'Unable to read TinyFish Agent status (HTTP ' + response.status + ').' });
-    return res.status(200).json(await response.json());
-  } catch { return res.status(500).json({ error: 'Unable to read TinyFish Agent status.' }); }
+    const responseText = await response.text();
+    if (!response.ok) {
+      const detail = responseText.replace(/[\r\n]+/g, ' ').slice(0, 180);
+      return res.status(response.status === 404 ? 404 : 502).json({ error: response.status === 404 ? 'Agent run not found. Check the run ID.' : 'TinyFish Agent status returned HTTP ' + response.status + (detail ? ': ' + detail : '') });
+    }
+    try { return res.status(200).json(JSON.parse(responseText)); }
+    catch { return res.status(502).json({ error: 'TinyFish Agent status returned a non-JSON response: ' + responseText.replace(/[\r\n]+/g, ' ').slice(0, 180) }); }
+  } catch (error) {
+    const err = error as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+    const detail = (err?.cause?.message || err?.message || err?.name || 'Unknown error').replace(/[\r\n]+/g, ' ').slice(0, 180);
+    console.error('TinyFish Agent status request failed', { name: err?.name, causeCode: err?.cause?.code, detail });
+    return res.status(502).json({ error: 'TinyFish Agent status network/request error: ' + detail });
+  }
 }

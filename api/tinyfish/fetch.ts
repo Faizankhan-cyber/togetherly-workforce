@@ -47,13 +47,34 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const requested = typeof body === 'object' && body !== null && 'urls' in body ? (body as { urls?: unknown }).urls : undefined;
     if (!Array.isArray(requested) || requested.length < 1 || requested.length > 10 || requested.some((url) => typeof url !== 'string' || !isSafePublicUrl(url))) return res.status(400).json({ error: 'Provide 1–10 valid public http(s) URLs. Local, private-network, and credential-bearing URLs are not allowed.' });
-    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 30000);
+    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 55000);
     let response: Response;
     try {
-      response = await fetch('https://api.fetch.tinyfish.ai', { method: 'POST', headers: { 'X-API-Key': tinyFishKey, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ urls: requested, format: 'markdown', purpose: 'Extract content relevant to workforce intelligence, hiring demand, technology skills, and evidence-based workforce planning.' }), signal: controller.signal });
+      response = await fetch('https://api.fetch.tinyfish.ai', { method: 'POST', headers: { 'X-API-Key': tinyFishKey, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ urls: requested, format: 'markdown', per_url_timeout_ms: 45000, purpose: 'Extract content relevant to workforce intelligence, hiring demand, technology skills, and evidence-based workforce planning.' }), signal: controller.signal });
     } finally { clearTimeout(timeout); }
-    if (!response.ok) return res.status(502).json({ error: response.status === 401 || response.status === 403 ? 'TinyFish rejected the API key. Check TINYFISH_API_KEY in Vercel.' : 'TinyFish Fetch returned HTTP ' + response.status + '. Please retry.' });
-    const data = await response.json() as { results?: unknown[]; errors?: unknown[] };
+    const responseText = await response.text();
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const parsed = JSON.parse(responseText) as { message?: string; error?: string; detail?: string };
+        detail = parsed.message || parsed.error || parsed.detail || '';
+      } catch { detail = responseText; }
+      const safeDetail = detail.replace(/[\r\n]+/g, ' ').slice(0, 240);
+      if (response.status === 401 || response.status === 403) return res.status(502).json({ error: 'TinyFish Fetch rejected the API key or access (HTTP ' + response.status + ')' + (safeDetail ? ': ' + safeDetail : '') + '. Check TINYFISH_API_KEY in Vercel.' });
+      if (response.status === 429) return res.status(502).json({ error: 'TinyFish Fetch rate limit reached. Wait a moment before retrying.' });
+      return res.status(502).json({ error: 'TinyFish Fetch returned HTTP ' + response.status + (safeDetail ? ': ' + safeDetail : '') + '.' });
+    }
+    let data: { results?: unknown[]; errors?: unknown[] };
+    try { data = JSON.parse(responseText) as { results?: unknown[]; errors?: unknown[] }; }
+    catch { return res.status(502).json({ error: 'TinyFish Fetch returned a non-JSON response (HTTP ' + response.status + '): ' + responseText.replace(/[\r\n]+/g, ' ').slice(0, 180) }); }
     return res.status(200).json({ results: Array.isArray(data.results) ? data.results.slice(0, 10) : [], errors: Array.isArray(data.errors) ? data.errors.slice(0, 10) : [] });
-  } catch (error) { return res.status(500).json({ error: error instanceof Error && error.name === 'AbortError' ? 'TinyFish Fetch timed out. Try fewer URLs.' : 'Unable to complete TinyFish Fetch.' }); }
+  } catch (error) {
+    const err = error as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+    const name = err?.name || 'UnknownError';
+    const causeCode = err?.cause?.code;
+    const detail = (err?.cause?.message || err?.message || name).replace(/[\r\n]+/g, ' ').slice(0, 220);
+    console.error('TinyFish Fetch request failed', { name, causeCode, detail });
+    if (name === 'AbortError' || name === 'TimeoutError') return res.status(504).json({ error: 'TinyFish Fetch timed out after 55 seconds. Try one URL at a time or use a faster page.' });
+    return res.status(502).json({ error: 'TinyFish Fetch network/request error' + (causeCode ? ' (' + causeCode + ')' : ' (' + name + ')') + ': ' + detail });
+  }
 }
