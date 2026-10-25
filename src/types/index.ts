@@ -143,6 +143,12 @@ export interface TrainingAssignment {
 export interface Employee {
   id: string;
   authUserId?: string | null;
+  employmentStatus?: 'active' | 'offboarded';
+  offboardedAt?: string | null;
+  offboardedBy?: string | null;
+  offboardingReason?: string | null;
+  /** Database-backed employee rows must not be written into the demo cache. */
+  dataSource?: 'database' | 'demo';
   name: string;
   role: string;
   systemRole?: SystemRole;

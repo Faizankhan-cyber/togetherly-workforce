@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { AlertTriangle, Check, X } from 'lucide-react';
 
 interface ConfirmationDialogProps {
@@ -10,6 +11,9 @@ interface ConfirmationDialogProps {
   cancelLabel?: string;
   danger?: boolean;
   variant?: 'danger' | 'default';
+  details?: ReactNode;
+  closeOnConfirm?: boolean;
+  confirmDisabled?: boolean;
 }
 
 export function ConfirmationDialog({
@@ -22,6 +26,9 @@ export function ConfirmationDialog({
   cancelLabel = 'Cancel',
   danger = false,
   variant,
+  details,
+  closeOnConfirm = true,
+  confirmDisabled = false,
 }: ConfirmationDialogProps) {
   if (!open) return null;
 
@@ -55,6 +62,8 @@ export function ConfirmationDialog({
           </div>
         </div>
 
+        {details && <div className="mt-4">{details}</div>}
+
         <div className="mt-5 flex items-center justify-end gap-2.5 pt-3.5 border-t border-base-border">
           <button
             type="button"
@@ -67,9 +76,10 @@ export function ConfirmationDialog({
           <button
             type="button"
             className={isDanger ? 'btn-danger text-xs' : 'btn-primary text-xs'}
+            disabled={confirmDisabled}
             onClick={() => {
               onConfirm();
-              onClose();
+              if (closeOnConfirm) onClose();
             }}
           >
             <Check size={13} />

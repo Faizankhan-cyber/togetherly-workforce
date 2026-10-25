@@ -40,6 +40,8 @@ export function EmployeesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [removeReason, setRemoveReason] = useState('');
+  const [isRemovingEmployee, setIsRemovingEmployee] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -319,7 +321,7 @@ export function EmployeesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDeleteConfirmId(selectedEmployee.id)}
+                      onClick={() => { setDeleteConfirmId(selectedEmployee.id); setRemoveReason(''); }}
                       className="p-1.5 rounded-md border border-red-200 hover:bg-red-50 text-critical transition-colors"
                       title="Remove employee"
                     >
@@ -603,19 +605,50 @@ export function EmployeesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation */}
+      {/* Offboarding confirmation: reason is required and the database record is retained. */}
       <ConfirmationDialog
         open={!!deleteConfirmId}
-        onClose={() => setDeleteConfirmId(null)}
-        onConfirm={() => {
-          if (deleteConfirmId) {
-            deleteEmployee(deleteConfirmId);
-            if (selectedEmpId === deleteConfirmId) setSelectedEmpId(null);
-          }
+        onClose={() => {
+          if (isRemovingEmployee) return;
+          setDeleteConfirmId(null);
+          setRemoveReason('');
         }}
-        title="Remove Employee"
-        message="Are you sure you want to remove this employee? They will also be unassigned from all active project allocations."
-        confirmLabel="Remove"
+        onConfirm={async () => {
+          if (!deleteConfirmId || isRemovingEmployee) return;
+          if (removeReason.trim().length < 5) {
+            showToast('error', 'Add an offboarding reason of at least 5 characters.');
+            return;
+          }
+          const employeeId = deleteConfirmId;
+          setIsRemovingEmployee(true);
+          const result = await deleteEmployee(employeeId, removeReason.trim());
+          setIsRemovingEmployee(false);
+          if (!result.success) return;
+          if (selectedEmpId === employeeId) setSelectedEmpId(null);
+          setDeleteConfirmId(null);
+          setRemoveReason('');
+        }}
+        title="Remove from organization"
+        message="This removes the employee from active staffing and disables their organization access. It does not hard-delete their employee or verification history."
+        details={
+          <div className="space-y-2">
+            <label htmlFor="offboarding-reason" className="block text-xs font-semibold text-text-primary">Reason for removal <span className="text-critical">*</span></label>
+            <textarea
+              id="offboarding-reason"
+              value={removeReason}
+              onChange={(event) => setRemoveReason(event.target.value)}
+              className="input-field min-h-20 w-full"
+              placeholder="Record the reason for offboarding…"
+              maxLength={1000}
+              required
+              disabled={isRemovingEmployee}
+            />
+            <p className="text-[11px] text-text-secondary">Current project allocations will be removed. The reason and reviewer will be recorded in the offboarding audit.</p>
+          </div>
+        }
+        closeOnConfirm={false}
+        confirmDisabled={isRemovingEmployee || removeReason.trim().length < 5}
+        confirmLabel={isRemovingEmployee ? 'Removing…' : 'Remove employee'}
         danger
       />
     </div>

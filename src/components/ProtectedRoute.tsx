@@ -19,7 +19,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, isDemoMode, identityStatus } = useAuth();
+  const { user, isLoading, isDemoMode, identityStatus, signOut } = useAuth();
   const location = useLocation();
 
   // Show a professional loading screen while restoring Supabase Auth session
@@ -35,6 +35,22 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             Verifying Supabase authentication…
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Offboarded employees remain linked to historical records but lose workspace access.
+  if (user && identityStatus === 'offboarded' && !isDemoMode) {
+    return (
+      <div className="min-h-screen bg-base-bg flex items-center justify-center p-4 text-text-primary">
+        <section className="card w-full max-w-lg p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-critical/20 bg-critical/10 text-critical">
+            <ShieldAlert size={26} />
+          </div>
+          <h1 className="mt-5 text-xl font-extrabold">Organization access removed</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-text-secondary">Your employee account has been offboarded. Access to organization projects, employee data, and staffing tools is disabled. Your historical records remain retained by the organization.</p>
+          <button type="button" className="btn-primary mx-auto mt-6" onClick={() => void signOut()}><LogIn size={14}/> Sign out</button>
+        </section>
       </div>
     );
   }

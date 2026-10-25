@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type {
@@ -32,7 +32,7 @@ interface DataContextType {
   submissions: TrainingSubmission[];
   addEmployee: (employee: Omit<Employee, 'id'> & { id?: string }) => void;
   updateEmployee: (id: string, updates: Partial<Employee>) => void;
-  deleteEmployee: (id: string) => void;
+  deleteEmployee: (id: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
   addProject: (project: Omit<Project, 'id'> & { id?: string }) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
@@ -103,7 +103,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
       const cached = stored ? (JSON.parse(stored) as Employee[]) : initialEmployees;
-      return cached.filter((employee) => !employee.authUserId);
+      return cached.filter((employee) => !employee.authUserId && employee.dataSource !== 'database');
     } catch {
       return initialEmployees;
     }
@@ -146,6 +146,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const databaseEmployeeIdsRef = useRef<Set<string>>(new Set());
 
   const refreshVerifiedDirectory = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured() || !user || identityStatus !== 'mapped' || !mappedEmployee) return;
@@ -156,11 +157,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const employeeResult = canReview
       ? await supabase
           .from('employees')
-          .select('id, auth_user_id, name, role, department, email, avatar_color, availability, years_experience, target_utilization, system_role')
+          .select('id, auth_user_id, name, role, department, email, avatar_color, availability, years_experience, target_utilization, system_role, employment_status, offboarded_at, offboarded_by, offboarding_reason')
+          .eq('employment_status', 'active')
       : await supabase
           .from('employees')
-          .select('id, auth_user_id, name, role, department, email, avatar_color, availability, years_experience, target_utilization, system_role')
-          .eq('auth_user_id', user.id);
+          .select('id, auth_user_id, name, role, department, email, avatar_color, availability, years_experience, target_utilization, system_role, employment_status, offboarded_at, offboarded_by, offboarding_reason')
+          .eq('auth_user_id', user.id)
+          .eq('employment_status', 'active');
 
     if (employeeResult.error || !employeeResult.data) return;
 
@@ -182,15 +185,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       skillsByEmployee.set(skill.employee_id, current);
     }
 
+    const fetchedEmployeeIds = new Set(employeeResult.data.map((row) => String(row.id)));
+    const previouslySyncedDatabaseIds = databaseEmployeeIdsRef.current;
     setEmployees((previous) => {
-      const next = [...previous];
+      // Replace the prior database snapshot on every refresh. This removes a
+      // recently offboarded account from the active roster while leaving demo data intact.
+      const next = previous.filter(
+        (item) => !previouslySyncedDatabaseIds.has(item.id) && item.dataSource !== 'database'
+      );
       for (const row of employeeResult.data) {
         const dbEmployeeId = String(row.id);
         const authUserId = row.auth_user_id ? String(row.auth_user_id) : null;
         const existingIndex = next.findIndex(
           (item) => item.id === dbEmployeeId || (authUserId && item.authUserId === authUserId)
         );
-        const existing = existingIndex >= 0 ? next[existingIndex] : undefined;
+        const existing = existingIndex >= 0
+          ? next[existingIndex]
+          : previous.find((item) => item.id === dbEmployeeId || (authUserId && item.authUserId === authUserId));
         const systemRole = ['employee', 'manager', 'hr', 'admin'].includes(String(row.system_role))
           ? (String(row.system_role) as Employee['systemRole'])
           : 'employee';
@@ -198,6 +209,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...(existing ?? {} as Employee),
           id: dbEmployeeId,
           authUserId,
+          employmentStatus: 'active',
+          offboardedAt: row.offboarded_at ? String(row.offboarded_at) : null,
+          offboardedBy: row.offboarded_by ? String(row.offboarded_by) : null,
+          offboardingReason: row.offboarding_reason ? String(row.offboarding_reason) : null,
+          dataSource: 'database',
           name: String(row.name ?? existing?.name ?? 'Employee'),
           role: String(row.role ?? existing?.role ?? 'Workforce Specialist'),
           systemRole,
@@ -217,6 +233,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return next;
     });
+    databaseEmployeeIdsRef.current = fetchedEmployeeIds;
   }, [user, identityStatus, mappedEmployee]);
 
   useEffect(() => {
@@ -249,7 +266,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Keep only local/demo-managed profiles in browser storage.
       localStorage.setItem(
         STORAGE_KEYS.EMPLOYEES,
-        JSON.stringify(employees.filter((employee) => !employee.authUserId))
+        JSON.stringify(employees.filter((employee) => !employee.authUserId && employee.dataSource !== 'database'))
       );
     } catch (e) {
       void e;
@@ -352,10 +369,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
-  const deleteEmployee = (id: string) => {
+  const deleteEmployee = async (id: string, reason?: string): Promise<{ success: boolean; error?: string }> => {
     const emp = employees.find((e) => e.id === id);
+    if (!emp) return { success: false, error: 'Employee not found in the current roster.' };
+
+    if (databaseEmployeeIdsRef.current.has(id)) {
+      if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) {
+        const message = 'An authenticated manager or HR reviewer is required to remove a database employee.';
+        showToast('error', message);
+        return { success: false, error: message };
+      }
+      if (!reason || reason.trim().length < 5) {
+        const message = 'Enter an offboarding reason of at least 5 characters.';
+        showToast('error', message);
+        return { success: false, error: message };
+      }
+
+      const { error } = await supabase.rpc('offboard_employee', {
+        p_employee_id: id,
+        p_reason: reason.trim(),
+      });
+      if (error) {
+        showToast('error', error.message || 'Could not remove this employee from the organization.');
+        return { success: false, error: error.message };
+      }
+      databaseEmployeeIdsRef.current.delete(id);
+    }
+
+    // Keep the employee and their verification/audit history in the database;
+    // remove only their active roster and current project allocations from this UI.
     setEmployees((prev) => prev.filter((e) => e.id !== id));
-    // Also remove from any projects
     setProjects((prev) =>
       prev.map((proj) => ({
         ...proj,
@@ -363,9 +406,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }))
     );
     if (emp) {
-      addActivity(`Removed employee: ${emp.name}`, 'system');
-      showToast('info', `Removed ${emp.name} from directory.`);
+      addActivity(`Removed employee from organization: ${emp.name}${reason ? ` · Reason: ${reason.trim()}` : ''}`, 'system');
+      showToast('success', databaseEmployeeIdsRef.current.has(id)
+        ? `Removed ${emp.name} from the demo directory.`
+        : `Removed ${emp.name} from the active organization roster. Their employee record and audit history are preserved.`);
     }
+    return { success: true };
   };
 
   const addProject = (projData: Omit<Project, 'id'> & { id?: string }) => {

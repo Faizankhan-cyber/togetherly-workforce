@@ -15,7 +15,7 @@ import type {
   SystemRole,
 } from '@/types';
 
-export type IdentityStatus = 'unauthenticated' | 'demo' | 'pending_assignment' | 'mapped';
+export type IdentityStatus = 'unauthenticated' | 'demo' | 'pending_assignment' | 'mapped' | 'offboarded';
 
 export interface SignUpProfileOptions {
   fullName?: string;
@@ -102,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Database-verified employee record and registration request for the current user
   const [dbEmployee, setDbEmployee] = useState<Employee | null>(null);
+  const [isOffboarded, setIsOffboarded] = useState(false);
   const [registrationRequest, setRegistrationRequest] = useState<EmployeeRegistrationRequest | null>(null);
   const [registrationTableMissing, setRegistrationTableMissing] = useState<boolean>(false);
 
@@ -154,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const syncUserDatabaseIdentity = useCallback(async (activeUser: User | null) => {
     if (!activeUser || !supabase || !isSupabaseConfigured()) {
       setDbEmployee(null);
+      setIsOffboarded(false);
       setRegistrationRequest(null);
       return;
     }
@@ -208,6 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Rejected accounts must never claim or populate an active employee identity
       if (isRejectedAccount) {
         setDbEmployee(null);
+        setIsOffboarded(false);
         return;
       }
 
@@ -237,8 +240,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Strictly require an explicit auth_user_id match to activeUser.id (never match unlinked rows by email)
-      if (empRow && empRow.auth_user_id === activeUser.id) {
+      // Strictly require an explicit auth_user_id match and active employment status.
+      // An offboarded account remains linked for historical traceability but cannot
+      // regain employee access through the pre-provisioned profile claim flow.
+      if (empRow && empRow.auth_user_id === activeUser.id && empRow.employment_status === 'offboarded') {
+        setDbEmployee(null);
+        setIsOffboarded(true);
+        return;
+      }
+
+      if (empRow && empRow.auth_user_id === activeUser.id && (empRow.employment_status === 'active' || !empRow.employment_status)) {
+        setIsOffboarded(false);
         const resolvedSysRole: SystemRole = isValidSystemRole(empRow.system_role)
           ? empRow.system_role
           : 'employee';
@@ -246,6 +258,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setDbEmployee({
           id: String(empRow.id),
           authUserId: String(empRow.auth_user_id),
+          employmentStatus: 'active',
+          dataSource: 'database',
           name: String(empRow.name || activeUser.email?.split('@')[0] || 'Authenticated User'),
           email: String(empRow.email || activeUser.email || ''),
           role: String(empRow.role || 'Workforce Specialist'),
@@ -253,13 +267,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           department: String(empRow.department || 'Engineering'),
           avatarColor: String(empRow.avatar_color || '#0078D4'),
           availability: (empRow.availability as Employee['availability']) || 'available',
-          yearsExperience: Number(empRow.years_experience ?? 3),
+          yearsExperience: Number(empRow.years_experience ?? 0),
           targetUtilization: Number(empRow.target_utilization ?? 100),
           skills: [],
           trainingAssignments: [],
         });
       } else {
         setDbEmployee(null);
+        setIsOffboarded(false);
       }
     } catch (err) {
       console.warn('Database identity sync warning:', err);
@@ -320,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         setUser(null);
         setDbEmployee(null);
+        setIsOffboarded(false);
         setRegistrationRequest(null);
       } else if (event === 'TOKEN_REFRESHED' && newSession) {
         setSession(newSession);
@@ -529,6 +545,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       setDbEmployee(null);
+      setIsOffboarded(false);
       setRegistrationRequest(null);
       setAuthError(null);
       sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
@@ -587,7 +604,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user.app_metadata?.registration_status === 'rejected' ||
       registrationRequest?.status === 'rejected';
 
-    if (!isRejected && dbEmployee && dbEmployee.authUserId === user.id) {
+    if (isOffboarded) {
+      identityStatus = 'offboarded';
+      mappedEmployee = null;
+      systemRole = 'unassigned';
+    } else if (!isRejected && dbEmployee && dbEmployee.authUserId === user.id) {
       identityStatus = 'mapped';
       mappedEmployee = dbEmployee;
       systemRole = dbEmployee.systemRole || 'employee';
