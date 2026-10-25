@@ -1195,8 +1195,8 @@ begin
   end if;
 
   v_resolved_name := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(p_name), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_auth_user.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(pg_catalog.btrim(p_name), ''),
+    nullif(pg_catalog.btrim(v_auth_user.raw_user_meta_data ->> 'full_name'), ''),
     pg_catalog.split_part(v_auth_user.email, '@', 1)
   );
 
@@ -1223,7 +1223,7 @@ begin
     pg_catalog.btrim(p_job_title),
     pg_catalog.btrim(p_department),
     v_auth_user.email,
-    coalesce(pg_catalog.nullif(pg_catalog.btrim(p_avatar_color), ''), '#0078D4'),
+    coalesce(nullif(pg_catalog.btrim(p_avatar_color), ''), '#0078D4'),
     'available',
     5.0,
     100,
@@ -1880,7 +1880,7 @@ begin
 
   new.email := pg_catalog.btrim(coalesce(new.email, ''));
   new.applicant_name := pg_catalog.btrim(coalesce(new.applicant_name, 'Applicant'));
-  new.requested_department := coalesce(pg_catalog.nullif(pg_catalog.btrim(new.requested_department), ''), 'Engineering');
+  new.requested_department := coalesce(nullif(pg_catalog.btrim(new.requested_department), ''), 'Engineering');
 
   if tg_op = 'INSERT' then
     new.created_at := coalesce(new.created_at, pg_catalog.now());
@@ -1965,18 +1965,18 @@ begin
   end if;
 
   v_applicant_name := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'full_name'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'name'), ''),
+    nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'name'), ''),
     pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(new.email, '@', 1), '.', ' '))
   );
 
   v_req_dept := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'requested_department'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'department'), ''),
+    nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'requested_department'), ''),
+    nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'department'), ''),
     'Engineering'
   );
 
-  v_req_title := pg_catalog.nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'requested_job_title'), '');
+  v_req_title := nullif(pg_catalog.btrim(new.raw_user_meta_data ->> 'requested_job_title'), '');
 
   -- Check if this user is already linked to an active employee record
   select e.id, e.name, e.role, e.department, e.system_role
@@ -2049,12 +2049,12 @@ begin
       email = excluded.email,
       applicant_name = case
         when public.employee_registration_requests.status = 'pending'
-        then coalesce(pg_catalog.nullif(excluded.applicant_name, ''), public.employee_registration_requests.applicant_name)
+        then coalesce(nullif(excluded.applicant_name, ''), public.employee_registration_requests.applicant_name)
         else public.employee_registration_requests.applicant_name
       end,
       requested_department = case
         when public.employee_registration_requests.status = 'pending'
-        then coalesce(pg_catalog.nullif(excluded.requested_department, ''), public.employee_registration_requests.requested_department)
+        then coalesce(nullif(excluded.requested_department, ''), public.employee_registration_requests.requested_department)
         else public.employee_registration_requests.requested_department
       end,
       requested_job_title = case
@@ -2140,88 +2140,29 @@ create trigger trg_sync_employee_to_registration_request
   execute function public.sync_employee_to_registration_request();
 
 -- -----------------------------------------------------------------------------
--- 18.4 Initial Administrator Bootstrap & Backfill of Existing auth.users
--- 1. If no administrator in public.employees is linked to an auth.users account yet,
---    automatically links the earliest created verified auth.users account as the
---    initial organization Administrator so the project owner can immediately log in
---    and review pending requests in /admin/employee-requests.
--- 2. Backfills all existing auth.users rows into public.employee_registration_requests.
+-- 18.4 Safe Reconciliation & Backfill of Existing auth.users
+-- 1. Safely links existing public.employees rows whose email matches an auth.users
+--    account (when auth_user_id is NULL) without altering roles or overwriting data.
+-- 2. Backfills already-provisioned employees as 'approved' and genuinely unmapped
+--    auth.users accounts as 'pending' in public.employee_registration_requests.
 -- -----------------------------------------------------------------------------
 do $$
-declare
-  v_first_user record;
-  v_admin_emp_id text;
 begin
-  -- Check if any administrator account is already linked to auth.users
-  if not exists (
-    select 1
-    from public.employees e
-    where e.auth_user_id is not null
-      and e.system_role = 'admin'
-  ) then
-    select u.id, u.email, u.raw_user_meta_data
-    into v_first_user
-    from auth.users u
-    where u.email is not null
-    order by
-      (case when u.email_confirmed_at is not null then 0 else 1 end) asc,
-      u.created_at asc
-    limit 1;
+  -- Link unlinked public.employees rows to matching auth.users accounts by email
+  update public.employees e
+  set auth_user_id = u.id,
+      updated_at = pg_catalog.now()
+  from auth.users u
+  where e.auth_user_id is null
+    and u.email is not null
+    and pg_catalog.lower(pg_catalog.btrim(e.email)) = pg_catalog.lower(pg_catalog.btrim(u.email))
+    and not exists (
+      select 1
+      from public.employees e2
+      where e2.auth_user_id = u.id
+    );
 
-    if v_first_user.id is not null then
-      -- Determine whether an employee record already exists for this email or use 'emp-admin-001'
-      select e.id
-      into v_admin_emp_id
-      from public.employees e
-      where pg_catalog.lower(e.email) = pg_catalog.lower(v_first_user.email)
-      limit 1;
-
-      if v_admin_emp_id is null then
-        if not exists (select 1 from public.employees where id = 'emp-001' and auth_user_id is not null) then
-          v_admin_emp_id := 'emp-admin-001';
-        else
-          v_admin_emp_id := 'emp-' || pg_catalog.substr(pg_catalog.replace(v_first_user.id::text, '-', ''), 1, 8);
-        end if;
-      end if;
-
-      insert into public.employees (
-        id,
-        auth_user_id,
-        name,
-        role,
-        department,
-        email,
-        avatar_color,
-        availability,
-        years_experience,
-        target_utilization,
-        system_role
-      )
-      values (
-        v_admin_emp_id,
-        v_first_user.id,
-        coalesce(
-          pg_catalog.nullif(pg_catalog.btrim(v_first_user.raw_user_meta_data ->> 'full_name'), ''),
-          pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(v_first_user.email, '@', 1), '.', ' '))
-        ),
-        'Workforce Intelligence Administrator',
-        'Engineering',
-        v_first_user.email,
-        '#0078D4',
-        'available',
-        6.0,
-        100,
-        'admin'
-      )
-      on conflict (id) do update set
-        auth_user_id = excluded.auth_user_id,
-        email = excluded.email,
-        system_role = 'admin',
-        updated_at = pg_catalog.now();
-    end if;
-  end if;
-
-  -- Backfill any existing auth.users rows into public.employee_registration_requests
+  -- Record already-provisioned employees as 'approved'
   insert into public.employee_registration_requests (
     auth_user_id,
     applicant_name,
@@ -2238,40 +2179,87 @@ begin
     created_at,
     updated_at
   )
-  select
+  select distinct on (u.id)
     u.id,
-    coalesce(
-      e.name,
-      pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'full_name'), ''),
-      pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'name'), ''),
-      pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(coalesce(u.email, 'User'), '@', 1), '.', ' '))
-    ),
-    coalesce(u.email, ''),
-    coalesce(
-      e.department,
-      pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_department'), ''),
-      pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'department'), ''),
-      'Engineering'
-    ),
-    pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_job_title'), ''),
+    e.name,
+    coalesce(u.email, e.email),
+    e.department,
+    e.role,
     e.system_role,
     e.department,
     e.role,
     e.id,
-    case when e.id is not null then 'approved' else 'pending' end,
-    case when e.id is not null then 'System Provisioning' else null end,
-    case when e.id is not null then pg_catalog.now() else null end,
+    'approved',
+    'System Provisioning',
+    coalesce(e.updated_at, e.created_at, pg_catalog.now()),
+    coalesce(u.created_at, e.created_at, pg_catalog.now()),
+    pg_catalog.now()
+  from auth.users u
+  join public.employees e
+    on e.auth_user_id = u.id
+    or (
+      e.auth_user_id is null
+      and pg_catalog.lower(pg_catalog.btrim(e.email)) = pg_catalog.lower(pg_catalog.btrim(u.email))
+    )
+  where u.email is not null
+  order by u.id, (case when e.auth_user_id = u.id then 0 else 1 end) asc
+  on conflict (auth_user_id) do update set
+    assigned_role = excluded.assigned_role,
+    assigned_department = excluded.assigned_department,
+    assigned_job_title = excluded.assigned_job_title,
+    employee_id = excluded.employee_id,
+    status = 'approved',
+    rejection_reason = null,
+    reviewed_at = coalesce(public.employee_registration_requests.reviewed_at, excluded.reviewed_at),
+    updated_at = pg_catalog.now();
+
+  -- Insert genuinely unmapped auth.users accounts as 'pending'
+  insert into public.employee_registration_requests (
+    auth_user_id,
+    applicant_name,
+    email,
+    requested_department,
+    requested_job_title,
+    status,
+    created_at,
+    updated_at
+  )
+  select
+    u.id,
+    coalesce(
+      nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'full_name'), ''),
+      nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'name'), ''),
+      pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(coalesce(u.email, 'Applicant'), '@', 1), '.', ' '))
+    ),
+    pg_catalog.btrim(u.email),
+    coalesce(
+      nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_department'), ''),
+      nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'department'), ''),
+      'Engineering'
+    ),
+    nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_job_title'), ''),
+    case
+      when coalesce(u.raw_app_meta_data ->> 'registration_status', '') = 'rejected' then 'rejected'
+      else 'pending'
+    end,
     coalesce(u.created_at, pg_catalog.now()),
     pg_catalog.now()
   from auth.users u
-  left join public.employees e on e.auth_user_id = u.id
   where u.email is not null
+    and pg_catalog.btrim(u.email) != ''
+    and not exists (
+      select 1
+      from public.employees e
+      where e.auth_user_id = u.id
+         or pg_catalog.lower(pg_catalog.btrim(e.email)) = pg_catalog.lower(pg_catalog.btrim(u.email))
+    )
   on conflict (auth_user_id) do nothing;
 end $$;
 
 -- -----------------------------------------------------------------------------
 -- 18.5 Administrator RPC: Sync Missing Registration Requests from auth.users
 -- Ensures any auth.users accounts are present in employee_registration_requests
+-- without treating already-provisioned employees as unapproved applicants.
 -- -----------------------------------------------------------------------------
 create or replace function public.sync_missing_registration_requests()
 returns jsonb
@@ -2280,13 +2268,27 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_inserted integer := 0;
+  v_approved_synced integer := 0;
+  v_pending_inserted integer := 0;
 begin
   if not public.is_trusted_admin_context() then
     raise exception 'Access denied: only authorized administrators can synchronize registration requests.';
   end if;
 
-  with inserted_rows as (
+  update public.employees e
+  set auth_user_id = u.id,
+      updated_at = pg_catalog.now()
+  from auth.users u
+  where e.auth_user_id is null
+    and u.email is not null
+    and pg_catalog.lower(pg_catalog.btrim(e.email)) = pg_catalog.lower(pg_catalog.btrim(u.email))
+    and not exists (
+      select 1
+      from public.employees e2
+      where e2.auth_user_id = u.id
+    );
+
+  with synced_approved as (
     insert into public.employee_registration_requests (
       auth_user_id,
       applicant_name,
@@ -2303,42 +2305,95 @@ begin
       created_at,
       updated_at
     )
-    select
+    select distinct on (u.id)
       u.id,
-      coalesce(
-        e.name,
-        pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'full_name'), ''),
-        pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'name'), ''),
-        pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(coalesce(u.email, 'User'), '@', 1), '.', ' '))
-      ),
-      coalesce(u.email, ''),
-      coalesce(
-        e.department,
-        pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_department'), ''),
-        pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'department'), ''),
-        'Engineering'
-      ),
-      pg_catalog.nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_job_title'), ''),
+      e.name,
+      coalesce(u.email, e.email),
+      e.department,
+      e.role,
       e.system_role,
       e.department,
       e.role,
       e.id,
-      case when e.id is not null then 'approved' else 'pending' end,
-      case when e.id is not null then 'System Provisioning' else null end,
-      case when e.id is not null then pg_catalog.now() else null end,
+      'approved',
+      'System Provisioning',
+      coalesce(e.updated_at, e.created_at, pg_catalog.now()),
+      coalesce(u.created_at, e.created_at, pg_catalog.now()),
+      pg_catalog.now()
+    from auth.users u
+    join public.employees e
+      on e.auth_user_id = u.id
+      or (
+        e.auth_user_id is null
+        and pg_catalog.lower(pg_catalog.btrim(e.email)) = pg_catalog.lower(pg_catalog.btrim(u.email))
+      )
+    where u.email is not null
+    order by u.id, (case when e.auth_user_id = u.id then 0 else 1 end) asc
+    on conflict (auth_user_id) do update set
+      assigned_role = excluded.assigned_role,
+      assigned_department = excluded.assigned_department,
+      assigned_job_title = excluded.assigned_job_title,
+      employee_id = excluded.employee_id,
+      status = 'approved',
+      rejection_reason = null,
+      reviewed_at = coalesce(public.employee_registration_requests.reviewed_at, excluded.reviewed_at),
+      updated_at = pg_catalog.now()
+    where public.employee_registration_requests.status != 'approved'
+       or public.employee_registration_requests.employee_id is distinct from excluded.employee_id
+       or public.employee_registration_requests.assigned_role is distinct from excluded.assigned_role
+    returning 1
+  )
+  select count(*) into v_approved_synced from synced_approved;
+
+  with inserted_pending as (
+    insert into public.employee_registration_requests (
+      auth_user_id,
+      applicant_name,
+      email,
+      requested_department,
+      requested_job_title,
+      status,
+      created_at,
+      updated_at
+    )
+    select
+      u.id,
+      coalesce(
+        nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'full_name'), ''),
+        nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'name'), ''),
+        pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(coalesce(u.email, 'Applicant'), '@', 1), '.', ' '))
+      ),
+      pg_catalog.btrim(u.email),
+      coalesce(
+        nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_department'), ''),
+        nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'department'), ''),
+        'Engineering'
+      ),
+      nullif(pg_catalog.btrim(u.raw_user_meta_data ->> 'requested_job_title'), ''),
+      case
+        when coalesce(u.raw_app_meta_data ->> 'registration_status', '') = 'rejected' then 'rejected'
+        else 'pending'
+      end,
       coalesce(u.created_at, pg_catalog.now()),
       pg_catalog.now()
     from auth.users u
-    left join public.employees e on e.auth_user_id = u.id
     where u.email is not null
+      and pg_catalog.btrim(u.email) != ''
+      and not exists (
+        select 1
+        from public.employees e
+        where e.auth_user_id = u.id
+           or pg_catalog.lower(pg_catalog.btrim(e.email)) = pg_catalog.lower(pg_catalog.btrim(u.email))
+      )
     on conflict (auth_user_id) do nothing
     returning 1
   )
-  select count(*) into v_inserted from inserted_rows;
+  select count(*) into v_pending_inserted from inserted_pending;
 
   return pg_catalog.jsonb_build_object(
     'synced', true,
-    'newly_added', v_inserted
+    'newly_added', v_pending_inserted,
+    'approved_reconciled', v_approved_synced
   );
 end;
 $$;
@@ -2392,22 +2447,22 @@ begin
   limit 1;
 
   v_name := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(p_applicant_name), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'full_name'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'name'), ''),
+    nullif(pg_catalog.btrim(p_applicant_name), ''),
+    nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'name'), ''),
     pg_catalog.initcap(pg_catalog.replace(pg_catalog.split_part(coalesce(v_user.email, 'User'), '@', 1), '.', ' '))
   );
 
   v_dept := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(p_requested_department), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'requested_department'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'department'), ''),
+    nullif(pg_catalog.btrim(p_requested_department), ''),
+    nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'requested_department'), ''),
+    nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'department'), ''),
     'Engineering'
   );
 
   v_title := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(p_requested_job_title), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'requested_job_title'), '')
+    nullif(pg_catalog.btrim(p_requested_job_title), ''),
+    nullif(pg_catalog.btrim(v_user.raw_user_meta_data ->> 'requested_job_title'), '')
   );
 
   insert into public.employee_registration_requests (
@@ -2440,18 +2495,18 @@ begin
   )
   on conflict (auth_user_id) do update set
     applicant_name = case
-      when public.employee_registration_requests.status = 'pending' and pg_catalog.nullif(pg_catalog.btrim(p_applicant_name), '') is not null
+      when public.employee_registration_requests.status = 'pending' and nullif(pg_catalog.btrim(p_applicant_name), '') is not null
       then pg_catalog.btrim(p_applicant_name)
       else public.employee_registration_requests.applicant_name
     end,
     requested_department = case
-      when public.employee_registration_requests.status = 'pending' and pg_catalog.nullif(pg_catalog.btrim(p_requested_department), '') is not null
+      when public.employee_registration_requests.status = 'pending' and nullif(pg_catalog.btrim(p_requested_department), '') is not null
       then pg_catalog.btrim(p_requested_department)
       else public.employee_registration_requests.requested_department
     end,
     requested_job_title = case
       when public.employee_registration_requests.status = 'pending' and p_requested_job_title is not null
-      then pg_catalog.nullif(pg_catalog.btrim(p_requested_job_title), '')
+      then nullif(pg_catalog.btrim(p_requested_job_title), '')
       else public.employee_registration_requests.requested_job_title
     end,
     updated_at = pg_catalog.now()
@@ -2529,8 +2584,8 @@ begin
   v_reviewer_name := coalesce(v_reviewer_name, 'Organization Administrator');
 
   v_job_title := coalesce(
-    pg_catalog.nullif(pg_catalog.btrim(p_assigned_job_title), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_req.requested_job_title), ''),
+    nullif(pg_catalog.btrim(p_assigned_job_title), ''),
+    nullif(pg_catalog.btrim(v_req.requested_job_title), ''),
     case v_clean_role
       when 'admin' then 'Workforce Administrator'
       when 'hr' then 'HR People Operations Lead'
@@ -2673,7 +2728,7 @@ begin
     where e.id = v_reviewer_id;
   end if;
   v_reviewer_name := coalesce(v_reviewer_name, 'Organization Administrator');
-  v_clean_reason := pg_catalog.nullif(pg_catalog.btrim(coalesce(p_rejection_reason, '')), '');
+  v_clean_reason := nullif(pg_catalog.btrim(coalesce(p_rejection_reason, '')), '');
 
   -- Unlink any active employee record if previously linked
   update public.employees

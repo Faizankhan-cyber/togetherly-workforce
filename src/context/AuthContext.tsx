@@ -148,7 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [configured, verifyConnection]);
 
-  // Synchronize authoritative employee profile & registration request from Supabase database
+  // Synchronize authoritative employee profile & registration request from Supabase database.
+  // SECURITY: Treat public.employees.auth_user_id = auth.uid() as the sole authoritative
+  // identity link. Never match or grant employee privileges by email alone.
   const syncUserDatabaseIdentity = useCallback(async (activeUser: User | null) => {
     if (!activeUser || !supabase || !isSupabaseConfigured()) {
       setDbEmployee(null);
@@ -157,69 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // 1. Check if the user has a linked employee record in public.employees
-      const empRes = await supabase
-        .from('employees')
-        .select('*')
-        .eq('auth_user_id', activeUser.id)
-        .maybeSingle();
-      let empRow = empRes.data;
-      const empErr = empRes.error;
-
-      // If no linked employee row yet, attempt safe pre-provisioned profile claim
-      if (!empRow && !empErr) {
-        try {
-          const { data: claimResult } = await supabase.rpc('claim_preprovisioned_employee_profile');
-          if (claimResult && typeof claimResult === 'object' && (claimResult as { linked?: boolean }).linked) {
-            const retryRes = await supabase
-              .from('employees')
-              .select('*')
-              .eq('auth_user_id', activeUser.id)
-              .maybeSingle();
-            empRow = retryRes.data;
-          }
-        } catch {
-          // Ignore if RPC is not yet created on remote DB
-        }
-      }
-
-      // Fallback lookup by verified email if pre-seeded row exists in public.employees
-      if (!empRow && !empErr && activeUser.email) {
-        const byEmailRes = await supabase
-          .from('employees')
-          .select('*')
-          .ilike('email', activeUser.email.trim())
-          .maybeSingle();
-        if (byEmailRes.data && (!byEmailRes.data.auth_user_id || byEmailRes.data.auth_user_id === activeUser.id)) {
-          empRow = byEmailRes.data;
-        }
-      }
-
-      if (empRow) {
-        const resolvedSysRole: SystemRole = isValidSystemRole(empRow.system_role)
-          ? empRow.system_role
-          : 'employee';
-
-        setDbEmployee({
-          id: String(empRow.id),
-          authUserId: String(empRow.auth_user_id || activeUser.id),
-          name: String(empRow.name || activeUser.email?.split('@')[0] || 'Authenticated User'),
-          email: String(empRow.email || activeUser.email || ''),
-          role: String(empRow.role || 'Workforce Specialist'),
-          systemRole: resolvedSysRole,
-          department: String(empRow.department || 'Engineering'),
-          avatarColor: String(empRow.avatar_color || '#0078D4'),
-          availability: (empRow.availability as Employee['availability']) || 'available',
-          yearsExperience: Number(empRow.years_experience ?? 3),
-          targetUtilization: Number(empRow.target_utilization ?? 100),
-          skills: [],
-          trainingAssignments: [],
-        });
-      } else {
-        setDbEmployee(null);
-      }
-
-      // 2. Fetch or ensure the user's registration request in public.employee_registration_requests
+      // 1. Fetch or ensure the user's registration request in public.employee_registration_requests
+      let resolvedRequest: EmployeeRegistrationRequest | null = null;
       const { data: reqRow, error: reqErr } = await supabase
         .from('employee_registration_requests')
         .select('*')
@@ -240,20 +181,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (reqRow) {
-        setRegistrationRequest(mapRegistrationRow(reqRow as Record<string, unknown>));
+        resolvedRequest = mapRegistrationRow(reqRow as Record<string, unknown>);
+        setRegistrationRequest(resolvedRequest);
       } else if (!reqErr) {
         // Ensure a pending registration request row exists via RPC
         try {
           const { data: ensuredRow } = await supabase.rpc('ensure_my_registration_request');
           if (ensuredRow && typeof ensuredRow === 'object') {
-            setRegistrationRequest(mapRegistrationRow(ensuredRow as Record<string, unknown>));
+            resolvedRequest = mapRegistrationRow(ensuredRow as Record<string, unknown>);
+            setRegistrationRequest(resolvedRequest);
+          } else {
+            setRegistrationRequest(null);
           }
         } catch {
           // Ignore if migration has not been applied yet
+          setRegistrationRequest(null);
         }
+      } else {
+        setRegistrationRequest(null);
+      }
+
+      const isRejectedAccount =
+        resolvedRequest?.status === 'rejected' ||
+        activeUser.app_metadata?.registration_status === 'rejected';
+
+      // Rejected accounts must never claim or populate an active employee identity
+      if (isRejectedAccount) {
+        setDbEmployee(null);
+        return;
+      }
+
+      // 2. Check if the user has an authoritatively linked employee record (auth_user_id = auth.uid())
+      const empRes = await supabase
+        .from('employees')
+        .select('*')
+        .eq('auth_user_id', activeUser.id)
+        .maybeSingle();
+      let empRow = empRes.data;
+      const empErr = empRes.error;
+
+      // If no linked employee row yet, attempt server-enforced pre-provisioned profile claim
+      if (!empRow && !empErr) {
+        try {
+          const { data: claimResult } = await supabase.rpc('claim_preprovisioned_employee_profile');
+          if (claimResult && typeof claimResult === 'object' && (claimResult as { linked?: boolean }).linked) {
+            const retryRes = await supabase
+              .from('employees')
+              .select('*')
+              .eq('auth_user_id', activeUser.id)
+              .maybeSingle();
+            empRow = retryRes.data;
+          }
+        } catch {
+          // Ignore if RPC is not yet created on remote DB
+        }
+      }
+
+      // Strictly require an explicit auth_user_id match to activeUser.id (never match unlinked rows by email)
+      if (empRow && empRow.auth_user_id === activeUser.id) {
+        const resolvedSysRole: SystemRole = isValidSystemRole(empRow.system_role)
+          ? empRow.system_role
+          : 'employee';
+
+        setDbEmployee({
+          id: String(empRow.id),
+          authUserId: String(empRow.auth_user_id),
+          name: String(empRow.name || activeUser.email?.split('@')[0] || 'Authenticated User'),
+          email: String(empRow.email || activeUser.email || ''),
+          role: String(empRow.role || 'Workforce Specialist'),
+          systemRole: resolvedSysRole,
+          department: String(empRow.department || 'Engineering'),
+          avatarColor: String(empRow.avatar_color || '#0078D4'),
+          availability: (empRow.availability as Employee['availability']) || 'available',
+          yearsExperience: Number(empRow.years_experience ?? 3),
+          targetUtilization: Number(empRow.target_utilization ?? 100),
+          skills: [],
+          trainingAssignments: [],
+        });
+      } else {
+        setDbEmployee(null);
       }
     } catch (err) {
       console.warn('Database identity sync warning:', err);
+      setDbEmployee(null);
     }
   }, []);
 
@@ -565,50 +575,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, syncUserDatabaseIdentity]);
 
   // Determine authoritative identity mapping status and systemRole.
-  // SECURITY: Never trust user_metadata for role or employee_id.
-  // Trust only the database-verified public.employees row or server-controlled app_metadata claims.
+  // SECURITY: Treat public.employees.auth_user_id = auth.uid() as the sole authoritative
+  // identity link. Never trust user_metadata, email matching, or stale client JWT claims
+  // when no linked public.employees row exists or when the registration request is rejected.
   let identityStatus: IdentityStatus = 'unauthenticated';
   let mappedEmployee: Employee | null = null;
   let systemRole: SystemRole | 'unassigned' = 'unassigned';
 
   if (user) {
-    const appSysRole =
-      (user.app_metadata?.system_role as string) || (user.app_metadata?.role as string);
-    const appEmployeeId = user.app_metadata?.employee_id as string | undefined;
-    const isRejectedInAppMeta = user.app_metadata?.registration_status === 'rejected';
+    const isRejected =
+      user.app_metadata?.registration_status === 'rejected' ||
+      registrationRequest?.status === 'rejected';
 
-    if (dbEmployee) {
+    if (!isRejected && dbEmployee && dbEmployee.authUserId === user.id) {
       identityStatus = 'mapped';
       mappedEmployee = dbEmployee;
       systemRole = dbEmployee.systemRole || 'employee';
-    } else if (
-      !isRejectedInAppMeta &&
-      registrationRequest?.status !== 'rejected' &&
-      appEmployeeId &&
-      isValidSystemRole(appSysRole)
-    ) {
-      identityStatus = 'mapped';
-      systemRole = appSysRole;
-      mappedEmployee = {
-        id: appEmployeeId,
-        authUserId: user.id,
-        name:
-          (user.user_metadata?.full_name as string) ||
-          user.email?.split('@')[0] ||
-          'Authenticated User',
-        email: user.email || '',
-        role: (user.app_metadata?.job_title as string) || appSysRole,
-        systemRole: appSysRole,
-        department: (user.app_metadata?.department as string) || 'Engineering',
-        avatarColor: '#0078D4',
-        availability: 'available',
-        yearsExperience: 3,
-        targetUtilization: 100,
-        skills: [],
-        trainingAssignments: [],
-      };
     } else {
       identityStatus = 'pending_assignment';
+      mappedEmployee = null;
       systemRole = 'unassigned';
     }
   } else if (isDemoMode) {
