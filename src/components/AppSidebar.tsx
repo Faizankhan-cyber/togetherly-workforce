@@ -196,58 +196,60 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           )}
         </nav>
 
-        {/* Role Switcher */}
-        <div className={`p-2.5 border-t border-base-border bg-base-subtle ${collapsed ? 'flex flex-col items-center gap-1' : ''}`}>
-          {!collapsed && (
-            <div className="flex items-center justify-between px-1 mb-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
-                Workspace Role
-              </span>
-              <span className="text-[9px] text-text-muted font-normal">
-                Preview Only
-              </span>
+        {/* Demo-only role switcher. Authenticated accounts use their verified database role. */}
+        {!user && (
+          <div className={`p-2.5 border-t border-base-border bg-base-subtle ${collapsed ? 'flex flex-col items-center gap-1' : ''}`}>
+            {!collapsed && (
+              <div className="flex items-center justify-between px-1 mb-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+                  Demo Workspace Role
+                </span>
+                <span className="text-[9px] text-text-muted font-normal">
+                  Preview Only
+                </span>
+              </div>
+            )}
+            <div className={collapsed ? 'flex flex-col gap-1' : 'grid grid-cols-2 gap-1 rounded-md border border-base-border bg-gray-100 p-0.5'}>
+              <button
+                type="button"
+                onClick={() => changeRole('manager')}
+                aria-pressed={role === 'manager'}
+                title={collapsed ? 'Manager / HR Demo View' : undefined}
+                className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
+                  collapsed ? 'justify-center w-8 h-8' : 'justify-center'
+                } ${
+                  role === 'manager'
+                    ? 'bg-white text-primary shadow-sm border border-base-border'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
+                }`}
+              >
+                <BriefcaseBusiness size={13} />
+                {!collapsed && 'Manager'}
+              </button>
+              <button
+                type="button"
+                onClick={() => changeRole('employee')}
+                aria-pressed={role === 'employee'}
+                title={collapsed ? 'Employee Demo View' : undefined}
+                className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
+                  collapsed ? 'justify-center w-8 h-8' : 'justify-center'
+                } ${
+                  role === 'employee'
+                    ? 'bg-white text-primary shadow-sm border border-base-border'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
+                }`}
+              >
+                <UserRound size={13} />
+                {!collapsed && 'Employee'}
+              </button>
             </div>
-          )}
-          <div className={collapsed ? 'flex flex-col gap-1' : 'grid grid-cols-2 gap-1 rounded-md border border-base-border bg-gray-100 p-0.5'}>
-            <button
-              type="button"
-              onClick={() => changeRole('manager')}
-              aria-pressed={role === 'manager'}
-              title={collapsed ? 'Manager / HR View (Preview)' : undefined}
-              className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
-                collapsed ? 'justify-center w-8 h-8' : 'justify-center'
-              } ${
-                role === 'manager'
-                  ? 'bg-white text-primary shadow-sm border border-base-border'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
-              }`}
-            >
-              <BriefcaseBusiness size={13} />
-              {!collapsed && 'Manager'}
-            </button>
-            <button
-              type="button"
-              onClick={() => changeRole('employee')}
-              aria-pressed={role === 'employee'}
-              title={collapsed ? 'Employee View (Preview)' : undefined}
-              className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
-                collapsed ? 'justify-center w-8 h-8' : 'justify-center'
-              } ${
-                role === 'employee'
-                  ? 'bg-white text-primary shadow-sm border border-base-border'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
-              }`}
-            >
-              <UserRound size={13} />
-              {!collapsed && 'Employee'}
-            </button>
+            {!collapsed && (
+              <p className="text-[9.5px] text-text-muted mt-1 text-center font-normal leading-tight">
+                Demo preview only; signed-in role comes from your account.
+              </p>
+            )}
           </div>
-          {!collapsed && (
-            <p className="text-[9.5px] text-text-muted mt-1 text-center font-normal leading-tight">
-              UI role switcher does not bypass backend authorization.
-            </p>
-          )}
-        </div>
+        )}
 
         {/* User profile & Session control */}
         <div className={`p-2 border-t border-base-border flex-shrink-0 bg-white ${collapsed ? 'flex flex-col items-center gap-1.5' : ''}`}>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import type {
   Activity,
   AppSettings,
@@ -75,7 +76,11 @@ const STORAGE_KEYS = {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRoleState] = useState<Role>(() => {
+  const { user, identityStatus, mappedEmployee } = useAuth();
+
+  // This role is only a preference for the unauthenticated demo workspace.
+  // Real signed-in users always use the role on their database-linked employee record.
+  const [previewRole, setPreviewRoleState] = useState<Role>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.ROLE);
       return stored === 'employee' || stored === 'manager' ? stored : 'manager';
@@ -83,6 +88,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return 'manager';
     }
   });
+
+  const hasMappedAuthIdentity = Boolean(
+    user && identityStatus === 'mapped' && mappedEmployee && mappedEmployee.authUserId === user.id
+  );
+  const role: Role = hasMappedAuthIdentity
+    ? mappedEmployee?.systemRole === 'employee'
+      ? 'employee'
+      : 'manager'
+    : previewRole;
 
   const [employees, setEmployees] = useState<Employee[]>(() => {
     try {
@@ -134,11 +148,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sync to local storage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.ROLE, role);
+      localStorage.setItem(STORAGE_KEYS.ROLE, previewRole);
     } catch (e) {
       void e;
     }
-  }, [role]);
+  }, [previewRole]);
 
   useEffect(() => {
     try {
@@ -197,7 +211,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [activities]);
 
   const setRole = (newRole: Role) => {
-    setRoleState(newRole);
+    // Never let a signed-in account switch to a different workspace role in the UI.
+    // The authenticated role is derived from the verified linked employee record above.
+    if (hasMappedAuthIdentity) return;
+    setPreviewRoleState(newRole);
   };
 
   const showToast = useCallback((type: ToastNotification['type'], message: string) => {
@@ -633,7 +650,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSettings(defaultSettings);
     setActivities(initialActivities);
     setSubmissions(initialSubmissions);
-    setRoleState('manager');
+    setPreviewRoleState('manager');
     try {
       localStorage.removeItem(STORAGE_KEYS.EMPLOYEES);
       localStorage.removeItem(STORAGE_KEYS.PROJECTS);
