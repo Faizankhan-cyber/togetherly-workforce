@@ -33,6 +33,51 @@ export interface EmployeeSkill {
   level: number; // 1 to 5
 }
 
+export type EmployeeProfileClaimType = 'skill' | 'experience' | 'certification';
+export type EmployeeProfileClaimStatus =
+  | 'pending-verification'
+  | 'verified'
+  | 'rejected'
+  | 'needs-more-evidence';
+export type EmployeeProfileClaimDecision = 'verified' | 'rejected' | 'needs-more-evidence';
+
+export interface EmployeeProfileClaim {
+  id: string;
+  employee_id: string;
+  claim_type: EmployeeProfileClaimType;
+  skill_id: string | null;
+  claimed_level: number | null;
+  claimed_years: number | null;
+  title: string | null;
+  organization: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  description: string | null;
+  evidence_url: string | null;
+  evidence_label: string | null;
+  status: EmployeeProfileClaimStatus;
+  reviewer_employee_id: string | null;
+  reviewer_name: string | null;
+  reviewer_notes: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeProfileClaimAudit {
+  id: string;
+  claim_id: string;
+  employee_id: string;
+  action: 'submitted' | 'resubmitted' | 'verified' | 'rejected' | 'needs-more-evidence';
+  actor_employee_id: string | null;
+  actor_name: string;
+  actor_role: SystemRole;
+  note: string | null;
+  created_at: string;
+}
+
+
 export type VerificationStatus =
   | 'not-started'
   | 'in-progress'

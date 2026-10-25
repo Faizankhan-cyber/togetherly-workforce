@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type {
   Activity,
   AppSettings,
@@ -101,7 +102,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [employees, setEmployees] = useState<Employee[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
-      return stored ? JSON.parse(stored) : initialEmployees;
+      const cached = stored ? (JSON.parse(stored) as Employee[]) : initialEmployees;
+      return cached.filter((employee) => !employee.authUserId);
     } catch {
       return initialEmployees;
     }
@@ -145,6 +147,93 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
+  const refreshVerifiedDirectory = useCallback(async () => {
+    if (!supabase || !isSupabaseConfigured() || !user || identityStatus !== 'mapped' || !mappedEmployee) return;
+
+    // Employees only fetch their own linked profile. Manager/HR/Admin accounts can
+    // load the employee directory and its canonical, database-verified skills.
+    const canReview = mappedEmployee.systemRole !== 'employee';
+    const employeeResult = canReview
+      ? await supabase
+          .from('employees')
+          .select('id, auth_user_id, name, role, department, email, avatar_color, availability, years_experience, target_utilization, system_role')
+      : await supabase
+          .from('employees')
+          .select('id, auth_user_id, name, role, department, email, avatar_color, availability, years_experience, target_utilization, system_role')
+          .eq('auth_user_id', user.id);
+
+    if (employeeResult.error || !employeeResult.data) return;
+
+    const skillResult = canReview
+      ? await supabase.from('employee_skills').select('employee_id, skill_id, level')
+      : await supabase
+          .from('employee_skills')
+          .select('employee_id, skill_id, level')
+          .eq('employee_id', mappedEmployee.id);
+
+    // Fail closed rather than treating stale local/claimed skills as verified when
+    // the canonical skill query fails.
+    if (skillResult.error || !skillResult.data) return;
+
+    const skillsByEmployee = new Map<string, Employee['skills']>();
+    for (const skill of skillResult.data) {
+      const current = skillsByEmployee.get(skill.employee_id) ?? [];
+      current.push({ skillId: skill.skill_id, level: Number(skill.level) });
+      skillsByEmployee.set(skill.employee_id, current);
+    }
+
+    setEmployees((previous) => {
+      const next = [...previous];
+      for (const row of employeeResult.data) {
+        const dbEmployeeId = String(row.id);
+        const authUserId = row.auth_user_id ? String(row.auth_user_id) : null;
+        const existingIndex = next.findIndex(
+          (item) => item.id === dbEmployeeId || (authUserId && item.authUserId === authUserId)
+        );
+        const existing = existingIndex >= 0 ? next[existingIndex] : undefined;
+        const systemRole = ['employee', 'manager', 'hr', 'admin'].includes(String(row.system_role))
+          ? (String(row.system_role) as Employee['systemRole'])
+          : 'employee';
+        const dbEmployee: Employee = {
+          ...(existing ?? {} as Employee),
+          id: dbEmployeeId,
+          authUserId,
+          name: String(row.name ?? existing?.name ?? 'Employee'),
+          role: String(row.role ?? existing?.role ?? 'Workforce Specialist'),
+          systemRole,
+          department: String(row.department ?? existing?.department ?? 'Engineering'),
+          email: String(row.email ?? existing?.email ?? ''),
+          avatarColor: String(row.avatar_color ?? existing?.avatarColor ?? '#0078D4'),
+          availability: (row.availability ?? existing?.availability ?? 'available') as Employee['availability'],
+          yearsExperience: Number(row.years_experience ?? 0),
+          experienceYears: Number(row.years_experience ?? 0),
+          targetUtilization: Number(row.target_utilization ?? 100),
+          // Only records in employee_skills are imported as verified skill levels.
+          skills: skillsByEmployee.get(dbEmployeeId) ?? [],
+          trainingAssignments: existing?.trainingAssignments ?? [],
+        };
+        if (existingIndex >= 0) next[existingIndex] = dbEmployee;
+        else next.push(dbEmployee);
+      }
+      return next;
+    });
+  }, [user, identityStatus, mappedEmployee]);
+
+  useEffect(() => {
+    void refreshVerifiedDirectory();
+    const handleRefresh = () => {
+      if (document.visibilityState === 'visible') void refreshVerifiedDirectory();
+    };
+    window.addEventListener('togetherly:verified-skills-updated', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    document.addEventListener('visibilitychange', handleRefresh);
+    return () => {
+      window.removeEventListener('togetherly:verified-skills-updated', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+      document.removeEventListener('visibilitychange', handleRefresh);
+    };
+  }, [refreshVerifiedDirectory]);
+
   // Sync to local storage
   useEffect(() => {
     try {
@@ -156,7 +245,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(employees));
+      // Supabase-linked profiles and verified skills are reloaded from the database.
+      // Keep only local/demo-managed profiles in browser storage.
+      localStorage.setItem(
+        STORAGE_KEYS.EMPLOYEES,
+        JSON.stringify(employees.filter((employee) => !employee.authUserId))
+      );
     } catch (e) {
       void e;
     }

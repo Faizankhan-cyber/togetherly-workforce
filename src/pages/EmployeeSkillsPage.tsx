@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, BrainCircuit, CheckCircle2, GraduationCap, Target } from 'lucide-react';
+import { ArrowRight, BookOpen, BrainCircuit, CheckCircle2, GraduationCap, Target, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { SkillTag } from '@/components/SkillTag';
@@ -34,12 +34,15 @@ export function EmployeeSkillsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Skills" description="Review your recorded skills and see which capabilities would help with your active projects." breadcrumb={['Home', 'My Skills']} actions={<Link to="/roadmap" className="btn-primary">Open My Development <ArrowRight size={14}/></Link>} />
+      <PageHeader title="My Skills" description="Review your recorded skills and see which capabilities would help with your active projects." breadcrumb={['Home', 'My Skills']} actions={<div className="flex flex-wrap gap-2"><Link to="/my-profile" className="btn-primary">Submit Profile Claims <ArrowRight size={14}/></Link><Link to="/roadmap" className="btn-secondary">My Development <GraduationCap size={14}/></Link></div>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-5"><div className="flex items-center gap-2 text-text-secondary"><BrainCircuit size={17} className="text-primary"/><span className="text-xs font-semibold uppercase tracking-wider">Recorded skills</span></div><div className="mt-3 text-3xl font-extrabold text-text-primary">{skillCount}</div></div>
         <div className="card p-5"><div className="flex items-center gap-2 text-text-secondary"><GraduationCap size={17} className="text-cyan"/><span className="text-xs font-semibold uppercase tracking-wider">Average proficiency</span></div><div className="mt-3 text-3xl font-extrabold text-text-primary">{averageLevel}<span className="text-sm font-medium text-text-secondary"> / 5</span></div></div>
         <div className="card p-5"><div className="flex items-center gap-2 text-text-secondary"><Target size={17} className="text-warning"/><span className="text-xs font-semibold uppercase tracking-wider">Project skill gaps</span></div><div className="mt-3 text-3xl font-extrabold text-text-primary">{gaps.size}</div></div>
       </div>
+      <section className="card p-4 border-primary/20 bg-primary/5">
+        <div className="flex items-start gap-3"><ShieldCheck size={18} className="text-primary mt-0.5"/><div><h2 className="text-sm font-bold text-text-primary">Skills in your verified profile</h2><p className="mt-1 text-xs text-text-secondary">Skills you submit are not used for team matching until a manager or HR reviewer verifies them. Use My Profile to submit claims and track their review status.</p></div></div>
+      </section>
       <section className="card p-5">
         <div className="flex items-center gap-2 border-b border-base-border/60 pb-3"><BrainCircuit size={18} className="text-primary"/><div><h2 className="text-sm font-bold text-text-primary">My recorded skills</h2><p className="mt-1 text-xs text-text-secondary">Skill levels recorded in your employee profile.</p></div></div>
         {skillCount === 0 ? <div className="py-10 text-center"><BookOpen size={28} className="mx-auto text-text-muted"/><h3 className="mt-3 text-sm font-semibold text-text-primary">No skills recorded yet</h3><p className="mt-1 text-xs text-text-secondary">Ask your manager or HR administrator to update the skills on your employee profile.</p></div> : <div className="mt-4 grid gap-3 md:grid-cols-2">{employee.skills.filter((skill) => skill.level > 0).sort((a,b) => b.level-a.level).map((skill) => <article key={skill.skillId} className="rounded-xl border border-base-border/70 bg-base-bg/50 p-4"><div className="flex items-center justify-between gap-2"><SkillTag skillId={skill.skillId}/><span className="text-[11px] font-semibold text-text-secondary">{levelLabels[skill.level] ?? `Level ${skill.level}`}</span></div><div className="mt-3 flex items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-base-border"> <div className="h-full rounded-full bg-primary" style={{width:`${Math.max(0,Math.min(100,skill.level*20))}%`}}/></div><span className="text-xs font-bold text-text-primary">{skill.level}/5</span></div></article>)}</div>}

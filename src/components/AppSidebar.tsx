@@ -44,6 +44,7 @@ const managerNavItems = [
   { to: '/impact-report', label: 'Allocation Impact', icon: FileBarChart },
   { to: '/analytics', label: 'Analytics & Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
 ];
 
 const employeeNavItems = [
@@ -53,6 +54,7 @@ const employeeNavItems = [
   { to: '/my-skills', label: 'My Skills', icon: BrainCircuit },
   { to: '/roadmap', label: 'My Development', icon: GraduationCap },
   { to: '/my-settings', label: 'My Settings', icon: Settings },
+  { to: '/my-profile', label: 'My Profile', icon: UserRound },
 ];
 
 interface AppSidebarProps {

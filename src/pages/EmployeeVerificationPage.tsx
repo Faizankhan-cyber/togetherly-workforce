@@ -329,12 +329,17 @@ export function EmployeeVerificationPage() {
           systemRole: selectedRole,
           avatarColor: '#0078D4',
           availability: 'available',
-          yearsExperience: 3,
+          yearsExperience: 0,
+          experienceYears: 0,
           targetUtilization: 100,
           skills: [],
           trainingAssignments: [],
         });
       }
+
+      // Refresh the directory from the authoritative Supabase rows. This replaces
+      // temporary client-side values with the approved profile and verified skills.
+      window.dispatchEvent(new Event('togetherly:verified-skills-updated'));
 
       const msg = `Approved ${updatedReq.applicantName} as ${ROLE_LABELS[selectedRole]} in ${selectedDepartment.trim()}.`;
       setSuccessBanner(msg);
