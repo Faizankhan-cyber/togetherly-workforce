@@ -15,7 +15,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
 
-  const authParts = getHeader(req, 'authorization').trim().split(/\\s+/);
+  const authParts = getHeader(req, 'authorization').trim().split(' ').filter(Boolean);
   const token = authParts[0]?.toLowerCase() === 'bearer' ? authParts.slice(1).join(' ').trim() : '';
   if (!token) return res.status(401).json({ error: 'Sign in to use live market intelligence.' });
 
