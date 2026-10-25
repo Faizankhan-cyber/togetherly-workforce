@@ -20,6 +20,8 @@ import {
   UserCheck,
   Lock,
   Sparkles,
+  Gauge,
+  BrainCircuit,
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
@@ -47,7 +49,10 @@ const managerNavItems = [
 const employeeNavItems = [
   { to: '/', label: 'My Dashboard', icon: LayoutDashboard },
   { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
+  { to: '/my-workload', label: 'My Workload', icon: Gauge },
+  { to: '/my-skills', label: 'My Skills', icon: BrainCircuit },
   { to: '/roadmap', label: 'My Development', icon: GraduationCap },
+  { to: '/my-settings', label: 'My Settings', icon: Settings },
 ];
 
 interface AppSidebarProps {

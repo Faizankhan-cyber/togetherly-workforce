@@ -21,6 +21,9 @@ import { AllocationImpactPage } from '@/pages/AllocationImpactPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { EmployeeProjectsPage } from '@/pages/EmployeeExperiencePage';
+import { EmployeeSettingsPage } from '@/pages/EmployeeSettingsPage';
+import { EmployeeWorkloadPage } from '@/pages/EmployeeWorkloadPage';
+import { EmployeeSkillsPage } from '@/pages/EmployeeSkillsPage';
 import { ScenarioSimulatorPage } from '@/pages/ScenarioSimulatorPage';
 import { EmployeeVerificationPage } from '@/pages/EmployeeVerificationPage';
 
@@ -81,6 +84,9 @@ function WorkspaceLayout() {
             {role === 'employee' && (
               <>
                 <Route path="/my-projects" element={<EmployeeProjectsPage />} />
+                <Route path="/my-workload" element={<EmployeeWorkloadPage />} />
+                <Route path="/my-skills" element={<EmployeeSkillsPage />} />
+                <Route path="/my-settings" element={<EmployeeSettingsPage />} />
               </>
             )}
 
