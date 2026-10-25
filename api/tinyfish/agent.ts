@@ -11,9 +11,9 @@ function getSupabaseProjectUrl(): string {
     if (parsed.hostname.toLowerCase().endsWith('.supabase.co')) return parsed.origin;
     // Match the frontend sanitizer for self-hosted/custom Supabase URLs.
     const cleanedPath = parsed.pathname
-      .replace(/\\/(rest|auth|graphql|storage)\\/v1\\/?$/i, '')
+      .replace(/\/(rest|auth|graphql|storage)\/v1\/?$/i, '')
       .replace(/\\/+$/, '');
-    return `${parsed.origin}${cleanedPath}`.replace(/\\/+$/, '');
+    return `${parsed.origin}${cleanedPath}`.replace(/\/+$/, '')
   } catch {
     return '';
   }
