@@ -14,10 +14,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
-  const token = getHeader(req, 'authorization').match(/^Bearer\\s+(.+)$/i)?.[1];
+
+  const authParts = getHeader(req, 'authorization').trim().split(/\\s+/);
+  const token = authParts[0]?.toLowerCase() === 'bearer' ? authParts.slice(1).join(' ').trim() : '';
   if (!token) return res.status(401).json({ error: 'Sign in to use live market intelligence.' });
 
-  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\\/+$/, '');
+  let supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  while (supabaseUrl.endsWith('/')) supabaseUrl = supabaseUrl.slice(0, -1);
   const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
   const tinyFishKey = process.env.TINYFISH_API_KEY;
   if (!supabaseUrl || !supabaseKey) return res.status(503).json({ error: 'Server authentication is not configured. Set Supabase environment variables in Vercel.' });
@@ -48,7 +51,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     const data = await response.json() as { results?: TinyFishResult[]; total_results?: number; totalResults?: number };
     const results = Array.isArray(data.results) ? data.results.slice(0, 10)
-      .filter((item) => typeof item.url === 'string' && /^https?:\\/\\//i.test(item.url))
+      .filter((item) => typeof item.url === 'string' && (item.url.startsWith('https://') || item.url.startsWith('http://')))
       .map((item) => ({
         title: typeof item.title === 'string' ? item.title.slice(0, 300) : item.url!,
         url: item.url!,
