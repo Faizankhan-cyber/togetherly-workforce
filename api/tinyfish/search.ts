@@ -9,7 +9,14 @@ function normalizeUrl(value: string): string | null {
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('Vary', 'Authorization');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed. Use POST.' }); }
-  const access = await authorizeTinyFishManager(getHeader(req, 'authorization'));
+  let access: Awaited<ReturnType<typeof authorizeTinyFishManager>>;
+  try {
+    access = await authorizeTinyFishManager(getHeader(req, 'authorization'));
+  } catch (error) {
+    const err = error as { name?: string; message?: string };
+    console.error('TinyFish Search authorization failed unexpectedly', { name: err?.name || 'UnknownError', detail: (err?.message || '').replace(/[\r\n]+/g, ' ').slice(0, 160) });
+    return res.status(503).json({ error: 'Could not verify organization access right now. Please retry.' });
+  }
   if (!access.ok) return res.status(access.status).json({ error: access.error });
   const { token } = access;
   const tinyFishKey = process.env.TINYFISH_API_KEY;
@@ -27,9 +34,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (!response.ok) return res.status(502).json({ error: response.status === 401 || response.status === 403 ? 'TinyFish rejected the API key. Check TINYFISH_API_KEY in Vercel.' : 'TinyFish Search returned HTTP ' + response.status + '. Please retry.' });
     const data = await response.json() as { results?: TinyFishResult[]; total_results?: number; totalResults?: number };
     const results = Array.isArray(data.results) ? data.results.slice(0, 10).map((item) => {
-      const normalized = typeof item.url === 'string' ? normalizeUrl(item.url) : null;
-      return normalized ? { title: typeof item.title === 'string' ? item.title.slice(0, 300) : normalized, url: normalized, snippet: typeof item.snippet === 'string' ? item.snippet.slice(0, 1500) : '', siteName: typeof item.site_name === 'string' ? item.site_name : typeof item.siteName === 'string' ? item.siteName : '' } : null;
+      if (!item || typeof item !== 'object') return null;
+      const candidate = item as TinyFishResult;
+      const normalized = typeof candidate.url === 'string' ? normalizeUrl(candidate.url) : null;
+      return normalized ? {
+        title: typeof candidate.title === 'string' ? candidate.title.slice(0, 300) : normalized,
+        url: normalized,
+        snippet: typeof candidate.snippet === 'string' ? candidate.snippet.slice(0, 1500) : '',
+        siteName: typeof candidate.site_name === 'string' ? candidate.site_name : typeof candidate.siteName === 'string' ? candidate.siteName : '',
+      } : null;
     }).filter((item): item is { title: string; url: string; snippet: string; siteName: string } => item !== null) : [];
     return res.status(200).json({ query: query.trim(), results, totalResults: data.total_results ?? data.totalResults ?? results.length });
-  } catch (error) { return res.status(500).json({ error: error instanceof Error && error.name === 'AbortError' ? 'TinyFish Search timed out. Try again.' : 'Unable to complete TinyFish Search.' }); }
+  } catch (error) {
+    const err = error as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+    const name = err?.name || 'UnknownError';
+    const causeCode = err?.cause?.code;
+    const detail = (err?.cause?.message || err?.message || name).replace(/[\r\n]+/g, ' ').slice(0, 180);
+    console.error('TinyFish Search request failed', { name, causeCode, detail });
+    if (name === 'AbortError' || name === 'TimeoutError') return res.status(504).json({ error: 'TinyFish Search timed out. Try again.' });
+    return res.status(502).json({ error: 'TinyFish Search could not complete the request. Check the server logs for the request failure.' });
+  }
 }
