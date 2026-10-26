@@ -3,30 +3,6 @@ type ApiRequest = { method?: string; headers: Record<string, string | string[] |
 type ApiResponse = { setHeader: (name: string, value: string) => void; status: (code: number) => ApiResponse; json: (body: unknown) => void };
 type TinyFishResult = { title?: string; url?: string; snippet?: string; site_name?: string; siteName?: string };
 function getHeader(req: ApiRequest, name: string): string { const value = req.headers[name] ?? req.headers[name.toLowerCase()]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
-function getSupabaseProjectUrl(): string {
-  const configuredUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-  const raw = configuredUrl.trim();
-  const wrappedInDoubleQuotes = raw.startsWith('"') && raw.endsWith('"');
-  const wrappedInSingleQuotes = raw.startsWith("'") && raw.endsWith("'");
-  const projectUrl = wrappedInDoubleQuotes || wrappedInSingleQuotes ? raw.slice(1, -1).trim() : raw;
-  if (!projectUrl) return '';
-  try {
-    const parsed = new URL(projectUrl);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '';
-    // Hosted Supabase must use the project origin, not an API service path.
-    if (parsed.hostname.toLowerCase().endsWith('.supabase.co')) return parsed.origin;
-    // Match the frontend sanitizer for custom/self-hosted URLs ending in a service path.
-    const segments = parsed.pathname.split('/').filter(Boolean);
-    const lastSegment = (segments[segments.length - 1] || '').toLowerCase();
-    const serviceSegment = (segments[segments.length - 2] || '').toLowerCase();
-    if (lastSegment === 'v1' && ['rest', 'auth', 'graphql', 'storage'].includes(serviceSegment)) {
-      segments.splice(-2, 2);
-    }
-    return parsed.origin + (segments.length ? '/' + segments.join('/') : '');
-  } catch {
-    return '';
-  }
-}
 function normalizeUrl(value: string): string | null {
   try { const url = new URL(value.startsWith('http://') || value.startsWith('https://') ? value : 'https://' + value); if (url.protocol !== 'https:' && url.protocol !== 'http:') return null; return url.toString(); } catch { return null; }
 }
@@ -35,7 +11,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed. Use POST.' }); }
   const access = await authorizeTinyFishManager(getHeader(req, 'authorization'));
   if (!access.ok) return res.status(access.status).json({ error: access.error });
-  const { token, supabaseUrl, supabaseKey, userId, employeeId, role } = access;
+  const { token } = access;
   const tinyFishKey = process.env.TINYFISH_API_KEY;
   if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the server function environment.' });
   try {

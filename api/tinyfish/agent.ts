@@ -2,30 +2,6 @@ import { authorizeTinyFishManager } from '../../server/tinyfishAuth';
 type ApiRequest = { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown };
 type ApiResponse = { setHeader: (name: string, value: string) => void; status: (code: number) => ApiResponse; json: (body: unknown) => void };
 function getHeader(req: ApiRequest, name: string): string { const value = req.headers[name] ?? req.headers[name.toLowerCase()]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
-function getSupabaseProjectUrl(): string {
-  const configuredUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-  const raw = configuredUrl.trim();
-  const wrappedInDoubleQuotes = raw.startsWith('"') && raw.endsWith('"');
-  const wrappedInSingleQuotes = raw.startsWith("'") && raw.endsWith("'");
-  const projectUrl = wrappedInDoubleQuotes || wrappedInSingleQuotes ? raw.slice(1, -1).trim() : raw;
-  if (!projectUrl) return '';
-  try {
-    const parsed = new URL(projectUrl);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '';
-    // Hosted Supabase must use the project origin, not an API service path.
-    if (parsed.hostname.toLowerCase().endsWith('.supabase.co')) return parsed.origin;
-    // Match the frontend sanitizer for custom/self-hosted URLs ending in a service path.
-    const segments = parsed.pathname.split('/').filter(Boolean);
-    const lastSegment = (segments[segments.length - 1] || '').toLowerCase();
-    const serviceSegment = (segments[segments.length - 2] || '').toLowerCase();
-    if (lastSegment === 'v1' && ['rest', 'auth', 'graphql', 'storage'].includes(serviceSegment)) {
-      segments.splice(-2, 2);
-    }
-    return parsed.origin + (segments.length ? '/' + segments.join('/') : '');
-  } catch {
-    return '';
-  }
-}
 function isSafePublicUrl(value: string): boolean {
   try {
     const url = new URL(value);
