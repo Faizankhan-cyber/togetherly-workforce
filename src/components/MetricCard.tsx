@@ -115,7 +115,7 @@ export function MetricCard({ label, value, icon, trend, accent = 'primary' }: Me
   return (
     <div
       ref={ref}
-      className={`card p-4 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover ${styleConfig.border} group`}
+      className={`card p-4 sm:p-5 transition-colors duration-150 ${styleConfig.border} group`}
     >
       {/* Top accent indicator */}
       <div className={`absolute top-0 left-0 right-0 h-[2.5px] ${styleConfig.topGrad}`} />
@@ -132,10 +132,10 @@ export function MetricCard({ label, value, icon, trend, accent = 'primary' }: Me
         )}
       </div>
 
-      <div className="text-2xl sm:text-3xl font-bold text-text-primary tracking-tight mb-1 font-mono tabular-nums">
+      <div className="text-2xl font-semibold text-text-primary tracking-tight mb-1 tabular-nums">
         {displayValue}
       </div>
-      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{label}</div>
+      <div className="text-xs font-medium text-text-secondary tracking-normal">{label}</div>
       {trend?.label && (
         <div className="text-[11px] text-text-muted mt-1.5 flex items-center gap-1">{trend.label}</div>
       )}
