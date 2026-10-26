@@ -1,3 +1,4 @@
+declare const process: { env: Record<string, string | undefined> };
 type TinyFishRole = 'manager' | 'hr' | 'admin';
 export type TinyFishAccess =
   | { ok: true; token: string; supabaseUrl: string; supabaseKey: string; userId: string; employeeId: string; role: TinyFishRole }

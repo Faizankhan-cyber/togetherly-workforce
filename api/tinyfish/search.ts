@@ -1,4 +1,5 @@
-import { authorizeTinyFishManager } from '../../server/tinyfishAuth';
+declare const process: { env: Record<string, string | undefined> };
+import { authorizeTinyFishManager } from '../../server/tinyfishAuth.js';
 type ApiRequest = { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown };
 type ApiResponse = { setHeader: (name: string, value: string) => void; status: (code: number) => ApiResponse; json: (body: unknown) => void };
 type TinyFishResult = { title?: string; url?: string; snippet?: string; site_name?: string; siteName?: string };
