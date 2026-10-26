@@ -121,16 +121,16 @@ export function ProjectIntelligencePanel({ project, nextRoute }: { project: Proj
   }
 
   return (
-    <section className="card overflow-hidden border-violet-200/70 shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-violet-100 bg-gradient-to-r from-violet-50/90 via-base-card to-cyan-50/70 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+    <section className="card overflow-hidden border-base-border">
+      <div className="flex flex-col gap-3 border-b border-base-border bg-base-subtle p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-xl border border-violet-200 bg-white p-2.5 text-violet-700 shadow-sm"><Sparkles size={19}/></div>
+          <div className="rounded-lg border border-base-border bg-white p-2.5 text-primary"><Sparkles size={19}/></div>
           <div>
-            <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-extrabold text-text-primary">TinyFish Project Intelligence</h2><span className="rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">Live web research</span></div>
+            <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-extrabold text-text-primary">TinyFish Project Intelligence</h2><span className="rounded-full border border-primary/20 bg-primary-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">Live sources</span></div>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-secondary">Research real-world skill demand, official technical guidance and learning resources for {project.name}. Sources are carried into Workforce Twin for decision context.</p>
           </div>
         </div>
-        <button type="button" onClick={() => void researchProject()} disabled={loading} className="btn-primary shrink-0 bg-violet-700 hover:bg-violet-800">
+        <button type="button" onClick={() => void researchProject()} disabled={loading} className="btn-primary shrink-0">
           {loading ? <LoaderCircle size={15} className="animate-spin"/> : <Search size={15}/>} {loading ? 'Researching…' : brief ? 'Refresh Research' : 'Research This Project'}
         </button>
       </div>
@@ -140,14 +140,14 @@ export function ProjectIntelligencePanel({ project, nextRoute }: { project: Proj
           {skillRequirements.length ? skillRequirements.map((skill) => <span key={skill.id} className="rounded-full border border-base-border bg-base-bg px-2.5 py-1 text-[11px] font-medium text-text-secondary">{skill.name}</span>) : <span className="text-xs text-text-secondary">No project skills defined yet. Add requirements to make the research more specific.</span>}
         </div>
         {error && <div role="alert" className="flex items-start gap-2 rounded-lg border border-critical/20 bg-critical/5 p-3 text-xs text-critical"><AlertCircle size={15} className="mt-0.5 shrink-0"/><span>{error}</span></div>}
-        {!brief && !loading && !error && <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/30 p-4 text-xs leading-relaxed text-text-secondary">No external research has been attached to this project yet. Run TinyFish research to discover relevant sources before comparing team options.</div>}
+        {!brief && !loading && !error && <div className="rounded-lg border border-dashed border-base-border bg-base-subtle p-4 text-xs leading-relaxed text-text-secondary">No external research has been attached to this project yet. Run TinyFish research to discover relevant sources before comparing team options.</div>}
         {brief && <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-secondary">
             <span className="inline-flex items-center gap-1.5"><Globe size={13}/> {brief.totalResults} results found · {brief.results.length} sources shown</span>
             <span>{formatAge(brief.researchedAt)}</span>
           </div>
           {requirementsChanged && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Project skill requirements changed since this research was collected. Refresh the research to align it with the current requirements.</div>}
-          {mentionedSkills.length > 0 && !requirementsChanged && <div className="rounded-lg border border-cyan-200 bg-cyan-50/60 p-3">
+          {mentionedSkills.length > 0 && !requirementsChanged && <div className="rounded-lg border border-cyan-200 bg-cyan-50/40 p-3">
             <div className="flex items-center gap-2 text-xs font-bold text-cyan-900"><ShieldCheck size={14}/> Project skills mentioned in source snippets</div>
             <div className="mt-2 flex flex-wrap gap-1.5">{mentionedSkills.map((skill) => <span key={skill.id} className="rounded-full border border-cyan-200 bg-white px-2 py-1 text-[11px] font-semibold text-cyan-900">{skill.name}</span>)}</div>
             <p className="mt-2 text-[10px] leading-relaxed text-cyan-900/80">This is a simple mention signal, not a verified market-demand score or a certification of employee proficiency.</p>
@@ -156,7 +156,7 @@ export function ProjectIntelligencePanel({ project, nextRoute }: { project: Proj
             {brief.results.slice(0, 5).map((source, index) => {
               let host = source.siteName || source.url;
               try { host = new URL(source.url).hostname.replace(/^www\./, ''); } catch { /* keep provider label */ }
-              return <article key={`${source.url}-${index}`} className="rounded-xl border border-base-border/70 bg-base-bg/40 p-3.5">
+              return <article key={`${source.url}-${index}`} className="rounded-lg border border-base-border bg-white p-3.5">
                 <div className="flex items-start gap-2.5">
                   <div className="min-w-0 flex-1"><a href={source.url} target="_blank" rel="noreferrer" className="text-xs font-bold leading-relaxed text-text-primary hover:text-primary hover:underline">{source.title || host}</a><div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-text-muted">{host}</div><p className="mt-2 text-xs leading-relaxed text-text-secondary">{source.snippet || 'No snippet provided. Open the source to review its contents.'}</p></div>
                   <a href={source.url} target="_blank" rel="noreferrer" aria-label={`Open source ${source.title || host}`} className="rounded-md border border-base-border bg-white p-1.5 text-text-secondary hover:text-primary"><ExternalLink size={13}/></a>

@@ -187,7 +187,7 @@ export function TeamBuilderPage() {
 
       {/* Project Selector & Health Bar */}
       <Reveal direction="down">
-        <div className="card p-5 bg-gradient-to-r from-primary/10 via-base-card to-cyan/10 border-primary/30 shadow-lg">
+        <div className="card p-5 border-base-border bg-white">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
             <div className="max-w-xl">
               <label className="text-xs font-semibold text-text-secondary uppercase mb-1.5 block">
@@ -196,7 +196,7 @@ export function TeamBuilderPage() {
               <select
                 value={selectedProjectId}
                 onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="input-field w-full text-sm font-bold bg-base-bg/90 border-primary/40 focus:border-primary cursor-pointer"
+                className="input-field w-full text-sm font-semibold bg-base-subtle border-base-border focus:border-primary cursor-pointer"
               >
                 {activeProjects.map((p) => (
                   <option key={p.id} value={p.id} className="bg-base-card text-text-primary">
@@ -210,17 +210,17 @@ export function TeamBuilderPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center sm:min-w-[340px]">
-              <div className="p-3 rounded-xl border border-base-border/70 bg-base-bg/70 shadow-sm">
+              <div className="p-3 rounded-lg border border-base-border bg-base-subtle">
                 <div className="text-xl font-extrabold text-cyan font-mono">{teamIds.length} / {project.targetTeamSize}</div>
                 <div className="text-[10px] uppercase tracking-wider text-text-secondary mt-0.5">Staffing Count</div>
               </div>
-              <div className="p-3 rounded-xl border border-base-border/70 bg-base-bg/70 shadow-sm">
+              <div className="p-3 rounded-lg border border-base-border bg-base-subtle">
                 <div className={`text-xl font-extrabold font-mono ${coveragePercent === 100 ? 'text-success' : 'text-warning'}`}>
                   {coveragePercent}%
                 </div>
                 <div className="text-[10px] uppercase tracking-wider text-text-secondary mt-0.5">Skill Coverage</div>
               </div>
-              <div className="p-3 rounded-xl border border-primary/30 bg-primary/10 shadow-sm">
+              <div className="p-3 rounded-lg border border-primary/20 bg-primary-50">
                 <div className="text-xl font-extrabold text-primary font-mono">{teamAverageFit}%</div>
                 <div className="text-[10px] uppercase tracking-wider text-primary mt-0.5">Average Fit</div>
               </div>
@@ -232,7 +232,7 @@ export function TeamBuilderPage() {
       <ProjectIntelligencePanel project={project} nextRoute="/workforce-twin" />
 
       {/* Main Grid: Candidate Recommendations vs Active Squad */}
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.85fr]">
+      <div className="grid gap-5 xl:grid-cols-[1.3fr_0.85fr]">
         {/* Candidate List */}
         <div className="space-y-4">
           <div className="card p-4 flex items-center justify-between border-base-border/70">
@@ -262,8 +262,8 @@ export function TeamBuilderPage() {
                   <div
                     className={`card p-4 transition-all duration-200 ${
                       isAssigned
-                        ? 'border-primary/60 bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.12)] ring-1 ring-primary/40'
-                        : 'hover:border-base-border hover:bg-base-hover/50'
+                        ? 'border-primary/45 bg-primary-50 ring-1 ring-primary/20'
+                        : 'hover:border-primary/25 hover:bg-base-subtle'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

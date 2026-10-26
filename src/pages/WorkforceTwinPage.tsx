@@ -21,7 +21,6 @@ import { ProjectIntelligencePanel } from '@/components/ProjectIntelligencePanel'
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { MatchScore } from '@/components/MatchScore';
-import { ParallaxVisual } from '@/components/ParallaxVisual';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
@@ -228,18 +227,16 @@ export function WorkforceTwinPage() {
 
       {/* Live Simulation Control Hero */}
       <Reveal direction="down">
-        <section className="card p-5 sm:p-6 bg-gradient-to-r from-primary/15 via-base-card to-cyan/10 border-primary/30 shadow-xl relative overflow-hidden">
-          <ParallaxVisual strength={0.12} className="absolute -right-12 -top-12 w-56 h-56 rounded-full bg-cyan/15 blur-3xl" />
-          <ParallaxVisual strength={-0.08} className="absolute -left-10 -bottom-10 w-44 h-44 rounded-full bg-primary/15 blur-3xl" />
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+        <section className="card p-5 sm:p-6 bg-white border-base-border">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
             <div className="max-w-xl">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan mb-2">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary mb-2">
                 <GitCompareArrows size={15} /> Active Simulation Environment
               </div>
               <label className="block">
                 <span className="text-xs text-text-secondary mb-1.5 block">Select Target Project for Modeling:</span>
                 <select
-                  className="input-field w-full text-sm font-semibold bg-base-bg/90 border-primary/40 focus:border-primary"
+                  className="input-field w-full text-sm font-semibold bg-base-subtle border-base-border focus:border-primary"
                   value={projectId}
                   onChange={(event) => setProjectId(event.target.value)}
                 >
@@ -252,15 +249,15 @@ export function WorkforceTwinPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center sm:min-w-[340px]">
-              <div className="p-3 rounded-xl border border-base-border/70 bg-base-bg/70 shadow-sm">
+              <div className="p-3 rounded-lg border border-base-border bg-base-subtle">
                 <div className="text-xl font-extrabold text-text-primary tracking-tight">{project.targetTeamSize}</div>
                 <div className="text-[10px] uppercase tracking-wider text-text-secondary mt-0.5">Target Size</div>
               </div>
-              <div className="p-3 rounded-xl border border-base-border/70 bg-base-bg/70 shadow-sm">
+              <div className="p-3 rounded-lg border border-base-border bg-base-subtle">
                 <div className="text-xl font-extrabold text-cyan tracking-tight">{teamIds.length}</div>
                 <div className="text-[10px] uppercase tracking-wider text-text-secondary mt-0.5">Selected</div>
               </div>
-              <div className="p-3 rounded-xl border border-primary/30 bg-primary/10 shadow-sm">
+              <div className="p-3 rounded-lg border border-primary/20 bg-primary-50">
                 <div className="text-xl font-extrabold text-primary tracking-tight">{teamScore}%</div>
                 <div className="text-[10px] uppercase tracking-wider text-primary mt-0.5">Team Match</div>
               </div>
@@ -274,8 +271,8 @@ export function WorkforceTwinPage() {
       <div className="grid gap-5 xl:grid-cols-[1.3fr_0.85fr]">
         {/* Left: Recommended Talent */}
         <Reveal delay={60}>
-          <section className="card flex flex-col h-full shadow-lg">
-            <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-base-border/60 bg-base-bg/30">
+          <section className="card flex flex-col h-full">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-base-border/60 bg-base-subtle">
               <div>
                 <h2 className="text-base font-bold text-text-primary tracking-tight">Algorithmic Talent Recommendations</h2>
                 <p className="text-xs text-text-secondary mt-0.5">Ranked by weighted skill alignment, seniority, and capacity safety.</p>
@@ -304,8 +301,8 @@ export function WorkforceTwinPage() {
                     key={employee.id}
                     className={`p-4 rounded-xl border transition-all duration-200 ${
                       selected
-                        ? 'border-primary/50 bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.12)]'
-                        : 'border-base-border/70 bg-base-bg/50 hover:border-base-border hover:bg-base-hover/50'
+                        ? 'border-primary/45 bg-primary-50 ring-1 ring-primary/20'
+                        : 'border-base-border bg-white hover:border-primary/25 hover:bg-base-subtle'
                     }`}
                   >
                     <div className="flex flex-wrap items-start gap-4">
@@ -388,7 +385,7 @@ export function WorkforceTwinPage() {
         {/* Right: Simulation Summary & Impact */}
         <div className="space-y-5">
           <Reveal delay={120}>
-            <section className="card p-5 shadow-lg">
+            <section className="card p-5">
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-base-border/60">
                 <div>
                   <h2 className="text-sm font-bold text-text-primary">Twin Validation Report</h2>
@@ -415,7 +412,7 @@ export function WorkforceTwinPage() {
               <div className="space-y-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Skill Coverage Matrix</div>
                 {coverage.map((item) => (
-                  <div key={item.skillId} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-base-border/50 bg-base-bg/40">
+                  <div key={item.skillId} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-base-border/50 bg-base-subtle">
                     <div>
                       <span className="text-xs font-semibold text-text-primary">{getSkillName(item.skillId)}</span>
                       <span className="ml-2 text-[10px] text-text-secondary font-mono">Min L{item.minLevel}</span>
@@ -474,7 +471,7 @@ export function WorkforceTwinPage() {
 
           {/* Workload Impact Delta */}
           <Reveal delay={180}>
-            <section className="card p-5 shadow-lg">
+            <section className="card p-5">
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-base-border/60">
                 <div>
                   <h2 className="text-sm font-bold text-text-primary">Workforce Utilization Delta</h2>
@@ -515,7 +512,7 @@ export function WorkforceTwinPage() {
       {/* Saved Alternative Scenarios */}
       {scenarios.length > 0 && (
         <Reveal delay={220}>
-          <section className="card overflow-hidden shadow-xl border-cyan/30">
+          <section className="card overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-base-border/60 bg-base-bg/40">
               <div>
                 <h2 className="text-sm font-bold text-text-primary">Saved Alternative Scenarios</h2>

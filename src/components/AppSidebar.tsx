@@ -159,8 +159,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         className={({ isActive }) =>
           `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
             isActive
-              ? (featured ? 'bg-violet-50 text-violet-700 font-semibold border-l-2 border-violet-600' : 'bg-primary-50 text-primary font-semibold border-l-2 border-primary')
-              : (featured ? 'text-violet-700 hover:bg-violet-50' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover')
+              ? (featured ? 'bg-violet-50/70 text-violet-800 font-semibold border-l-2 border-violet-500' : 'bg-primary-50 text-primary font-semibold border-l-2 border-primary')
+              : (featured ? 'text-violet-700 hover:bg-violet-50/70' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover')
           } ${collapsed ? 'justify-center px-2' : ''}`
         }
         title={collapsed ? item.label : undefined}
@@ -197,9 +197,9 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           collapsed ? 'w-[68px]' : 'w-[240px]'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        {/* Microsoft Azure / 365 Enterprise Brand Header */}
+        {/* Togetherly brand header */}
         <div className={`flex items-center gap-2.5 h-14 px-4 border-b border-base-border flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center flex-shrink-0 text-white shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 text-white">
             <Layers size={17} />
           </div>
           {!collapsed && (
@@ -244,7 +244,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                       </section>
                     );
                   })}
-                  <div className="my-2 rounded-lg border border-violet-100 bg-violet-50/50 p-1">
+                  <div className="my-2 border-y border-base-border/80 py-1">
                     {renderNavItem(tinyFishNavItem, true)}
                   </div>
                   {managerNavGroups.slice(2).map((group) => {
@@ -400,7 +400,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           <div className={`flex items-center gap-2.5 ${collapsed ? '' : 'p-1.5 rounded-md hover:bg-base-hover transition-colors'}`}>
             <Avatar
               name={user ? profile?.name || user.email || 'User' : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
-              color={role === 'employee' && profile ? profile.avatarColor : '#0078D4'}
+              color={role === 'employee' && profile ? profile.avatarColor : '#315D70'}
               size="sm"
             />
             {!collapsed && (
