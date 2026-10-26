@@ -2,28 +2,29 @@
 
 ## Visual direction
 
-Togetherly uses a restrained, professional light interface designed for workforce and project decisions. It should feel calm, evidence-led, readable, and operational rather than futuristic or playful.
+Togetherly is a light, enterprise workforce operations workspace. Use the clarity and navigation discipline of Microsoft Azure Portal with the task-focused density of Dynamics 365 Operations. Keep it calm, evidence-led, accessible, and operational rather than futuristic or playful.
 
 ## Core tokens
 
-- **Brand:** deep blue-green `#315D70`
-- **Secondary teal:** `#4D787D`, used sparingly for supporting data
-- **Primary text:** `#1B2D3A`
-- **Secondary text:** `#627383`
-- **Canvas:** `#F6F8FA`
+- **Brand / action:** Azure blue `#0078D4`; use it for primary actions, active navigation, focus states, and selected controls.
+- **Secondary blue:** `#0F6CBD`, used sparingly for supporting data and links.
+- **Primary text:** `#242424`
+- **Secondary text:** `#616161`
+- **Canvas:** `#F5F7FA`
 - **Surface:** `#FFFFFF`
-- **Border:** `#E2E8EC`
-- **Success / warning / critical:** muted green `#2E6B55`, amber `#9C6426`, red `#B84A4A`
+- **Border:** `#E1E5EA`
+- **Success / warning / critical:** `#107C10`, `#8A5A00`, `#A4262C`
 
 ## Components
 
-- Prefer white surfaces, quiet borders, and subtle shadows. Avoid decorative gradients, glowing selection rings, and unnecessary motion.
+- Prefer white surfaces, crisp borders, and very subtle shadows. Use compact 4–8px corner radii for the operational workspace; avoid excessive pill-shaped cards.
 - Use one clear primary action per region; secondary actions are neutral outlined buttons.
-- Active navigation uses a restrained brand tint and a narrow edge indicator. TinyFish may retain a small violet identity cue, but not a large purple banner.
-- Use color for state, risk, verification, or a meaningful action, not decoration.
-- Keep field labels and data readable, with consistent 8/12/16/24 spacing and a 36px minimum interactive control height.
+- Keep the persistent header and grouped sidebar consistent across authenticated pages. Active navigation uses an Azure-tinted surface with a narrow blue edge indicator.
+- Use color to communicate state, risk, verification, or a meaningful action, not decoration.
+- Keep field labels, task tables, filters, status badges, and data readable. Use consistent 8/12/16/24 spacing and a 36px minimum interactive control height.
+- Keep dashboard data fairly dense and organised into useful work areas. Avoid oversized empty cards, decorative gradients, and unnecessary motion.
 - Workforce Twin should prioritise scenario comparison and trade-offs; Team Builder should prioritise explainable fit, verified skill coverage, and available capacity.
 
 ## Typography
 
-Use Inter when available, with system sans-serif fallbacks. Titles use semibold weights and restrained tracking; body copy stays regular and slate-colored. Avoid excessive all-caps and unnecessary bolding.
+Use Inter with system sans-serif fallbacks. Titles use semibold weights; body copy remains regular and readable. Avoid excessive all-caps and unnecessary bolding.
