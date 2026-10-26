@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Save,
   Sparkles,
+  ShieldCheck,
   Users,
   X,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
 import { Avatar } from '@/components/Avatar';
 import { CapacityBar } from '@/components/CapacityBar';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
+import { ProjectIntelligencePanel } from '@/components/ProjectIntelligencePanel';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { MatchScore } from '@/components/MatchScore';
@@ -267,6 +269,8 @@ export function WorkforceTwinPage() {
         </section>
       </Reveal>
 
+      <ProjectIntelligencePanel project={project} />
+
       <div className="grid gap-5 xl:grid-cols-[1.3fr_0.85fr]">
         {/* Left: Recommended Talent */}
         <Reveal delay={60}>
@@ -312,7 +316,10 @@ export function WorkforceTwinPage() {
                           <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
                           <div className="min-w-0">
                             <h3 className="text-sm font-bold text-text-primary truncate">{employee.name}</h3>
-                            <p className="text-xs text-text-secondary truncate">{employee.role} · {employee.yearsExperience} yrs exp · {employee.department}</p>
+                            <p className="text-xs text-text-secondary truncate">{employee.role} · {(employee.yearsExperience ?? employee.experienceYears ?? 0) > 0 ? `${employee.yearsExperience ?? employee.experienceYears} yrs exp` : 'Experience not recorded'} · {employee.department}</p>
+                            <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-text-muted">
+                              {employee.dataSource === 'database' ? <><ShieldCheck size={11} className="text-success"/> Skills from verified workforce inventory</> : <>Demo profile · illustrative skills and experience</>}
+                            </div>
                           </div>
                         </div>
 

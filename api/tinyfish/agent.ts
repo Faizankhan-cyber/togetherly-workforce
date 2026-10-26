@@ -1,3 +1,4 @@
+import { authorizeTinyFishManager } from '../../server/tinyfishAuth';
 type ApiRequest = { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown };
 type ApiResponse = { setHeader: (name: string, value: string) => void; status: (code: number) => ApiResponse; json: (body: unknown) => void };
 function getHeader(req: ApiRequest, name: string): string { const value = req.headers[name] ?? req.headers[name.toLowerCase()]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
@@ -54,22 +55,12 @@ function isSafePublicUrl(value: string): boolean {
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('Vary', 'Authorization');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed. Use POST.' }); }
-  const parts = getHeader(req, 'authorization').trim().split(' ').filter(Boolean);
-  const token = parts[0]?.toLowerCase() === 'bearer' ? parts.slice(1).join(' ').trim() : '';
-  if (!token) return res.status(401).json({ error: 'Sign in to use TinyFish Intelligence.' });
-  const supabaseUrl = getSupabaseProjectUrl();
-  const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  const access = await authorizeTinyFishManager(getHeader(req, 'authorization'));
+  if (!access.ok) return res.status(access.status).json({ error: access.error });
+  const { token, supabaseUrl, supabaseKey, userId, employeeId, role } = access;
   const tinyFishKey = process.env.TINYFISH_API_KEY;
-  if (!supabaseUrl || !supabaseKey) return res.status(503).json({ error: 'Supabase server authentication is not configured in Vercel.' });
-  if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the Vercel function environment. Redeploy after adding it.' });
+  if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the server function environment.' });
   try {
-    const auth = await fetch(supabaseUrl + '/auth/v1/user', { headers: { apikey: supabaseKey, Authorization: 'Bearer ' + token } });
-    if (!auth.ok) {
-      const authDetail = await auth.json().catch(() => ({})) as { message?: string; msg?: string; error?: string; error_description?: string };
-      const reason = [authDetail.message, authDetail.msg, authDetail.error_description, authDetail.error].find((value) => typeof value === 'string' && value.trim());
-      const safeReason = reason ? String(reason).replace(/[\r\n]+/g, ' ').slice(0, 180) : '';
-      return res.status(401).json({ error: 'Supabase Auth rejected the session or API key (HTTP ' + auth.status + (safeReason ? ': ' + safeReason : '') + '). Check that Vercel uses the same Supabase project URL and public key as the frontend, then sign in again.' });
-    }
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const url = typeof body === 'object' && body !== null && 'url' in body ? (body as { url?: unknown }).url : undefined;
     const goal = typeof body === 'object' && body !== null && 'goal' in body ? (body as { goal?: unknown }).goal : undefined;
@@ -95,6 +86,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return res.status(502).json({ error: 'TinyFish Agent could not start (HTTP ' + response.status + ')' + (detail ? ': ' + detail : '') + '.' });
     }
     if (!data.run_id) return res.status(502).json({ error: 'TinyFish did not return a run ID. Response: ' + responseText.replace(/[\r\n]+/g, ' ').slice(0, 180) });
+    const runRegistration = await fetch(`${supabaseUrl}/rest/v1/tinyfish_agent_runs`, {
+      method: 'POST',
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ run_id: data.run_id, owner_auth_user_id: userId, owner_employee_id: employeeId, owner_role: role, target_url: url, goal: goal.trim() }),
+    });
+    if (!runRegistration.ok) {
+      console.error('TinyFish run could not be registered to its owner', { status: runRegistration.status });
+      return res.status(503).json({ error: 'TinyFish accepted the research task, but Togetherly could not securely register its owner. Do not start a duplicate run; contact the administrator.' });
+    }
     return res.status(202).json({ run_id: data.run_id, status: 'PENDING' });
   } catch (error) {
     const err = error as { name?: string; message?: string; cause?: { code?: string; message?: string } };

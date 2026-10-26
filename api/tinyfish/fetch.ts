@@ -1,3 +1,4 @@
+import { authorizeTinyFishManager } from '../../server/tinyfishAuth';
 type ApiRequest = { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown };
 type ApiResponse = { setHeader: (name: string, value: string) => void; status: (code: number) => ApiResponse; json: (body: unknown) => void };
 function getHeader(req: ApiRequest, name: string): string { const value = req.headers[name] ?? req.headers[name.toLowerCase()]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
@@ -54,22 +55,12 @@ function isSafePublicUrl(value: string): boolean {
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('Vary', 'Authorization');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed. Use POST.' }); }
-  const parts = getHeader(req, 'authorization').trim().split(' ').filter(Boolean);
-  const token = parts[0]?.toLowerCase() === 'bearer' ? parts.slice(1).join(' ').trim() : '';
-  if (!token) return res.status(401).json({ error: 'Sign in to use TinyFish Intelligence.' });
-  const supabaseUrl = getSupabaseProjectUrl();
-  const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  const access = await authorizeTinyFishManager(getHeader(req, 'authorization'));
+  if (!access.ok) return res.status(access.status).json({ error: access.error });
+  const { token, supabaseUrl, supabaseKey, userId, employeeId, role } = access;
   const tinyFishKey = process.env.TINYFISH_API_KEY;
-  if (!supabaseUrl || !supabaseKey) return res.status(503).json({ error: 'Supabase server authentication is not configured in Vercel.' });
-  if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the Vercel function environment. Redeploy after adding it.' });
+  if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the server function environment.' });
   try {
-    const auth = await fetch(supabaseUrl + '/auth/v1/user', { headers: { apikey: supabaseKey, Authorization: 'Bearer ' + token } });
-    if (!auth.ok) {
-      const authDetail = await auth.json().catch(() => ({})) as { message?: string; msg?: string; error?: string; error_description?: string };
-      const reason = [authDetail.message, authDetail.msg, authDetail.error_description, authDetail.error].find((value) => typeof value === 'string' && value.trim());
-      const safeReason = reason ? String(reason).replace(/[\r\n]+/g, ' ').slice(0, 180) : '';
-      return res.status(401).json({ error: 'Supabase Auth rejected the session or API key (HTTP ' + auth.status + (safeReason ? ': ' + safeReason : '') + '). Check that Vercel uses the same Supabase project URL and public key as the frontend, then sign in again.' });
-    }
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const requested = typeof body === 'object' && body !== null && 'urls' in body ? (body as { urls?: unknown }).urls : undefined;
     if (!Array.isArray(requested) || requested.length < 1 || requested.length > 10 || requested.some((url) => typeof url !== 'string' || !isSafePublicUrl(url))) return res.status(400).json({ error: 'Provide 1–10 valid public http(s) URLs. Local, private-network, and credential-bearing URLs are not allowed.' });

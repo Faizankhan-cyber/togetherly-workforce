@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
+  ShieldCheck,
   UsersRound,
   Sparkles,
   GitCompareArrows,
@@ -16,6 +17,7 @@ import { MatchScore } from '@/components/MatchScore';
 import { Reveal } from '@/components/Reveal';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
+import { ProjectIntelligencePanel } from '@/components/ProjectIntelligencePanel';
 import { useData } from '@/context/DataContext';
 import {
   generateRecommendations,
@@ -227,6 +229,8 @@ export function TeamBuilderPage() {
         </div>
       </Reveal>
 
+      <ProjectIntelligencePanel project={project} nextRoute="/workforce-twin" />
+
       {/* Main Grid: Candidate Recommendations vs Active Squad */}
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.85fr]">
         {/* Candidate List */}
@@ -274,8 +278,11 @@ export function TeamBuilderPage() {
                           </div>
 
                           <p className="text-xs text-text-secondary mt-1">
-                            {emp.role} · {emp.yearsExperience || emp.experienceYears} yrs exp · {emp.department}
+                            {emp.role} · {(emp.yearsExperience ?? emp.experienceYears ?? 0) > 0 ? `${emp.yearsExperience ?? emp.experienceYears} yrs exp` : 'Experience not recorded'} · {emp.department}
                           </p>
+                          <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-text-muted">
+                            {emp.dataSource === 'database' ? <><ShieldCheck size={11} className="text-success"/> Skills from verified workforce inventory</> : <>Demo profile · illustrative skills and experience</>}
+                          </div>
 
                           {/* Reasons & Risks */}
                           <div className="mt-2.5 flex flex-wrap gap-2 text-[11px]">

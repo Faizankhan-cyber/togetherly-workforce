@@ -234,7 +234,7 @@ export function generateRecommendations(
       : 80;
 
     // 2. Experience evaluation (max 8 years for full points)
-    const expYears = employee.yearsExperience ?? employee.experienceYears ?? 4;
+    const expYears = employee.yearsExperience ?? employee.experienceYears ?? 0;
     const experienceScore = Math.min(100, Math.round((expYears / 8) * 100));
 
     // 3. Availability and capacity score
