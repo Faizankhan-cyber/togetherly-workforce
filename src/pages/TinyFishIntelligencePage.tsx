@@ -251,7 +251,7 @@ export function TinyFishIntelligencePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="TinyFish Intelligence" description="Togetherly’s live web-intelligence layer. Research sources here, then use project-specific evidence in Team Builder and Workforce Twin. Research informs decisions; it never silently changes calculated match scores." breadcrumb={['Home', 'TinyFish Intelligence']} />
+      <PageHeader title="TinyFish AI" description="Togetherly’s live web-intelligence layer. Research sources here, then use project-specific evidence in Team Builder and Workforce Twin. Research informs decisions; it never silently changes calculated match scores." breadcrumb={['Home', 'TinyFish Intelligence']} />
       <Reveal direction="down">
         <section className="card overflow-hidden border-primary/20 shadow-md">
           <div className="bg-gradient-to-r from-primary/10 via-base-card to-cyan/10 p-5 sm:p-6">

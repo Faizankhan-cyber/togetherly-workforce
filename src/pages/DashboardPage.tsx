@@ -28,6 +28,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { MetricCard } from '@/components/MetricCard';
 import { ChartCard } from '@/components/ChartCard';
 import { Reveal } from '@/components/Reveal';
+import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
 import { Avatar } from '@/components/Avatar';
 import {
   calculateEmployeeUtilization,
@@ -40,11 +41,11 @@ import {
 import { useData } from '@/context/DataContext';
 import { EmployeeDashboardPage } from '@/pages/EmployeeExperiencePage';
 
-export function DashboardPage({ embedded = false }: { embedded?: boolean }) {
+export function DashboardPage() {
   const navigate = useNavigate();
   const { employees, projects, settings, activities, role } = useData();
 
-  if (!embedded && role === 'employee') return <EmployeeDashboardPage />;
+  if (role === 'employee') return <EmployeeDashboardPage />;
 
   const activeProjects = projects.filter((p) => p.status === 'active');
   const availableEmployees = employees.filter((e) => e.availability === 'available');
@@ -160,7 +161,6 @@ export function DashboardPage({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className="space-y-5">
-      {!embedded && (
       <PageHeader
         title="Workforce Intelligence Center"
         description="Comprehensive real-time capacity tracking, predictive team allocation, and skill intelligence across all enterprise initiatives."
@@ -178,7 +178,8 @@ export function DashboardPage({ embedded = false }: { embedded?: boolean }) {
           </>
         }
       />
-      )}
+
+      <TinyFishLaunchCard description="Investigate staffing gaps, delivery risks, skills demand, and useful public research without leaving the workspace." />
 
       {/* Workforce Health Index Banner */}
       <Reveal direction="down" delay={20}>

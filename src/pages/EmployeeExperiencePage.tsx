@@ -19,6 +19,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
+import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
 import { Avatar } from '@/components/Avatar';
 import { CapacityBar } from '@/components/CapacityBar';
 import { SkillTag } from '@/components/SkillTag';
@@ -87,6 +88,8 @@ export function EmployeeDashboardPage() {
         description="Your real-time project assignments, capacity load, and personalized development roadmaps."
         breadcrumb={['Home', 'My Dashboard']}
       />
+
+      <TinyFishLaunchCard description="Explore career paths, in-demand skills, certifications, and learning resources relevant to your professional growth." />
 
       {(employee.skills.length === 0 || employee.yearsExperience === 0) && (
         <section className="card border-primary/25 bg-primary/5 p-4 sm:p-5">
