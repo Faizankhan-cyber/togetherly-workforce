@@ -5,7 +5,6 @@ ALTER TABLE public.admin_access_audit_logs
   ADD CONSTRAINT admin_access_audit_logs_to_system_role_check
   CHECK (to_system_role IN ('hr', 'manager', 'employee'));
 
-DROP FUNCTION IF EXISTS public.remove_admin_access(text);
 CREATE OR REPLACE FUNCTION public.remove_admin_access(p_employee_id text, p_target_role text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $function$
@@ -63,6 +62,22 @@ REVOKE ALL ON FUNCTION public.remove_admin_access(text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.remove_admin_access(text, text) TO authenticated;
 COMMENT ON FUNCTION public.remove_admin_access(text, text) IS
   'Demotes another active administrator to an explicitly selected HR, Manager, or Employee role; enforces admin authorization, self-removal and last-admin protections, and an audit log.';
+
+-- Backwards-compatible default: older deployed clients continue to demote to Manager.
+-- New clients use the two-argument function and must provide an explicit target role.
+CREATE OR REPLACE FUNCTION public.remove_admin_access(p_employee_id text)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+  SELECT public.remove_admin_access(p_employee_id, 'manager');
+$function$;
+
+REVOKE ALL ON FUNCTION public.remove_admin_access(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.remove_admin_access(text) TO authenticated;
+COMMENT ON FUNCTION public.remove_admin_access(text) IS
+  'Compatibility wrapper for older clients; defaults the demotion target to Manager. New clients should use the two-argument function.';
 
 -- Expand TinyFish Agent run ownership to employees while keeping strict ownership checks.
 ALTER TABLE public.tinyfish_agent_runs DROP CONSTRAINT IF EXISTS tinyfish_agent_runs_owner_role_check;
