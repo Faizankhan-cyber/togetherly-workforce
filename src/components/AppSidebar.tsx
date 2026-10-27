@@ -73,7 +73,7 @@ const managerNavGroups: SidebarNavGroup[] = [
 // TinyFish Intelligence is intentionally a standalone top-level destination.
 const tinyFishNavItem: SidebarNavItem = {
   to: '/intelligence',
-  label: 'TinyFish Intelligence',
+  label: 'TinyFish AI',
   icon: Sparkles,
 };
 
@@ -90,6 +90,7 @@ const adminNavItems: SidebarNavItem[] = [
   { to: '/settings', label: 'Workspace Settings', icon: Settings },
   { to: '/admin/employee-requests', label: 'Employee Approvals', icon: UserCheck },
   { to: '/admin/manage-admins', label: 'Admin Access', icon: ShieldCheck },
+  tinyFishNavItem,
 ];
 
 const hrNavItems: SidebarNavItem[] = [
@@ -99,6 +100,7 @@ const hrNavItems: SidebarNavItem[] = [
   { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
   { to: '/roadmap', label: 'Development Roadmap', icon: Map },
   { to: '/analytics', label: 'People Analytics', icon: BarChart3 },
+  tinyFishNavItem,
 ];
 
 const employeeNavItems: SidebarNavItem[] = [
@@ -109,6 +111,7 @@ const employeeNavItems: SidebarNavItem[] = [
   { to: '/roadmap', label: 'My Development', icon: GraduationCap },
   { to: '/my-settings', label: 'My Settings', icon: Settings },
   { to: '/my-profile', label: 'My Profile', icon: UserRound },
+  tinyFishNavItem,
 ];
 
 interface AppSidebarProps {
@@ -356,8 +359,9 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                     );
                   })}
 
-                  {/* Personal settings are deliberately separate from the collapsible groups. */}
+                  {/* TinyFish AI and personal settings stay directly accessible. */}
                   <section className="mt-2 border-t border-base-border pt-2">
+                    {renderNavItem(tinyFishNavItem, true)}
                     {renderNavItem(employeeNavItems.find((item) => item.to === '/my-settings')!)}
                   </section>
                 </>

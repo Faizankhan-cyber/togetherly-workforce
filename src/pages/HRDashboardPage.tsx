@@ -15,6 +15,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
+import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
 import { useData } from '@/context/DataContext';
 
 type MetricTileProps = {
@@ -81,7 +82,7 @@ const hrActions = [
   },
 ];
 
-export function HRDashboardPage({ embedded = false }: { embedded?: boolean }) {
+export function HRDashboardPage() {
   const { employees, submissions, projects, activities } = useData();
   const activeEmployees = employees.filter((employee) => employee.employmentStatus !== 'offboarded');
   const pendingTraining = submissions.filter((submission) => submission.status === 'pending-verification');
@@ -109,33 +110,31 @@ export function HRDashboardPage({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <div className="space-y-6">
-      {!embedded && (
       <PageHeader
         title="HR Dashboard"
         description="People operations at a glance. Review workforce records, support employee development, and keep talent information up to date."
         breadcrumb={['People Operations', 'HR Dashboard']}
       />
-      )}
 
-      {!embedded && (
-        <section className="relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-blue-50 p-5 sm:p-7">
-          <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-violet-200/30 blur-3xl" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-800">
-                <Building2 size={13} /> People operations
-              </div>
-              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">People first. Clear priorities.</h2>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
-                Your HR workspace brings employee information, talent reviews, and learning activity together in one place.
-              </p>
+      <section className="relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-blue-50 p-5 sm:p-7">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-violet-200/30 blur-3xl" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-800">
+              <Building2 size={13} /> People operations
             </div>
-            <Link to="/employees" className="inline-flex w-fit items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-              Open employee directory <ArrowUpRight size={16} />
-            </Link>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">People first. Clear priorities.</h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
+              Your HR workspace brings employee information, talent reviews, and learning activity together in one place.
+            </p>
           </div>
-        </section>
-      )}
+          <Link to="/employees" className="inline-flex w-fit items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+            Open employee directory <ArrowUpRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      <TinyFishLaunchCard description="Explore skill trends, learning resources, hiring demand, and credible workforce research to support people operations." />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile label="Active workforce" value={activeEmployees.length} detail="Employees currently on the workforce roster." icon={Users} tone="blue" />

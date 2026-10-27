@@ -58,6 +58,7 @@ function WorkspaceLayout() {
             {/* Common / Shared entry */}
             <Route path="/" element={systemRole === 'admin' ? <AdminDashboardPage /> : systemRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
             <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
+            <Route path="/intelligence" element={<TinyFishIntelligencePage />} />
 
             {/* Administrator-only route protected by real database administrator authorization (not demo role switcher) */}
             <Route
@@ -78,7 +79,7 @@ function WorkspaceLayout() {
             />
 
             {/* Manager specific routes */}
-            {((role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin') || systemRole === 'admin') && (
+            {role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin' && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
@@ -87,7 +88,6 @@ function WorkspaceLayout() {
                 <Route path="/scenarios" element={<ScenarioSimulatorPage />} />
                 <Route path="/skills" element={<SkillsTrainingPage />} />
                 <Route path="/workload" element={<WorkloadPlannerPage />} />
-                <Route path="/intelligence" element={<TinyFishIntelligencePage />} />
                 <Route path="/opportunities" element={<OpportunityFinderPage />} />
                 <Route path="/impact-report" element={<AllocationImpactPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
@@ -104,6 +104,16 @@ function WorkspaceLayout() {
                 <Route path="/skills" element={<SkillsTrainingPage />} />
                 <Route path="/talent-verification" element={<TalentVerificationPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+              </>
+            )}
+
+            {/* Administrator workspace: organization oversight without manager-only optimization tools. */}
+            {systemRole === 'admin' && (
+              <>
+                <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </>
             )}
 

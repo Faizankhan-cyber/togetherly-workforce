@@ -10,9 +10,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FolderKanban,
-  GraduationCap,
   LockKeyhole,
-  Sparkles,
   Settings,
   ShieldCheck,
   Users,
@@ -21,8 +19,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
-import { DashboardPage } from '@/pages/DashboardPage';
-import { HRDashboardPage } from '@/pages/HRDashboardPage';
+import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
 import { useData } from '@/context/DataContext';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
@@ -63,9 +60,6 @@ const adminActions = [
   { to: '/employees', label: 'Workforce directory', description: 'Open employee records and review the active roster.', icon: Users, tone: 'text-teal-700 bg-teal-50' },
   { to: '/analytics', label: 'Organization analytics', description: 'Inspect workforce insights and organizational reporting.', icon: BarChart3, tone: 'text-amber-700 bg-amber-50' },
   { to: '/settings', label: 'Workspace settings', description: 'Review organization-wide workspace configuration.', icon: Settings, tone: 'text-slate-700 bg-slate-100' },
-  { to: '/team-builder', label: 'Team builder', description: 'Build project teams around capacity and skill coverage.', icon: Sparkles, tone: 'text-violet-700 bg-violet-50' },
-  { to: '/workload', label: 'Workload planner', description: 'Review utilization and rebalance team commitments.', icon: BarChart3, tone: 'text-blue-700 bg-blue-50' },
-  { to: '/skills', label: 'Skills & learning', description: 'Review skill gaps, training plans, and completion claims.', icon: GraduationCap, tone: 'text-teal-700 bg-teal-50' },
 ];
 
 const systemRoles = [
@@ -120,7 +114,7 @@ export function AdminDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Organization Control Center"
-        description="One operating view across people, delivery, capacity, learning, and access governance."
+        description="A clearer view of workforce records, organization activity, and access governance."
         breadcrumb={['Administration', 'Overview']}
       />
 
@@ -140,6 +134,8 @@ export function AdminDashboardPage() {
         </div>
       </section>
 
+      <TinyFishLaunchCard description="Research organization-wide technology trends, workforce benchmarks, public sources, and strategic questions that support better decisions." />
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AdminMetric label="Active workforce" value={roster.length} caption="Active database-backed employee records." icon={Users} tone="blue" />
         <AdminMetric label="Linked accounts" value={linkedAccounts} caption="Active employee records connected to a sign-in identity." icon={UserCheck} tone="teal" />
@@ -152,7 +148,7 @@ export function AdminDashboardPage() {
           <h2 className="text-base font-bold text-text-primary">Administration workbench</h2>
           <p className="mt-1 text-xs text-text-secondary">Key organization and access workflows, grouped in one place.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {adminActions.map((action) => {
             const Icon = action.icon;
             const isApprovals = action.to === '/admin/employee-requests';
@@ -309,22 +305,6 @@ export function AdminDashboardPage() {
             </div>
           )}
         </div>
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-bold text-text-primary">Manager & delivery operations</h2>
-          <p className="mt-1 text-xs text-text-secondary">Capacity health, staffing gaps, utilization, delivery risks, and recommended next actions.</p>
-        </div>
-        <DashboardPage embedded />
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-bold text-text-primary">HR & people operations</h2>
-          <p className="mt-1 text-xs text-text-secondary">Profile readiness, department headcount, workforce composition, learning verification, and people-review priorities.</p>
-        </div>
-        <HRDashboardPage embedded />
       </section>
     </div>
   );

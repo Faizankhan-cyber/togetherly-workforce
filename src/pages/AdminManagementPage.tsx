@@ -17,6 +17,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
+type DemotionRole = 'hr' | 'manager' | 'employee';
+
+const demotionRoleLabels: Record<DemotionRole, string> = {
+  hr: 'HR',
+  manager: 'Manager',
+  employee: 'Employee',
+};
+
 interface AdminAccount {
   employee_id: string;
   auth_user_id: string;
@@ -35,6 +43,7 @@ export function AdminManagementPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAdmin, setSelectedAdmin] = useState<AdminAccount | null>(null);
+  const [demotionRole, setDemotionRole] = useState<DemotionRole | ''>('');
 
   const loadAdmins = useCallback(async (refresh = false) => {
     if (!isSupabaseConfigured() || !supabase) {
@@ -76,16 +85,18 @@ export function AdminManagementPage() {
   }, [admins, searchQuery]);
 
   async function handleRemoveAdmin() {
-    if (!selectedAdmin || !supabase || !isSupabaseConfigured()) return;
+    if (!selectedAdmin || !demotionRole || !supabase || !isSupabaseConfigured()) return;
     setIsRemoving(true);
     try {
       const { error } = await supabase.rpc('remove_admin_access', {
         p_employee_id: selectedAdmin.employee_id,
+        p_target_role: demotionRole,
       });
       if (error) throw error;
 
-      showToast('success', `${selectedAdmin.full_name} no longer has administrator access. Their account remains active as a Manager.`);
+      showToast('success', selectedAdmin.full_name + ' no longer has administrator access. Their account remains active as ' + demotionRoleLabels[demotionRole] + '.');
       setSelectedAdmin(null);
+      setDemotionRole('');
       await loadAdmins(true);
     } catch (err: unknown) {
       const message = (err as Error)?.message || 'The administrator role could not be removed.';
@@ -120,7 +131,7 @@ export function AdminManagementPage() {
               <div>
                 <h2 className="text-sm font-semibold text-text-primary">Active administrators</h2>
                 <p className="mt-1 max-w-xl text-xs leading-relaxed text-text-secondary">
-                  Remove admin privileges when someone no longer needs them. Their account and employee history are kept, and their access role becomes Manager.
+                  Remove admin privileges when someone no longer needs them, then choose whether their account should continue as HR, Manager, or Employee.
                 </p>
               </div>
             </div>
@@ -219,7 +230,7 @@ export function AdminManagementPage() {
                             className="btn-secondary text-xs text-critical hover:border-critical/30 hover:bg-critical/5 disabled:cursor-not-allowed disabled:opacity-45"
                             disabled={cannotRemove}
                             title={isCurrentAdmin ? 'You cannot remove your own administrator access.' : admins.length <= 1 ? 'At least one active administrator must remain.' : 'Remove administrator access'}
-                            onClick={() => setSelectedAdmin(admin)}
+                             onClick={() => { setDemotionRole(''); setSelectedAdmin(admin); }}
                           >
                             <ShieldOff size={14} /> Remove access
                           </button>
@@ -234,18 +245,29 @@ export function AdminManagementPage() {
           ) : null}
 
           <div className="border-t border-base-border bg-base-bg/40 px-5 py-3 text-[10px] text-text-secondary">
-            Removing admin access changes the system role to Manager. It does not delete the account, employee profile, or historical records.
+            Removing admin access demotes the account to the role you select. It does not delete the account, employee profile, or historical records.
           </div>
         </section>
       </Reveal>
 
       <ConfirmationDialog
         open={Boolean(selectedAdmin)}
-        onClose={() => { if (!isRemoving) setSelectedAdmin(null); }}
+        onClose={() => { if (!isRemoving) { setSelectedAdmin(null); setDemotionRole(''); } }}
         onConfirm={() => { void handleRemoveAdmin(); }}
         title="Remove administrator access?"
-        message={`This will remove admin privileges from ${selectedAdmin?.full_name ?? 'this account'} and change their role to Manager. Their account and work history will remain.`}
+        message={'This will remove administrator privileges from ' + (selectedAdmin?.full_name ?? 'this account') + (demotionRole ? ' and assign the role: ' + demotionRoleLabels[demotionRole] + '.' : '. Choose a new role below.') + ' Their account and work history will remain.'}
         details={
+          <div className="space-y-2 rounded-md border border-base-border bg-base-bg p-3">
+            <label htmlFor="demotion-role" className="block text-xs font-semibold text-text-primary">New position after admin access is removed</label>
+            <select id="demotion-role" className="input-field w-full" value={demotionRole}
+              onChange={(event) => setDemotionRole(event.target.value as DemotionRole | '')}
+              disabled={isRemoving} required>
+              <option value="">Choose a position…</option>
+              <option value="hr">HR</option>
+              <option value="manager">Manager</option>
+              <option value="employee">Employee</option>
+            </select>
+          </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
             <p className="font-semibold">This action is audited.</p>
             <p className="mt-1">You cannot remove your own access or leave the workspace without an active administrator.</p>
@@ -254,7 +276,7 @@ export function AdminManagementPage() {
         confirmLabel={isRemoving ? 'Removing access…' : 'Remove admin access'}
         variant="danger"
         closeOnConfirm={false}
-        confirmDisabled={isRemoving || !selectedAdmin || selectedAdmin.auth_user_id === user?.id || admins.length <= 1}
+        confirmDisabled={isRemoving || !selectedAdmin || !demotionRole || selectedAdmin.auth_user_id === user?.id || admins.length <= 1}
       />
     </div>
   );

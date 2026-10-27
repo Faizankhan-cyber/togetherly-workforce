@@ -1,5 +1,5 @@
 declare const process: { env: Record<string, string | undefined> };
-type TinyFishRole = 'manager' | 'hr' | 'admin';
+type TinyFishRole = 'employee' | 'manager' | 'hr' | 'admin';
 export type TinyFishAccess =
   | { ok: true; token: string; supabaseUrl: string; supabaseKey: string; userId: string; employeeId: string; role: TinyFishRole }
   | { ok: false; status: number; error: string };
@@ -19,7 +19,7 @@ function projectOrigin(): string {
   } catch { return ''; }
 }
 
-/** TinyFish costs are restricted to active, approved manager/HR/admin accounts. */
+/** TinyFish is available to active, linked employee, manager, HR, and admin accounts. */
 export async function authorizeTinyFishManager(authorizationHeader: string): Promise<TinyFishAccess> {
   const parts = authorizationHeader.trim().split(/\s+/).filter(Boolean);
   const token = parts[0]?.toLowerCase() === 'bearer' ? parts.slice(1).join(' ').trim() : '';
@@ -48,8 +48,8 @@ export async function authorizeTinyFishManager(authorizationHeader: string): Pro
     if (!profileResponse.ok) return { ok: false, status: 503, error: 'Could not verify active organization membership. Please retry.' };
     const profiles = await profileResponse.json() as Array<{ id?: string; system_role?: string }>;
     const profile = Array.isArray(profiles) ? profiles[0] : undefined;
-    if (!profile?.id || !profile.system_role) return { ok: false, status: 403, error: 'TinyFish is available only to approved, active organization managers, HR reviewers, and administrators.' };
-    if (!['manager', 'hr', 'admin'].includes(profile.system_role)) return { ok: false, status: 403, error: 'Your role is not authorized to use TinyFish workforce intelligence.' };
+    if (!profile?.id || !profile.system_role) return { ok: false, status: 403, error: 'TinyFish is available only to active, linked workspace accounts.' };
+    if (!['employee', 'manager', 'hr', 'admin'].includes(profile.system_role)) return { ok: false, status: 403, error: 'Your role is not authorized to use TinyFish AI.' };
     return { ok: true, token, supabaseUrl, supabaseKey, userId: authUser.id, employeeId: profile.id, role: profile.system_role as TinyFishRole };
   } catch {
     return { ok: false, status: 503, error: 'Could not verify organization access right now. Please retry.' };
