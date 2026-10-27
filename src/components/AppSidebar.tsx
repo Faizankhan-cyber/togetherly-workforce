@@ -82,15 +82,46 @@ const managerAdministrationItems: SidebarNavItem[] = [
   { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
 ];
 
-const adminNavItems: SidebarNavItem[] = [
-  { to: '/', label: 'Admin Overview', icon: LayoutDashboard },
-  { to: '/employees', label: 'Workforce Directory', icon: Users },
-  { to: '/projects', label: 'Project Portfolio', icon: FolderKanban },
-  { to: '/analytics', label: 'Organization Analytics', icon: BarChart3 },
+const adminNavGroups: SidebarNavGroup[] = [
+  {
+    name: 'Workspace',
+    items: [
+      { to: '/', label: 'Admin Overview', icon: LayoutDashboard },
+      { to: '/employees', label: 'Workforce Directory', icon: Users },
+      { to: '/projects', label: 'Project Portfolio', icon: FolderKanban },
+    ],
+  },
+  {
+    name: 'Intelligence & Optimization',
+    items: [
+      { to: '/team-builder', label: 'Team Builder', icon: UsersRound },
+      { to: '/workforce-twin', label: 'Workforce Twin', icon: GitCompareArrows },
+      { to: '/scenarios', label: 'Scenario Simulator', icon: GitFork },
+      { to: '/workload', label: 'Workload Planner', icon: BarChart3 },
+      { to: '/opportunities', label: 'Opportunity Finder', icon: Lightbulb },
+      { to: '/impact-report', label: 'Allocation Impact', icon: FileBarChart },
+    ],
+  },
+  {
+    name: 'People & Development',
+    items: [
+      { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
+      { to: '/roadmap', label: 'Development Roadmap', icon: Map },
+    ],
+  },
+  {
+    name: 'Insights',
+    items: [
+      { to: '/analytics', label: 'Organization Analytics', icon: BarChart3 },
+    ],
+  },
+];
+
+const adminAdministrationItems: SidebarNavItem[] = [
   { to: '/settings', label: 'Workspace Settings', icon: Settings },
+  { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
   { to: '/admin/employee-requests', label: 'Employee Approvals', icon: UserCheck },
   { to: '/admin/manage-admins', label: 'Admin Access', icon: ShieldCheck },
-  tinyFishNavItem,
 ];
 
 const hrNavItems: SidebarNavItem[] = [
@@ -239,7 +270,72 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
           {systemRole === 'admin' ? (
             <>
-              {adminNavItems.map((item) => renderNavItem(item))}
+              {collapsed ? (
+                <>
+                  {adminNavGroups.flatMap((group) => group.items).map((item) => renderNavItem(item))}
+                  <div className="my-2 border-t border-violet-100" />
+                  {renderNavItem(tinyFishNavItem, true)}
+                  {adminAdministrationItems.map((item) => renderNavItem(item))}
+                </>
+              ) : (
+                <>
+                  {adminNavGroups.slice(0, 2).map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? true;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+                  <div className="my-2 border-y border-base-border/80 py-1">
+                    {renderNavItem(tinyFishNavItem, true)}
+                  </div>
+                  {adminNavGroups.slice(2).map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? true;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+                  <section className="mt-2 border-t border-base-border pt-2">
+                    <button
+                      type="button"
+                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${adminAdministrationItems.some((item) => item.to === location.pathname) ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                      onClick={() => setExpandedGroups((previous) => ({ ...previous, Administration: !previous.Administration }))}
+                      aria-expanded={expandedGroups.Administration ?? true}
+                    >
+                      <span>Administration</span>
+                      <ChevronDown size={13} className={`transition-transform ${(expandedGroups.Administration ?? true) ? '' : '-rotate-90'}`} />
+                    </button>
+                    {(expandedGroups.Administration ?? true) && (
+                      <div className="space-y-0.5">
+                        {adminAdministrationItems.map((item) => renderNavItem(item))}
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
             </>
           ) : systemRole === 'hr' ? (
             <>
