@@ -5,9 +5,11 @@ import { Topbar } from '@/components/Topbar';
 import { ToastContainer } from '@/components/Toast';
 import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { HRDashboardPage } from '@/pages/HRDashboardPage';
 import { EmployeesPage } from '@/pages/EmployeesPage';
 import { ProjectsPage } from '@/pages/ProjectsPage';
 import { TeamBuilderPage } from '@/pages/TeamBuilderPage';
@@ -34,6 +36,7 @@ function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { role, toasts, dismissToast } = useData();
+  const { systemRole } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-base-bg text-text-primary antialiased selection:bg-primary/30 selection:text-white">
@@ -52,7 +55,7 @@ function WorkspaceLayout() {
         <main className="flex-1 p-4 sm:p-5 lg:p-6 max-w-[1600px] w-full mx-auto animate-fade-in">
           <Routes>
             {/* Common / Shared entry */}
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={systemRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
             <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
 
             {/* Administrator-only route protected by real database administrator authorization (not demo role switcher) */}
@@ -74,7 +77,7 @@ function WorkspaceLayout() {
             />
 
             {/* Manager specific routes */}
-            {role === 'manager' && (
+            {role === 'manager' && systemRole !== 'hr' && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
@@ -89,6 +92,17 @@ function WorkspaceLayout() {
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/talent-verification" element={<TalentVerificationPage />} />
+              </>
+            )}
+
+
+            {/* HR-specific routes: HR reviewers have their own workspace without manager-only tools. */}
+            {systemRole === 'hr' && (
+              <>
+                <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/skills" element={<SkillsTrainingPage />} />
+                <Route path="/talent-verification" element={<TalentVerificationPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
               </>
             )}
 
