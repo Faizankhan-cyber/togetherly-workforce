@@ -82,6 +82,15 @@ const managerAdministrationItems: SidebarNavItem[] = [
   { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
 ];
 
+const hrNavItems: SidebarNavItem[] = [
+  { to: '/', label: 'HR Dashboard', icon: LayoutDashboard },
+  { to: '/employees', label: 'Employee Directory', icon: Users },
+  { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
+  { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
+  { to: '/roadmap', label: 'Development Roadmap', icon: Map },
+  { to: '/analytics', label: 'People Analytics', icon: BarChart3 },
+];
+
 const employeeNavItems: SidebarNavItem[] = [
   { to: '/', label: 'My Dashboard', icon: LayoutDashboard },
   { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
@@ -101,7 +110,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
   const { employees, role, setRole, submissions } = useData();
-  const { user, isAdmin, isDemoMode, identityStatus, mappedEmployee, signOut, exitDemoMode } = useAuth();
+  const { user, isAdmin, isDemoMode, identityStatus, mappedEmployee, signOut, exitDemoMode, systemRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -215,7 +224,11 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
 
         {/* Navigation: grouped for managers, focused personal menu for employees. */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
-          {role === 'manager' ? (
+          {systemRole === 'hr' ? (
+            <>
+              {hrNavItems.map((item) => renderNavItem(item))}
+            </>
+          ) : role === 'manager' ? (
             <>
               {collapsed ? (
                 <>
