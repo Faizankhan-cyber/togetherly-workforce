@@ -257,6 +257,7 @@ export function AdminManagementPage() {
         title="Remove administrator access?"
         message={'This will remove administrator privileges from ' + (selectedAdmin?.full_name ?? 'this account') + (demotionRole ? ' and assign the role: ' + demotionRoleLabels[demotionRole] + '.' : '. Choose a new role below.') + ' Their account and work history will remain.'}
         details={
+          <div className="space-y-3">
           <div className="space-y-2 rounded-md border border-base-border bg-base-bg p-3">
             <label htmlFor="demotion-role" className="block text-xs font-semibold text-text-primary">New position after admin access is removed</label>
             <select id="demotion-role" className="input-field w-full" value={demotionRole}
@@ -271,6 +272,7 @@ export function AdminManagementPage() {
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
             <p className="font-semibold">This action is audited.</p>
             <p className="mt-1">You cannot remove your own access or leave the workspace without an active administrator.</p>
+          </div>
           </div>
         }
         confirmLabel={isRemoving ? 'Removing access…' : 'Remove admin access'}
