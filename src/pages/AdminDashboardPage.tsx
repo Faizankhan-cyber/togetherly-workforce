@@ -10,6 +10,13 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FolderKanban,
+  GitCompareArrows,
+  GitFork,
+  GraduationCap,
+  Lightbulb,
+  FileBarChart,
+  Map,
+  UsersRound,
   LockKeyhole,
   Settings,
   ShieldCheck,
@@ -60,6 +67,18 @@ const adminActions = [
   { to: '/employees', label: 'Workforce directory', description: 'Open employee records and review the active roster.', icon: Users, tone: 'text-teal-700 bg-teal-50' },
   { to: '/analytics', label: 'Organization analytics', description: 'Inspect workforce insights and organizational reporting.', icon: BarChart3, tone: 'text-amber-700 bg-amber-50' },
   { to: '/settings', label: 'Workspace settings', description: 'Review organization-wide workspace configuration.', icon: Settings, tone: 'text-slate-700 bg-slate-100' },
+];
+
+const adminOperationalTools = [
+  { to: '/team-builder', label: 'Team Builder', description: 'Build balanced teams based on skills, experience, availability, and workload.', icon: UsersRound, tone: 'text-blue-700 bg-blue-50' },
+  { to: '/workforce-twin', label: 'Workforce Twin', description: 'Explore workforce structure and evaluate alternative team configurations.', icon: GitCompareArrows, tone: 'text-violet-700 bg-violet-50' },
+  { to: '/scenarios', label: 'Scenario Simulator', description: 'Compare staffing scenarios before making organization-wide changes.', icon: GitFork, tone: 'text-indigo-700 bg-indigo-50' },
+  { to: '/workload', label: 'Workload Planner', description: 'Review capacity, utilization, and workload balance across the workforce.', icon: BarChart3, tone: 'text-teal-700 bg-teal-50' },
+  { to: '/opportunities', label: 'Opportunity Finder', description: 'Spot opportunities to match employee strengths with project needs.', icon: Lightbulb, tone: 'text-amber-700 bg-amber-50' },
+  { to: '/impact-report', label: 'Allocation Impact', description: 'Review the projected impact of workforce allocation decisions.', icon: FileBarChart, tone: 'text-rose-700 bg-rose-50' },
+  { to: '/skills', label: 'Skills & Training', description: 'Review skill coverage, development needs, and training opportunities.', icon: GraduationCap, tone: 'text-cyan-700 bg-cyan-50' },
+  { to: '/roadmap', label: 'Development Roadmap', description: 'Explore structured employee development and growth plans.', icon: Map, tone: 'text-emerald-700 bg-emerald-50' },
+  { to: '/talent-verification', label: 'Talent Verification', description: 'Review and verify employee talent and profile information.', icon: BadgeCheck, tone: 'text-slate-700 bg-slate-100' },
 ];
 
 const systemRoles = [
@@ -167,6 +186,35 @@ export function AdminDashboardPage() {
                 <h3 className="mt-4 text-sm font-bold text-text-primary">{action.label}</h3>
                 <p className="mt-1 flex-1 text-xs leading-relaxed text-text-secondary">{action.description}</p>
                 {meta && <span className="mt-3 w-fit rounded-full border border-base-border bg-base-subtle px-2 py-1 text-[10px] font-semibold text-text-secondary">{meta}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-text-primary">Workforce intelligence & optimization</h2>
+            <p className="mt-1 text-xs text-text-secondary">The full operational toolkit is available to administrators alongside organization controls.</p>
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">9 tools</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {adminOperationalTools.map((tool) => {
+            const Icon = tool.icon;
+            return (
+              <Link key={tool.to} to={tool.to} className="card group flex min-h-28 items-start gap-3 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tool.tone}`}>
+                  <Icon size={18} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-bold text-text-primary">{tool.label}</h3>
+                    <ArrowUpRight size={15} className="shrink-0 text-text-muted transition group-hover:text-primary" />
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-text-secondary">{tool.description}</p>
+                </div>
               </Link>
             );
           })}
