@@ -82,15 +82,20 @@ const managerAdministrationItems: SidebarNavItem[] = [
   { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
 ];
 
-const adminNavItems: SidebarNavItem[] = [
-  { to: '/', label: 'Admin Overview', icon: LayoutDashboard },
-  { to: '/employees', label: 'Workforce Directory', icon: Users },
-  { to: '/projects', label: 'Project Portfolio', icon: FolderKanban },
-  { to: '/analytics', label: 'Organization Analytics', icon: BarChart3 },
-  { to: '/settings', label: 'Workspace Settings', icon: Settings },
+const adminNavGroups: SidebarNavGroup[] = managerNavGroups.map((group) =>
+  group.name === 'Workspace'
+    ? {
+        ...group,
+        items: group.items.map((item) =>
+          item.to === '/' ? { ...item, label: 'Admin Overview' } : item,
+        ),
+      }
+    : group,
+);
+
+const adminExtraNavItems: SidebarNavItem[] = [
   { to: '/admin/employee-requests', label: 'Employee Approvals', icon: UserCheck },
   { to: '/admin/manage-admins', label: 'Admin Access', icon: ShieldCheck },
-  tinyFishNavItem,
 ];
 
 const hrNavItems: SidebarNavItem[] = [
@@ -128,10 +133,10 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
   const location = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Workspace: true,
-    'Intelligence & Optimization': false,
-    'People & Development': false,
-    Insights: false,
-    Administration: false,
+    'Intelligence & Optimization': systemRole === 'admin',
+    'People & Development': systemRole === 'admin',
+    Insights: systemRole === 'admin',
+    Administration: systemRole === 'admin',
     'My Work': true,
     'Growth & Profile': false,
   });
@@ -239,7 +244,79 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
           {systemRole === 'admin' ? (
             <>
-              {adminNavItems.map((item) => renderNavItem(item))}
+              {collapsed ? (
+                <>
+                  {adminNavGroups.flatMap((group) => group.items).map((item) => renderNavItem(item))}
+                  <div className="my-2 border-y border-base-border/80 py-1">
+                    {renderNavItem(tinyFishNavItem, true)}
+                  </div>
+                  {managerAdministrationItems.map((item) => renderNavItem(item))}
+                  <div className="my-2 border-t border-base-border" />
+                  {adminExtraNavItems.map((item) => renderNavItem(item))}
+                </>
+              ) : (
+                <>
+                  {adminNavGroups.slice(0, 2).map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? false;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+                  <div className="my-2 border-y border-base-border/80 py-1">
+                    {renderNavItem(tinyFishNavItem, true)}
+                  </div>
+                  {adminNavGroups.slice(2).map((group) => {
+                    const isExpanded = expandedGroups[group.name] ?? false;
+                    const hasActiveChild = group.items.some((item) => item.to === location.pathname);
+                    return (
+                      <section key={group.name} className="mb-1">
+                        <button
+                          type="button"
+                          className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${hasActiveChild ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                          onClick={() => setExpandedGroups((previous) => ({ ...previous, [group.name]: !isExpanded }))}
+                          aria-expanded={isExpanded}
+                        >
+                          <span>{group.name}</span>
+                          <ChevronDown size={13} className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                        </button>
+                        {isExpanded && <div className="space-y-0.5">{group.items.map((item) => renderNavItem(item))}</div>}
+                      </section>
+                    );
+                  })}
+                  <section className="mt-2 border-t border-base-border pt-2">
+                    <button
+                      type="button"
+                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${managerAdministrationItems.some((item) => item.to === location.pathname) || adminExtraNavItems.some((item) => item.to === location.pathname) ? 'text-primary bg-primary-50/70' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                      onClick={() => setExpandedGroups((previous) => ({ ...previous, Administration: !previous.Administration }))}
+                      aria-expanded={expandedGroups.Administration}
+                    >
+                      <span>Administration</span>
+                      <ChevronDown size={13} className={`transition-transform ${expandedGroups.Administration ? '' : '-rotate-90'}`} />
+                    </button>
+                    {expandedGroups.Administration && (
+                      <div className="space-y-0.5">
+                        {managerAdministrationItems.map((item) => renderNavItem(item))}
+                        <div className="mt-2 border-t border-base-border pt-2">
+                          <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Admin Controls</div>
+                          {adminExtraNavItems.map((item) => renderNavItem(item))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
             </>
           ) : systemRole === 'hr' ? (
             <>

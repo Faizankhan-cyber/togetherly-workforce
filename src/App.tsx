@@ -112,8 +112,16 @@ function WorkspaceLayout() {
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/team-builder" element={<TeamBuilderPage />} />
+                <Route path="/workforce-twin" element={<WorkforceTwinPage />} />
+                <Route path="/scenarios" element={<ScenarioSimulatorPage />} />
+                <Route path="/skills" element={<SkillsTrainingPage />} />
+                <Route path="/workload" element={<WorkloadPlannerPage />} />
+                <Route path="/opportunities" element={<OpportunityFinderPage />} />
+                <Route path="/impact-report" element={<AllocationImpactPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/talent-verification" element={<TalentVerificationPage />} />
               </>
             )}
 
