@@ -28,6 +28,7 @@ import { EmployeeProfilePage } from '@/pages/EmployeeProfilePage';
 import { TalentVerificationPage } from '@/pages/TalentVerificationPage';
 import { ScenarioSimulatorPage } from '@/pages/ScenarioSimulatorPage';
 import { EmployeeVerificationPage } from '@/pages/EmployeeVerificationPage';
+import { AdminManagementPage } from '@/pages/AdminManagementPage';
 
 function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -60,6 +61,14 @@ function WorkspaceLayout() {
               element={
                 <AdminRoute>
                   <EmployeeVerificationPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/manage-admins"
+              element={
+                <AdminRoute>
+                  <AdminManagementPage />
                 </AdminRoute>
               }
             />
