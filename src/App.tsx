@@ -79,7 +79,7 @@ function WorkspaceLayout() {
             />
 
             {/* Manager specific routes */}
-            {(systemRole === 'admin' || (role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin')) && (
+            {(systemRole === 'admin' || (role === 'manager' && systemRole !== 'hr')) && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
