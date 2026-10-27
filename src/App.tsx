@@ -78,7 +78,7 @@ function WorkspaceLayout() {
             />
 
             {/* Manager specific routes */}
-            {role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin' && (
+            {((role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin') || systemRole === 'admin') && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
@@ -104,16 +104,6 @@ function WorkspaceLayout() {
                 <Route path="/skills" element={<SkillsTrainingPage />} />
                 <Route path="/talent-verification" element={<TalentVerificationPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
-              </>
-            )}
-
-            {/* Administrator workspace: organization oversight without manager-only optimization tools. */}
-            {systemRole === 'admin' && (
-              <>
-                <Route path="/employees" element={<EmployeesPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
               </>
             )}
 

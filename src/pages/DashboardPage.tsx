@@ -40,11 +40,11 @@ import {
 import { useData } from '@/context/DataContext';
 import { EmployeeDashboardPage } from '@/pages/EmployeeExperiencePage';
 
-export function DashboardPage() {
+export function DashboardPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { employees, projects, settings, activities, role } = useData();
 
-  if (role === 'employee') return <EmployeeDashboardPage />;
+  if (!embedded && role === 'employee') return <EmployeeDashboardPage />;
 
   const activeProjects = projects.filter((p) => p.status === 'active');
   const availableEmployees = employees.filter((e) => e.availability === 'available');
@@ -160,6 +160,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
+      {!embedded && (
       <PageHeader
         title="Workforce Intelligence Center"
         description="Comprehensive real-time capacity tracking, predictive team allocation, and skill intelligence across all enterprise initiatives."
@@ -177,6 +178,7 @@ export function DashboardPage() {
           </>
         }
       />
+      )}
 
       {/* Workforce Health Index Banner */}
       <Reveal direction="down" delay={20}>
