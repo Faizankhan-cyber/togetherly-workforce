@@ -82,6 +82,16 @@ const managerAdministrationItems: SidebarNavItem[] = [
   { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
 ];
 
+const adminNavItems: SidebarNavItem[] = [
+  { to: '/', label: 'Admin Overview', icon: LayoutDashboard },
+  { to: '/employees', label: 'Workforce Directory', icon: Users },
+  { to: '/projects', label: 'Project Portfolio', icon: FolderKanban },
+  { to: '/analytics', label: 'Organization Analytics', icon: BarChart3 },
+  { to: '/settings', label: 'Workspace Settings', icon: Settings },
+  { to: '/admin/employee-requests', label: 'Employee Approvals', icon: UserCheck },
+  { to: '/admin/manage-admins', label: 'Admin Access', icon: ShieldCheck },
+];
+
 const hrNavItems: SidebarNavItem[] = [
   { to: '/', label: 'HR Dashboard', icon: LayoutDashboard },
   { to: '/employees', label: 'Employee Directory', icon: Users },
@@ -224,7 +234,11 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
 
         {/* Navigation: grouped for managers, focused personal menu for employees. */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
-          {systemRole === 'hr' ? (
+          {systemRole === 'admin' ? (
+            <>
+              {adminNavItems.map((item) => renderNavItem(item))}
+            </>
+          ) : systemRole === 'hr' ? (
             <>
               {hrNavItems.map((item) => renderNavItem(item))}
             </>

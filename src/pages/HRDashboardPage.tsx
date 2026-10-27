@@ -92,6 +92,14 @@ export function HRDashboardPage() {
     return counts;
   }, {});
   const departmentRows = Object.entries(departments).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const profilesReady = activeEmployees.filter((employee) => employee.skills.length > 0 && employee.yearsExperience > 0).length;
+  const profileReadiness = Math.round((profilesReady / Math.max(activeEmployees.length, 1)) * 100);
+  const roleDistribution = [
+    { key: 'employee', label: 'Employees', color: 'bg-blue-500' },
+    { key: 'manager', label: 'Managers', color: 'bg-violet-500' },
+    { key: 'hr', label: 'HR', color: 'bg-teal-500' },
+    { key: 'admin', label: 'Admins', color: 'bg-amber-500' },
+  ].map((role) => ({ ...role, count: activeEmployees.filter((employee) => (employee.systemRole ?? 'employee') === role.key).length }));
   const activeLearningPlans = activeEmployees.reduce(
     (total, employee) => total + employee.trainingAssignments.filter((training) => training.status !== 'completed').length,
     0,
@@ -219,6 +227,61 @@ export function HRDashboardPage() {
               {profileAttention.length > 5 && <div className="px-5 py-3 text-center text-[11px] text-text-secondary">+{profileAttention.length - 5} more profiles need attention</div>}
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-text-primary">Core profile readiness</h2>
+              <p className="mt-1 text-xs text-text-secondary">Employee records with both skills and experience captured.</p>
+            </div>
+            <div className="rounded-lg bg-teal-50 p-2 text-teal-700"><CheckCircle2 size={17} /></div>
+          </div>
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-3xl font-extrabold tracking-tight text-text-primary">{profileReadiness}%</p>
+              <p className="mt-1 text-xs text-text-secondary">{profilesReady} of {activeEmployees.length} active profiles ready</p>
+            </div>
+            <Link to="/employees" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Review records <ArrowRight size={13} /></Link>
+          </div>
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-gradient-to-r from-teal-500 to-blue-600 transition-all" style={{ width: `${profileReadiness}%` }} />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-base-border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Missing skills</p>
+              <p className="mt-1.5 text-xl font-bold text-text-primary">{activeEmployees.filter((employee) => employee.skills.length === 0).length}</p>
+            </div>
+            <div className="rounded-lg border border-base-border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Missing experience</p>
+              <p className="mt-1.5 text-xl font-bold text-text-primary">{activeEmployees.filter((employee) => employee.yearsExperience <= 0).length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-text-primary">Workforce composition</h2>
+              <p className="mt-1 text-xs text-text-secondary">Current active roster by system role.</p>
+            </div>
+            <div className="rounded-lg bg-violet-50 p-2 text-violet-700"><Users size={17} /></div>
+          </div>
+          <div className="mt-5 space-y-4">
+            {roleDistribution.map((role) => (
+              <div key={role.key}>
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-text-primary">{role.label}</span>
+                  <span className="text-xs tabular-nums text-text-secondary">{role.count} <span className="text-text-muted">({Math.round((role.count / Math.max(activeEmployees.length, 1)) * 100)}%)</span></span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className={`h-full rounded-full ${role.color} transition-all`} style={{ width: `${Math.round((role.count / Math.max(activeEmployees.length, 1)) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 border-t border-base-border pt-3 text-[11px] leading-relaxed text-text-secondary">Role counts are based on the current roster records available to this workspace.</p>
         </div>
       </section>
 

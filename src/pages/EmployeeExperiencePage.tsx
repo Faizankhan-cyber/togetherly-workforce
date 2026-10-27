@@ -34,6 +34,7 @@ import {
   formatDate,
   getEmployeeProjects,
   getSkillName,
+  getUtilizationStatus,
 } from '@/utils';
 import type { ProjectRequirement, TrainingSubmission } from '@/types';
 
@@ -53,6 +54,10 @@ export function EmployeeDashboardPage() {
     [employee, projects]
   );
   const utilization = employee ? calculateEmployeeUtilization(employee.id, projects, employee.targetUtilization) : 0;
+  const utilizationStatus = getUtilizationStatus(utilization, settings);
+  const nextDeadlineProject = [...assignedProjects].sort((a, b) => a.deadline.localeCompare(b.deadline))[0] ?? null;
+  const profileChecklist = [Boolean(employee?.email?.trim()), Boolean(employee?.skills.length), Boolean(employee && employee.yearsExperience > 0)];
+  const profileReadiness = Math.round((profileChecklist.filter(Boolean).length / profileChecklist.length) * 100);
   const activeTraining = employee?.trainingAssignments.filter((training) => training.status !== 'completed') ?? [];
   const growthSkills = useMemo((): ProjectRequirement[] => {
     if (!employee) return [];
@@ -172,6 +177,53 @@ export function EmployeeDashboardPage() {
           </div>
         </Reveal>
       </div>
+
+      <section className="card overflow-hidden border border-base-border/80">
+        <div className="flex flex-col gap-1 border-b border-base-border bg-gradient-to-r from-slate-50 via-white to-blue-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-text-primary">Your personal focus</h3>
+            <p className="mt-1 text-xs text-text-secondary">The most useful things to know before you start work.</p>
+          </div>
+          <span className="mt-1 w-fit rounded-full border border-primary/20 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary sm:mt-0">Personal workspace</span>
+        </div>
+        <div className="grid gap-px bg-base-border sm:grid-cols-3">
+          <div className="bg-white p-4 sm:p-5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-secondary"><CalendarClock size={14} className="text-primary" /> Next delivery</div>
+            {nextDeadlineProject ? (
+              <>
+                <p className="mt-3 truncate text-sm font-bold text-text-primary">{nextDeadlineProject.name}</p>
+                <p className="mt-1 text-xs text-text-secondary">Due {formatDate(nextDeadlineProject.deadline)}</p>
+                <p className={`mt-2 text-xs font-semibold ${daysUntil(nextDeadlineProject.deadline) < 0 ? 'text-critical' : daysUntil(nextDeadlineProject.deadline) <= 7 ? 'text-warning' : 'text-success'}`}>
+                  {daysUntil(nextDeadlineProject.deadline) < 0 ? `${Math.abs(daysUntil(nextDeadlineProject.deadline))} days overdue` : daysUntil(nextDeadlineProject.deadline) === 0 ? 'Due today' : `${daysUntil(nextDeadlineProject.deadline)} days remaining`}
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-xs leading-relaxed text-text-secondary">No upcoming project deadline is assigned to you.</p>
+            )}
+          </div>
+          <div className="bg-white p-4 sm:p-5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-secondary"><Target size={14} className="text-cyan" /> Capacity check</div>
+            <p className="mt-3 text-2xl font-extrabold tracking-tight text-text-primary">{utilization}%</p>
+            <p className="mt-1 text-xs capitalize text-text-secondary">{utilizationStatus.replace('-', ' ')} workload</p>
+            <div className="mt-3">
+              <CapacityBar utilization={utilization} overloadedThreshold={settings.overloadedThreshold} underutilizedThreshold={settings.underutilizedThreshold} showLabel={false} />
+            </div>
+            <Link to="/my-workload" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Review workload <ArrowRight size={12} /></Link>
+          </div>
+          <div className="bg-white p-4 sm:p-5">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-secondary"><ShieldCheck size={14} className="text-success" /> Profile readiness</div>
+            <div className="mt-3 flex items-end justify-between gap-2">
+              <p className="text-2xl font-extrabold tracking-tight text-text-primary">{profileReadiness}%</p>
+              <span className="text-[10px] text-text-secondary">{profileChecklist.filter(Boolean).length}/3 core fields</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-base-border/70">
+              <div className="h-full rounded-full bg-gradient-to-r from-success to-cyan transition-all" style={{ width: `${profileReadiness}%` }} />
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-text-secondary">Email, verified skills, and experience details.</p>
+            <Link to="/my-profile" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">Update profile <ArrowRight size={12} /></Link>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
         {/* Current Projects */}

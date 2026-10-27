@@ -35,6 +35,7 @@ import {
   getProjectStaffingProgress,
   getAllSkillGaps,
   formatTimestamp,
+  daysUntil,
 } from '@/utils';
 import { useData } from '@/context/DataContext';
 import { EmployeeDashboardPage } from '@/pages/EmployeeExperiencePage';
@@ -48,9 +49,11 @@ export function DashboardPage() {
   const activeProjects = projects.filter((p) => p.status === 'active');
   const availableEmployees = employees.filter((e) => e.availability === 'available');
   const skillGaps = getAllSkillGaps(projects, employees);
-  const firstUnderstaffedProject = projects.find((project) =>
+  const understaffedProjects = projects.filter((project) =>
     project.status !== 'completed' && project.assignedEmployeeIds.length < project.targetTeamSize
   );
+  const firstUnderstaffedProject = understaffedProjects[0];
+  const overdueProjects = projects.filter((project) => project.status !== 'completed' && daysUntil(project.deadline) < 0);
 
   const overloadedEmployees = employees
     .map((e) => ({
@@ -85,6 +88,9 @@ export function DashboardPage() {
     },
   ];
 
+  const balancedCount = workloadDistribution.find((item) => item.name === 'Balanced')?.value ?? 0;
+  const balancedRate = Math.round((balancedCount / Math.max(employees.length, 1)) * 100);
+
   const staffingProgress = projects
     .filter((p) => p.status !== 'completed')
     .map((p) => ({
@@ -97,29 +103,50 @@ export function DashboardPage() {
 
   const recommendedActions = [
     ...(firstUnderstaffedProject ? [{
-      message: `${firstUnderstaffedProject.name} needs ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length} more member${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length === 1 ? '' : 's'}`,
+      message: `${understaffedProjects.length} project${understaffedProjects.length === 1 ? '' : 's'} need staffing attention. ${firstUnderstaffedProject.name} is short ${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length} member${firstUnderstaffedProject.targetTeamSize - firstUnderstaffedProject.assignedEmployeeIds.length === 1 ? '' : 's'}.`,
       action: () => navigate('/team-builder', { state: { projectId: firstUnderstaffedProject.id } }),
       badge: 'Staffing Needed',
       badgeColor: 'text-primary bg-primary-50 border-primary-200',
     }] : []),
-    {
-      message: `${overloadedEmployees.length} employees are overloaded — rebalance project commitments`,
+    ...(overdueProjects.length > 0 ? [{
+      message: `${overdueProjects.length} open project${overdueProjects.length === 1 ? ' has' : 's have'} passed its deadline. Review delivery commitments.`,
+      action: () => navigate('/projects'),
+      badge: 'Overdue Delivery',
+      badgeColor: 'text-critical bg-red-50 border-red-200',
+    }] : []),
+    ...(overloadedEmployees.length > 0 ? [{
+      message: `${overloadedEmployees.length} employee${overloadedEmployees.length === 1 ? ' is' : 's are'} above the configured workload threshold. Rebalance commitments.`,
       action: () => navigate('/workload'),
       badge: 'Workload Alert',
       badgeColor: 'text-critical bg-red-50 border-red-200',
-    },
-    {
-      message: `${skillGaps.length} critical skill gaps detected across active project requirements`,
+    }] : [{
+      message: 'No employees currently exceed the configured workload threshold.',
+      action: () => navigate('/workload'),
+      badge: 'Capacity Stable',
+      badgeColor: 'text-success bg-green-50 border-green-200',
+    }]),
+    ...(skillGaps.length > 0 ? [{
+      message: `${skillGaps.length} skill gap${skillGaps.length === 1 ? '' : 's'} are identified across project requirements. Prioritize training or targeted staffing.`,
       action: () => navigate('/skills'),
       badge: 'Skill Development',
       badgeColor: 'text-warning bg-orange-50 border-orange-200',
-    },
-    {
-      message: `${availableEmployees.length} qualified specialists currently have available capacity`,
+    }] : [{
+      message: 'No skill gaps are currently identified across the project requirements.',
+      action: () => navigate('/skills'),
+      badge: 'Skills Covered',
+      badgeColor: 'text-success bg-green-50 border-green-200',
+    }]),
+    ...(availableEmployees.length > 0 ? [{
+      message: `${availableEmployees.length} employee${availableEmployees.length === 1 ? ' has' : 's have'} availability marked as open for upcoming work.`,
       action: () => navigate('/employees'),
       badge: 'Capacity Ready',
       badgeColor: 'text-success bg-green-50 border-green-200',
-    },
+    }] : [{
+      message: 'No employees are currently marked available. Review near-term assignments before accepting more work.',
+      action: () => navigate('/workload'),
+      badge: 'Capacity Constraint',
+      badgeColor: 'text-warning bg-orange-50 border-orange-200',
+    }]),
   ];
 
   const tooltipStyle = {
@@ -161,7 +188,13 @@ export function DashboardPage() {
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-primary">Workforce Health Index</div>
               <div className="text-xs sm:text-sm font-semibold text-text-primary mt-0.5">
-                {workloadDistribution[1]?.value} of {employees.length} employees operating at balanced optimal capacity
+                {balancedCount} of {employees.length} employees are within the configured balanced-capacity range
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="h-1.5 w-40 max-w-full overflow-hidden rounded-full bg-white/80 border border-primary-100">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${balancedRate}%` }} />
+                </div>
+                <span className="text-[11px] font-bold tabular-nums text-primary">{balancedRate}% balanced</span>
               </div>
             </div>
           </div>
@@ -185,7 +218,6 @@ export function DashboardPage() {
             value={employees.length}
             icon={<Users size={18} />}
             accent="primary"
-            trend={{ value: 12, direction: 'up', label: 'vs last quarter' }}
           />
         </Reveal>
         <Reveal delay={80} direction="up">
@@ -194,7 +226,6 @@ export function DashboardPage() {
             value={activeProjects.length}
             icon={<FolderKanban size={18} />}
             accent="cyan"
-            trend={{ value: 8, direction: 'up', label: 'capacity scheduled' }}
           />
         </Reveal>
         <Reveal delay={120} direction="up">
@@ -203,7 +234,6 @@ export function DashboardPage() {
             value={availableEmployees.length}
             icon={<UserCheck size={18} />}
             accent="success"
-            trend={{ value: Math.round((availableEmployees.length / Math.max(employees.length, 1)) * 100), direction: 'neutral', label: '% workforce open' }}
           />
         </Reveal>
         <Reveal delay={160} direction="up">
@@ -212,7 +242,6 @@ export function DashboardPage() {
             value={skillGaps.length}
             icon={<AlertTriangle size={18} />}
             accent="warning"
-            trend={{ value: skillGaps.length, direction: skillGaps.length > 2 ? 'down' : 'neutral', label: 'across active pipelines' }}
           />
         </Reveal>
       </div>

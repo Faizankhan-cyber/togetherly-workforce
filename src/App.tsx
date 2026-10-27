@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { HRDashboardPage } from '@/pages/HRDashboardPage';
+import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 import { EmployeesPage } from '@/pages/EmployeesPage';
 import { ProjectsPage } from '@/pages/ProjectsPage';
 import { TeamBuilderPage } from '@/pages/TeamBuilderPage';
@@ -55,7 +56,7 @@ function WorkspaceLayout() {
         <main className="flex-1 p-4 sm:p-5 lg:p-6 max-w-[1600px] w-full mx-auto animate-fade-in">
           <Routes>
             {/* Common / Shared entry */}
-            <Route path="/" element={systemRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
+            <Route path="/" element={systemRole === 'admin' ? <AdminDashboardPage /> : systemRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
             <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
 
             {/* Administrator-only route protected by real database administrator authorization (not demo role switcher) */}
@@ -77,7 +78,7 @@ function WorkspaceLayout() {
             />
 
             {/* Manager specific routes */}
-            {role === 'manager' && systemRole !== 'hr' && (
+            {role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin' && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
@@ -103,6 +104,16 @@ function WorkspaceLayout() {
                 <Route path="/skills" element={<SkillsTrainingPage />} />
                 <Route path="/talent-verification" element={<TalentVerificationPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+              </>
+            )}
+
+            {/* Administrator workspace: organization oversight without manager-only optimization tools. */}
+            {systemRole === 'admin' && (
+              <>
+                <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </>
             )}
 
