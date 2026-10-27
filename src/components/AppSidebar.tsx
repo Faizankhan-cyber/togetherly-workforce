@@ -20,6 +20,7 @@ import {
   GitFork,
   UserCheck,
   Lock,
+  ShieldCheck,
   Sparkles,
   Gauge,
   BrainCircuit,
@@ -142,7 +143,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
       setExpandedGroups((previous) => ({ ...previous, [activeGroup.name]: true }));
       return;
     }
-    if (managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests') {
+    if (managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests' || location.pathname === '/admin/manage-admins') {
       setExpandedGroups((previous) => ({ ...previous, Administration: true }));
     }
   }, [location.pathname, role]);
@@ -223,6 +224,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                   {renderNavItem(tinyFishNavItem, true)}
                   {managerAdministrationItems.map((item) => renderNavItem(item))}
                   {showAdminSection && renderNavItem({ to: '/admin/employee-requests', label: 'Employee Verification', icon: UserCheck })}
+                  {isAdmin && renderNavItem({ to: '/admin/manage-admins', label: 'Admin Access', icon: ShieldCheck })}
                 </>
               ) : (
                 <>
@@ -268,7 +270,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                   <section className="mt-2 border-t border-base-border pt-2">
                     <button
                       type="button"
-                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests' ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
+                      className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests' || location.pathname === '/admin/manage-admins' ? 'text-primary' : 'text-text-muted hover:bg-base-hover hover:text-text-primary'}`}
                       onClick={() => setExpandedGroups((previous) => ({ ...previous, Administration: !previous.Administration }))}
                       aria-expanded={expandedGroups.Administration}
                     >
@@ -282,6 +284,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                         <NavLink to="/admin/employee-requests" onClick={onCloseMobile} title={collapsed ? 'Employee Verification' : undefined} className={({isActive}) => `relative flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${isActive ? 'bg-primary-50 text-primary font-semibold border-l-2 border-primary' : 'text-text-secondary hover:text-text-primary hover:bg-base-hover'} ${collapsed ? 'justify-center px-2' : ''}`}>
                           {({isActive}) => <><UserCheck size={16} className={isActive ? 'text-primary' : 'text-text-secondary'}/>{!collapsed && <span className="truncate flex-1">Employee Verification</span>}</>}
                         </NavLink>
+                        {isAdmin && renderNavItem({ to: '/admin/manage-admins', label: 'Admin Access', icon: ShieldCheck })}
                       </>}
                     </div>}
                   </section>
@@ -335,6 +338,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
               {showAdminSection && <div className="mt-3 border-t border-base-border pt-2">
                 {!collapsed && <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Administration</div>}
                 {renderNavItem({to:'/admin/employee-requests',label:'Employee Verification',icon:UserCheck})}
+                {isAdmin && renderNavItem({to:'/admin/manage-admins',label:'Admin Access',icon:ShieldCheck})}
               </div>}
             </>
           )}
