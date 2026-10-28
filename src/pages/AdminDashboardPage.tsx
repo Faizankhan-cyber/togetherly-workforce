@@ -27,6 +27,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
 import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
+import { RoleDashboardHero } from '@/components/RoleDashboardHero';
 import { useData } from '@/context/DataContext';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
@@ -137,21 +138,15 @@ export function AdminDashboardPage() {
         breadcrumb={['Administration', 'Overview']}
       />
 
-      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 p-5 text-white sm:p-7">
-        <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-100">
-              <LockKeyhole size={13} /> Administrator workspace
-            </div>
-            <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Govern the workspace with confidence.</h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">Keep employee onboarding, administrator access, and organization-wide visibility in one focused control center.</p>
-          </div>
-          <Link to="/admin/manage-admins" className="inline-flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-blue-50">
-            Manage admin access <ArrowUpRight size={16} />
-          </Link>
-        </div>
-      </section>
+      <RoleDashboardHero
+        variant="admin"
+        eyebrow="Administrator workspace"
+        title="Govern the workspace with confidence."
+        description="Keep employee onboarding, administrator access, and organization-wide visibility in one focused control center."
+        to="/admin/manage-admins"
+        actionLabel="Manage admin access"
+        icon={LockKeyhole}
+      />
 
       <TinyFishLaunchCard description="Research organization-wide technology trends, workforce benchmarks, public sources, and strategic questions that support better decisions." />
 

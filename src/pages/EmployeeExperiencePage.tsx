@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
+import { RoleDashboardHero } from '@/components/RoleDashboardHero';
 import { Avatar } from '@/components/Avatar';
 import { CapacityBar } from '@/components/CapacityBar';
 import { SkillTag } from '@/components/SkillTag';
@@ -89,6 +90,19 @@ export function EmployeeDashboardPage() {
         breadcrumb={['Home', 'My Dashboard']}
       />
 
+      <Reveal direction="down">
+        <RoleDashboardHero
+          variant="employee"
+          eyebrow="Personal intelligence portal"
+          title="Grow your skills. Own your next move."
+          description={`${employee.role} · ${employee.department} · ${employee.yearsExperience} years of experience. Keep your projects, workload, and development goals moving forward.`}
+          to="/my-projects"
+          actionLabel="View My Projects"
+          icon={Target}
+          identity={{ name: employee.name, color: employee.avatarColor }}
+        />
+      </Reveal>
+
       <TinyFishLaunchCard description="Explore career paths, in-demand skills, certifications, and learning resources relevant to your professional growth." />
 
       {(employee.skills.length === 0 || employee.yearsExperience === 0) && (
@@ -105,25 +119,6 @@ export function EmployeeDashboardPage() {
           </div>
         </section>
       )}
-
-      {/* Hero Welcome Card */}
-      <Reveal direction="down">
-        <section className="card p-6 sm:p-8 bg-gradient-to-r from-primary/20 via-base-card to-cyan/15 border-primary/30 shadow-xl">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar name={employee.name} color={employee.avatarColor} size="lg" />
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-cyan">Personal Intelligence Portal</div>
-                <h2 className="mt-1 text-2xl font-extrabold text-text-primary tracking-tight">{employee.role}</h2>
-                <p className="mt-1 text-xs sm:text-sm text-text-secondary">{employee.department} · {employee.yearsExperience} Years Industry Experience</p>
-              </div>
-            </div>
-            <Link to="/my-projects" className="btn-primary w-fit shadow-md">
-              View My Projects <ArrowRight size={15} />
-            </Link>
-          </div>
-        </section>
-      </Reveal>
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

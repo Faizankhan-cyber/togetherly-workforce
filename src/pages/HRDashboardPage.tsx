@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
 import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
+import { RoleDashboardHero } from '@/components/RoleDashboardHero';
 import { useData } from '@/context/DataContext';
 
 type MetricTileProps = {
@@ -116,23 +117,15 @@ export function HRDashboardPage() {
         breadcrumb={['People Operations', 'HR Dashboard']}
       />
 
-      <section className="relative overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 via-white to-blue-50 p-5 sm:p-7">
-        <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-violet-200/30 blur-3xl" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-800">
-              <Building2 size={13} /> People operations
-            </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">People first. Clear priorities.</h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
-              Your HR workspace brings employee information, talent reviews, and learning activity together in one place.
-            </p>
-          </div>
-          <Link to="/employees" className="inline-flex w-fit items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-            Open employee directory <ArrowUpRight size={16} />
-          </Link>
-        </div>
-      </section>
+      <RoleDashboardHero
+        variant="hr"
+        eyebrow="People operations"
+        title="People first. Clear priorities."
+        description={`Support ${activeEmployees.length} colleagues, keep talent profiles current, and move learning reviews forward from one people-operations workspace.`}
+        to="/employees"
+        actionLabel="Open employee directory"
+        icon={Building2}
+      />
 
       <TinyFishLaunchCard description="Explore skill trends, learning resources, hiring demand, and credible workforce research to support people operations." />
 
