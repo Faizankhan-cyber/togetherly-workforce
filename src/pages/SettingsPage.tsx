@@ -10,6 +10,7 @@ import {
 import { PageHeader } from '@/components/PageHeader';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { Reveal } from '@/components/Reveal';
+import { ProfileUpdateSection } from '@/components/ProfileUpdateSection';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import type { AppSettings } from '@/types';
@@ -69,6 +70,8 @@ export function SettingsPage() {
           )
         }
       />
+
+      <ProfileUpdateSection />
 
       <div className="space-y-5 max-w-3xl">
         {/* User Profile */}

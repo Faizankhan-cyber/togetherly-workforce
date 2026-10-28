@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
+import { ProfileUpdateSection } from '@/components/ProfileUpdateSection';
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
@@ -112,6 +113,8 @@ export function EmployeeSettingsPage() {
           </button>
         }
       />
+
+      <ProfileUpdateSection />
 
       <div className="grid gap-5 xl:grid-cols-[1.05fr_1.4fr]">
         <div className="space-y-5">

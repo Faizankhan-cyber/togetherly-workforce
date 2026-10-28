@@ -107,6 +107,7 @@ const hrNavItems: SidebarNavItem[] = [
   { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
   { to: '/roadmap', label: 'Development Roadmap', icon: Map },
   { to: '/my-profile', label: 'My Profile', icon: UserRound },
+  { to: '/my-settings', label: 'My Settings', icon: Settings },
   { to: '/analytics', label: 'People Analytics', icon: BarChart3 },
   tinyFishNavItem,
 ];
