@@ -370,6 +370,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteEmployee = async (id: string, reason?: string): Promise<{ success: boolean; error?: string }> => {
+    let authCleanupPending = false;
     const emp = employees.find((e) => e.id === id);
     if (!emp) return { success: false, error: 'Employee not found in the current roster.' };
 
@@ -386,14 +387,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: message };
       }
 
-      const { error } = await supabase.rpc('offboard_employee', {
-        p_employee_id: id,
-        p_reason: reason.trim(),
+      const { data: offboardingResult, error } = await supabase.functions.invoke('workspace-identity-lifecycle', {
+        body: { action: 'offboard', employeeId: id, reason: reason.trim() },
       });
       if (error) {
         showToast('error', error.message || 'Could not remove this employee from the organization.');
         return { success: false, error: error.message };
       }
+      if (!offboardingResult?.success) {
+        const message = offboardingResult?.error || 'Could not complete employee offboarding.';
+        showToast('error', message);
+        return { success: false, error: message };
+      }
+      authCleanupPending = Boolean(offboardingResult.authCleanupPending);
       databaseEmployeeIdsRef.current.delete(id);
     }
 
@@ -408,9 +414,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     if (emp) {
       addActivity(`Removed employee from organization: ${emp.name}${reason ? ` · Reason: ${reason.trim()}` : ''}`, 'system');
-      showToast('success', isDatabaseEmployee
-        ? `Removed ${emp.name} from the active organization roster. Their employee record and audit history are preserved.`
-        : `Removed ${emp.name} from the demo directory.`);
+      if (isDatabaseEmployee && authCleanupPending) {
+        showToast('warning', 'Removed ' + emp.name + ' from active staffing, but Supabase Auth cleanup is pending. An administrator can retry it under Admin Access.');
+      } else {
+        showToast('success', isDatabaseEmployee
+          ? 'Removed ' + emp.name + ' from the active roster. Their history is preserved and their email has been released.'
+          : 'Removed ' + emp.name + ' from the demo directory.');
+      }
     }
     return { success: true };
   };

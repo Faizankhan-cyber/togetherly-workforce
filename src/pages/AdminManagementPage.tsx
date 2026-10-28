@@ -8,6 +8,7 @@ import {
   Search,
   ShieldCheck,
   ShieldOff,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -33,10 +34,41 @@ interface AdminAccount {
   department: string;
 }
 
+type PromotionRole = 'manager' | 'hr' | 'admin';
+
+interface PromotableAccount {
+  employee_id: string;
+  auth_user_id: string;
+  full_name: string;
+  email: string;
+  department: string;
+  system_role: 'employee' | 'manager' | 'hr';
+}
+
+interface CleanupAccount {
+  employee_id: string;
+  auth_user_id: string;
+  full_name: string;
+  email: string;
+  department: string;
+}
+
+const promotionRoleLabels: Record<PromotionRole, string> = {
+  manager: 'Manager',
+  hr: 'HR',
+  admin: 'Administrator',
+};
+
 export function AdminManagementPage() {
   const { user } = useAuth();
   const { showToast } = useData();
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
+  const [promotableAccounts, setPromotableAccounts] = useState<PromotableAccount[]>([]);
+  const [cleanupAccounts, setCleanupAccounts] = useState<CleanupAccount[]>([]);
+  const [promotionEmployeeId, setPromotionEmployeeId] = useState('');
+  const [promotionRole, setPromotionRole] = useState<PromotionRole | ''>('');
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [cleaningEmployeeId, setCleaningEmployeeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -59,9 +91,16 @@ export function AdminManagementPage() {
     setErrorMessage(null);
 
     try {
-      const { data, error } = await supabase.rpc('list_active_admin_accounts');
-      if (error) throw error;
-      setAdmins((data ?? []) as AdminAccount[]);
+      const [adminResult, promotionResult, cleanupResult] = await Promise.all([
+        supabase.rpc('list_active_admin_accounts'),
+        supabase.rpc('list_promotable_employee_accounts'),
+        supabase.rpc('list_offboarded_auth_cleanup_accounts'),
+      ]);
+      const queryError = adminResult.error ?? promotionResult.error ?? cleanupResult.error;
+      if (queryError) throw queryError;
+      setAdmins((adminResult.data ?? []) as AdminAccount[]);
+      setPromotableAccounts((promotionResult.data ?? []) as PromotableAccount[]);
+      setCleanupAccounts((cleanupResult.data ?? []) as CleanupAccount[]);
     } catch (err: unknown) {
       const message = (err as Error)?.message || 'Could not load administrator accounts.';
       setErrorMessage(message);
@@ -83,6 +122,58 @@ export function AdminManagementPage() {
       [admin.full_name, admin.email, admin.department].some((field) => field.toLowerCase().includes(query)),
     );
   }, [admins, searchQuery]);
+
+  const selectedPromotionAccount = promotableAccounts.find((account) => account.employee_id === promotionEmployeeId);
+  const promotionOptions: PromotionRole[] = selectedPromotionAccount?.system_role === 'employee'
+    ? ['manager', 'hr', 'admin']
+    : selectedPromotionAccount
+      ? ['admin']
+      : [];
+
+  async function handlePromoteAccount() {
+    if (!selectedPromotionAccount || !promotionRole || !supabase || !isSupabaseConfigured()) return;
+    setIsPromoting(true);
+    try {
+      const { error } = await supabase.rpc('set_employee_system_role', {
+        p_employee_id: selectedPromotionAccount.employee_id,
+        p_target_role: promotionRole,
+      });
+      if (error) throw error;
+
+      showToast('success', selectedPromotionAccount.full_name + ' is now ' + promotionRoleLabels[promotionRole] + '. Their dashboard and permissions will update automatically.');
+      setPromotionEmployeeId('');
+      setPromotionRole('');
+      await loadAdmins(true);
+    } catch (err: unknown) {
+      const message = (err as Error)?.message || 'The account could not be promoted.';
+      showToast('error', message);
+      setErrorMessage(message);
+    } finally {
+      setIsPromoting(false);
+    }
+  }
+
+  async function handleAuthCleanup(account: CleanupAccount) {
+    if (!supabase || !isSupabaseConfigured()) return;
+    setCleaningEmployeeId(account.employee_id);
+    try {
+      const { data, error } = await supabase.functions.invoke('workspace-identity-lifecycle', {
+        body: { action: 'cleanup', employeeId: account.employee_id },
+      });
+      if (error) throw error;
+      if (!data?.success || data?.authCleanupPending) {
+        throw new Error(data?.error || 'Supabase Auth cleanup is still pending. Refresh and retry after checking the function logs.');
+      }
+      showToast('success', account.full_name + "'s old Auth account has been removed. " + account.email + ' is now available for a new registration.');
+      await loadAdmins(true);
+    } catch (err: unknown) {
+      const message = (err as Error)?.message || 'Could not finish Auth cleanup. You can safely retry this action.';
+      showToast('error', message);
+      setErrorMessage(message);
+    } finally {
+      setCleaningEmployeeId(null);
+    }
+  }
 
   async function handleRemoveAdmin() {
     if (!selectedAdmin || !demotionRole || !supabase || !isSupabaseConfigured()) return;
@@ -247,6 +338,126 @@ export function AdminManagementPage() {
           <div className="border-t border-base-border bg-base-bg/40 px-5 py-3 text-[10px] text-text-secondary">
             Removing admin access demotes the account to the role you select. It does not delete the account, employee profile, or historical records.
           </div>
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className="card overflow-hidden">
+          <div className="flex items-start gap-3 border-b border-base-border p-4 sm:p-5">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-emerald-700">
+              <UserPlus size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-text-primary">Promote a teammate</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-text-secondary">
+                Promote active, linked employees to Manager, HR, or Administrator. Managers and HR can be promoted to Administrator. Only administrators can use this control, and every change is audited.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800">
+              Admin only
+            </span>
+          </div>
+          <form
+            className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(180px,0.8fr)_auto] sm:items-end sm:p-5"
+            onSubmit={(event) => { event.preventDefault(); void handlePromoteAccount(); }}
+          >
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="promotion-account" className="block text-xs font-medium text-text-secondary">Active workspace account</label>
+              <select
+                id="promotion-account"
+                className="input-field w-full"
+                value={promotionEmployeeId}
+                disabled={isPromoting || isLoading}
+                onChange={(event) => {
+                  setPromotionEmployeeId(event.target.value);
+                  setPromotionRole('');
+                }}
+                required
+              >
+                <option value="">Choose a teammate…</option>
+                {promotableAccounts.map((account) => (
+                  <option key={account.employee_id} value={account.employee_id}>
+                    {account.full_name} · {account.email} · {account.system_role.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="promotion-role" className="block text-xs font-medium text-text-secondary">Promote to</label>
+              <select
+                id="promotion-role"
+                className="input-field w-full"
+                value={promotionRole}
+                disabled={isPromoting || !selectedPromotionAccount}
+                onChange={(event) => setPromotionRole(event.target.value as PromotionRole | '')}
+                required
+              >
+                <option value="">Choose a role…</option>
+                {promotionOptions.map((targetRole) => (
+                  <option key={targetRole} value={targetRole}>{promotionRoleLabels[targetRole]}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="btn-primary h-10 justify-center whitespace-nowrap"
+              disabled={isPromoting || !selectedPromotionAccount || !promotionRole || isLoading}
+            >
+              <UserPlus size={15} />
+              {isPromoting ? 'Promoting…' : 'Promote account'}
+            </button>
+          </form>
+          {!isLoading && promotableAccounts.length === 0 && !errorMessage && (
+            <p className="border-t border-base-border px-5 py-3 text-xs text-text-secondary">There are no active non-administrator accounts available for promotion.</p>
+          )}
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className="card overflow-hidden">
+          <div className="flex items-start gap-3 border-b border-base-border p-4 sm:p-5">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-amber-700">
+              <Mail size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-text-primary">Offboarded accounts awaiting Auth cleanup</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-text-secondary">
+                Employee history is preserved, while the old sign-in identity is removed so their email can be registered again. Retry cleanup here if a previous Auth deletion failed.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md border border-base-border bg-base-bg px-2 py-1 text-[10px] font-semibold text-text-secondary">
+              {cleanupAccounts.length} pending
+            </span>
+          </div>
+          {isLoading ? (
+            <div className="p-5 text-xs text-text-secondary">Checking offboarded accounts…</div>
+          ) : cleanupAccounts.length === 0 ? (
+            <div className="flex items-center gap-2 p-5 text-xs text-text-secondary">
+              <ShieldCheck size={15} className="text-emerald-600" />
+              No offboarded accounts are waiting for Auth cleanup.
+            </div>
+          ) : (
+            <div className="divide-y divide-base-border">
+              {cleanupAccounts.map((account) => (
+                <div key={account.employee_id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-text-primary">{account.full_name}</p>
+                    <p className="mt-1 break-all text-[11px] text-text-secondary">{account.email || 'Original email retained in the offboarding audit'}</p>
+                    <p className="mt-1 text-[10px] text-text-muted">{account.department || 'Department not assigned'} · Offboarded</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-secondary shrink-0 justify-center text-xs"
+                    onClick={() => void handleAuthCleanup(account)}
+                    disabled={cleaningEmployeeId !== null || isRefreshing}
+                  >
+                    <RefreshCw size={14} className={cleaningEmployeeId === account.employee_id ? 'animate-spin' : ''} />
+                    {cleaningEmployeeId === account.employee_id ? 'Releasing email…' : 'Release email'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </Reveal>
 

@@ -591,6 +591,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, syncUserDatabaseIdentity]);
 
+  // Refresh the signed-in identity whenever an administrator changes the database role.
+  useEffect(() => {
+    if (!configured || !supabase || !user || dbEmployee?.authUserId !== user.id) return;
+
+    const channel = supabase
+      .channel('employee-role-sync:' + user.id)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'employees',
+          filter: 'auth_user_id=eq.' + user.id,
+        },
+        () => {
+          void syncUserDatabaseIdentity(user);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase?.removeChannel(channel);
+    };
+  }, [configured, user, dbEmployee?.authUserId, syncUserDatabaseIdentity]);
+
   // Determine authoritative identity mapping status and systemRole.
   // SECURITY: Treat public.employees.auth_user_id = auth.uid() as the sole authoritative
   // identity link. Never trust user_metadata, email matching, or stale client JWT claims

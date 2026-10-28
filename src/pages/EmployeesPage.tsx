@@ -629,7 +629,7 @@ export function EmployeesPage() {
           setRemoveReason('');
         }}
         title="Remove from organization"
-        message="This removes the employee from active staffing and disables their organization access. It does not hard-delete their employee or verification history."
+        message="This removes the employee from active staffing, deletes their Supabase sign-in account, and releases their email for a future registration. Their employee, verification, and offboarding audit history is preserved."
         details={
           <div className="space-y-2">
             <label htmlFor="offboarding-reason" className="block text-xs font-semibold text-text-primary">Reason for removal <span className="text-critical">*</span></label>
