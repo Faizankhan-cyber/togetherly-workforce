@@ -84,7 +84,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [previewRole, setPreviewRoleState] = useState<Role>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.ROLE);
-      return stored === 'employee' || stored === 'manager' ? stored : 'manager';
+      return stored === 'employee' || stored === 'manager' || stored === 'admin' || stored === 'hr' ? stored : 'manager';
     } catch {
       return 'manager';
     }
@@ -94,9 +94,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user && identityStatus === 'mapped' && mappedEmployee && mappedEmployee.authUserId === user.id
   );
   const role: Role = hasMappedAuthIdentity
-    ? mappedEmployee?.systemRole === 'employee'
-      ? 'employee'
-      : 'manager'
+    ? mappedEmployee?.systemRole ?? 'employee'
     : previewRole;
 
   const [employees, setEmployees] = useState<Employee[]>(() => {

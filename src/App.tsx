@@ -37,7 +37,8 @@ function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { role, toasts, dismissToast } = useData();
-  const { systemRole } = useAuth();
+  const { systemRole, isDemoMode, user } = useAuth();
+  const workspaceRole = !user && isDemoMode ? role : systemRole;
 
   return (
     <div className="flex min-h-screen bg-base-bg text-text-primary antialiased selection:bg-primary/30 selection:text-white">
@@ -56,7 +57,7 @@ function WorkspaceLayout() {
         <main className="flex-1 p-4 sm:p-5 lg:p-6 max-w-[1600px] w-full mx-auto animate-fade-in">
           <Routes>
             {/* Common / Shared entry */}
-            <Route path="/" element={systemRole === 'admin' ? <AdminDashboardPage /> : systemRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
+            <Route path="/" element={workspaceRole === 'admin' ? <AdminDashboardPage /> : workspaceRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
             <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
             <Route path="/intelligence" element={<TinyFishIntelligencePage />} />
 
@@ -79,7 +80,7 @@ function WorkspaceLayout() {
             />
 
             {/* Manager specific routes */}
-            {role === 'manager' && systemRole !== 'hr' && systemRole !== 'admin' && (
+            {workspaceRole === 'manager' && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
@@ -98,7 +99,7 @@ function WorkspaceLayout() {
 
 
             {/* HR-specific routes: HR reviewers have their own workspace without manager-only tools. */}
-            {systemRole === 'hr' && (
+            {workspaceRole === 'hr' && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/skills" element={<SkillsTrainingPage />} />
@@ -108,7 +109,7 @@ function WorkspaceLayout() {
             )}
 
             {/* Administrator workspace: organization oversight without manager-only optimization tools. */}
-            {systemRole === 'admin' && (
+            {workspaceRole === 'admin' && (
               <>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
@@ -126,7 +127,7 @@ function WorkspaceLayout() {
             )}
 
             {/* Employee specific routes */}
-            {role === 'employee' && (
+            {workspaceRole === 'employee' && (
               <>
                 <Route path="/my-projects" element={<EmployeeProjectsPage />} />
                 <Route path="/my-workload" element={<EmployeeWorkloadPage />} />

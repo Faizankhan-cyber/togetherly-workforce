@@ -1,4 +1,4 @@
-export type Role = 'manager' | 'employee';
+export type Role = 'manager' | 'employee' | 'admin' | 'hr';
 
 export type SystemRole = 'employee' | 'manager' | 'hr' | 'admin';
 
