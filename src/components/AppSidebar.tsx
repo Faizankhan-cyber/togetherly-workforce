@@ -31,6 +31,7 @@ import { Avatar } from './Avatar';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut } from 'lucide-react';
+import type { Role } from '@/types';
 
 type SidebarNavItem = { to: string; label: string; icon: LucideIcon };
 type SidebarNavGroup = { name: string; items: SidebarNavItem[] };
@@ -129,14 +130,15 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
   const { employees, role, setRole, submissions } = useData();
   const { user, isAdmin, isDemoMode, identityStatus, mappedEmployee, signOut, exitDemoMode, systemRole } = useAuth();
+  const workspaceRole = !user && isDemoMode ? role : systemRole;
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Workspace: true,
-    'Intelligence & Optimization': systemRole === 'admin',
-    'People & Development': systemRole === 'admin',
-    Insights: systemRole === 'admin',
-    Administration: systemRole === 'admin',
+    'Intelligence & Optimization': workspaceRole === 'admin',
+    'People & Development': workspaceRole === 'admin',
+    Insights: workspaceRole === 'admin',
+    Administration: workspaceRole === 'admin',
     'My Work': true,
     'Growth & Profile': false,
   });
@@ -153,7 +155,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
   const showAdminSection = isAdmin || (isDemoMode && !user);
 
   useEffect(() => {
-    if (role === 'employee') {
+    if (workspaceRole === 'employee') {
       const employeeGroup = location.pathname === '/my-projects' || location.pathname === '/my-workload'
         ? 'My Work'
         : location.pathname === '/my-skills' || location.pathname === '/roadmap' || location.pathname === '/my-profile'
@@ -173,7 +175,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
     if (managerAdministrationItems.some((item) => item.to === location.pathname) || location.pathname === '/admin/employee-requests' || location.pathname === '/admin/manage-admins') {
       setExpandedGroups((previous) => ({ ...previous, Administration: true }));
     }
-  }, [location.pathname, role]);
+  }, [location.pathname, workspaceRole]);
 
   function renderNavItem(item: SidebarNavItem, featured = false) {
     const Icon = item.icon;
@@ -206,7 +208,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
     );
   }
 
-  function changeRole(nextRole: 'manager' | 'employee') {
+  function changeRole(nextRole: Role) {
     setRole(nextRole);
     navigate('/');
     onCloseMobile();
@@ -242,7 +244,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
 
         {/* Navigation: grouped for managers, focused personal menu for employees. */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
-          {systemRole === 'admin' ? (
+          {workspaceRole === 'admin' ? (
             <>
               {collapsed ? (
                 <>
@@ -252,7 +254,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                   </div>
                   {managerAdministrationItems.map((item) => renderNavItem(item))}
                   <div className="my-2 border-t border-base-border" />
-                  {adminExtraNavItems.map((item) => renderNavItem(item))}
+                  {isAdmin && adminExtraNavItems.map((item) => renderNavItem(item))}
                 </>
               ) : (
                 <>
@@ -308,21 +310,23 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                     {expandedGroups.Administration && (
                       <div className="space-y-0.5">
                         {managerAdministrationItems.map((item) => renderNavItem(item))}
-                        <div className="mt-2 border-t border-base-border pt-2">
-                          <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Admin Controls</div>
-                          {adminExtraNavItems.map((item) => renderNavItem(item))}
-                        </div>
+                        {isAdmin && (
+                          <div className="mt-2 border-t border-base-border pt-2">
+                            <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">Admin Controls</div>
+                            {adminExtraNavItems.map((item) => renderNavItem(item))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </section>
                 </>
               )}
             </>
-          ) : systemRole === 'hr' ? (
+          ) : workspaceRole === 'hr' ? (
             <>
               {hrNavItems.map((item) => renderNavItem(item))}
             </>
-          ) : role === 'manager' ? (
+          ) : workspaceRole === 'manager' ? (
             <>
               {collapsed ? (
                 <>
@@ -466,38 +470,30 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
               </div>
             )}
             <div className={collapsed ? 'flex flex-col gap-1' : 'grid grid-cols-2 gap-1 rounded-md border border-base-border bg-gray-100 p-0.5'}>
-              <button
-                type="button"
-                onClick={() => changeRole('manager')}
-                aria-pressed={role === 'manager'}
-                title={collapsed ? 'Manager / HR Demo View' : undefined}
-                className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
-                  collapsed ? 'justify-center w-8 h-8' : 'justify-center'
-                } ${
-                  role === 'manager'
-                    ? 'bg-white text-primary shadow-sm border border-base-border'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
-                }`}
-              >
-                <BriefcaseBusiness size={13} />
-                {!collapsed && 'Manager'}
-              </button>
-              <button
-                type="button"
-                onClick={() => changeRole('employee')}
-                aria-pressed={role === 'employee'}
-                title={collapsed ? 'Employee Demo View' : undefined}
-                className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
-                  collapsed ? 'justify-center w-8 h-8' : 'justify-center'
-                } ${
-                  role === 'employee'
-                    ? 'bg-white text-primary shadow-sm border border-base-border'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
-                }`}
-              >
-                <UserRound size={13} />
-                {!collapsed && 'Employee'}
-              </button>
+              {([
+                { value: 'manager', label: 'Manager', icon: BriefcaseBusiness },
+                { value: 'employee', label: 'Employee', icon: UserRound },
+                { value: 'admin', label: 'Admin', icon: ShieldCheck },
+                { value: 'hr', label: 'HR', icon: UserCheck },
+              ] as const).map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => changeRole(value)}
+                  aria-pressed={role === value}
+                  title={collapsed ? `${label} Demo View` : undefined}
+                  className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
+                    collapsed ? 'justify-center w-8 h-8' : 'justify-center'
+                  } ${
+                    role === value
+                      ? 'bg-white text-primary shadow-sm border border-base-border'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
+                  }`}
+                >
+                  <Icon size={13} />
+                  {!collapsed && label}
+                </button>
+              ))}
             </div>
             {!collapsed && (
               <p className="text-[9.5px] text-text-muted mt-1 text-center font-normal leading-tight">
