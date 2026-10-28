@@ -185,10 +185,19 @@ export function TalentVerificationPage() {
             {packageClaims.map((claim) => {
               const skillName = claim.skill_id ? skillById.get(claim.skill_id)?.name : null;
               const claimTitle = claim.claim_type === 'skill' ? skillName ?? claim.title ?? 'Skill claim' : claim.title ?? claim.claim_type;
-              const isSelf = reviewer?.id === claim.employee_id;
               const events = audit.filter((event) => event.claim_id === claim.id);
+
+              const submittedByReviewer = events.some((event) =>
+
+                ['submitted', 'resubmitted'].includes(String(event.action)) &&
+
+                event.actor_employee_id === reviewer?.id
+
+              );
+
+              const isSelf = reviewer?.id === claim.employee_id || submittedByReviewer;
               return <div key={claim.id} className="rounded-xl border border-base-border/70 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-sm font-bold text-text-primary">{claimTitle}</h4><p className="mt-1 text-[11px] text-text-secondary">{claim.claim_type === 'skill' ? 'Claimed proficiency: ' + claim.claimed_level + '/5' : claim.claim_type === 'experience' ? claim.claimed_years + ' years claimed' : claim.organization || (claim.claim_type === 'education' ? 'Education' : claim.claim_type === 'employment' ? 'Work experience' : 'Certification / credential')}{claim.start_date || claim.end_date ? ' · ' + (claim.start_date || 'Start not supplied') + ' to ' + (claim.end_date || 'Present / not supplied') : ''}</p></div><span className={'rounded-full border px-2.5 py-1 text-[11px] font-semibold ' + (statusStyles[claim.status] ?? 'border-base-border text-text-secondary')}>{statusLabels[claim.status] ?? claim.status}</span></div>
+                <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-sm font-bold text-text-primary">{claimTitle}</h4><p className="mt-1 text-[11px] text-text-secondary">{claim.claim_type === 'skill' ? 'Claimed proficiency: ' + claim.claimed_level + '/5' : claim.claim_type === 'experience' ? claim.claimed_years + ' years claimed' : claim.organization || (claim.claim_type === 'education' ? 'Education' : claim.claim_type === 'employment' ? 'Work experience' : claim.claim_type === 'job-title' ? 'Requested job-title change' : 'Certification / credential')}{claim.start_date || claim.end_date ? ' · ' + (claim.start_date || 'Start not supplied') + ' to ' + (claim.end_date || 'Present / not supplied') : ''}</p></div><span className={'rounded-full border px-2.5 py-1 text-[11px] font-semibold ' + (statusStyles[claim.status] ?? 'border-base-border text-text-secondary')}>{statusLabels[claim.status] ?? claim.status}</span></div>
                 {claim.description && <div className="mt-3 rounded-lg border border-base-border/60 bg-base-bg/50 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Supporting details</p><p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-text-primary">{claim.description}</p></div>}
                 {claim.evidence_url && <a href={claim.evidence_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">{claim.evidence_label || 'Open supporting evidence'} <ExternalLink size={13}/></a>}
                 {evidenceLinks[claim.id] && <a href={evidenceLinks[claim.id]} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Open private evidence document (expires in 5 minutes) <ExternalLink size={13}/></a>}
@@ -203,11 +212,20 @@ export function TalentVerificationPage() {
         const employee = employeeById.get(claim.employee_id);
         const skillName = claim.skill_id ? skillById.get(claim.skill_id)?.name : null;
         const title = claim.claim_type === 'skill' ? skillName ?? claim.title ?? 'Skill claim' : claim.title ?? claim.claim_type;
-        const isSelf = reviewer?.id === claim.employee_id;
         const events = audit.filter((event) => event.claim_id === claim.id);
+
+        const submittedByReviewer = events.some((event) =>
+
+          ['submitted', 'resubmitted'].includes(String(event.action)) &&
+
+          event.actor_employee_id === reviewer?.id
+
+        );
+
+        const isSelf = reviewer?.id === claim.employee_id || submittedByReviewer;
         return <Reveal key={claim.id} delay={index * 20}><article className="card p-5 border-base-border/70 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3"><div className="rounded-xl bg-primary/10 border border-primary/20 p-2.5 text-primary">{claim.claim_type === 'experience' || claim.claim_type === 'employment' ? <BriefcaseBusiness size={18}/> : claim.claim_type === 'certification' || claim.claim_type === 'education' ? <FileCheck2 size={18}/> : <ShieldCheck size={18}/>}</div><div className="min-w-0"><h2 className="text-sm font-bold text-text-primary">{title}</h2><p className="mt-1 text-xs text-text-secondary">{employee?.name ?? claim.employee_id}{employee?.email ? ` · ${employee.email}` : ''}</p><p className="mt-1 text-[11px] text-text-secondary">{claim.claim_type === 'skill' ? `Claimed proficiency: ${claim.claimed_level}/5` : claim.claim_type === 'experience' ? `${claim.claimed_years} years claimed` : claim.organization || (claim.claim_type === 'education' ? 'Education' : claim.claim_type === 'employment' ? 'Work experience' : 'Certification / credential')} · Submitted {new Date(claim.submitted_at).toLocaleDateString()}</p></div></div>
+            <div className="flex min-w-0 items-start gap-3"><div className="rounded-xl bg-primary/10 border border-primary/20 p-2.5 text-primary">{claim.claim_type === 'experience' || claim.claim_type === 'employment' || claim.claim_type === 'job-title' ? <BriefcaseBusiness size={18}/> : claim.claim_type === 'certification' || claim.claim_type === 'education' ? <FileCheck2 size={18}/> : <ShieldCheck size={18}/>}</div><div className="min-w-0"><h2 className="text-sm font-bold text-text-primary">{title}</h2><p className="mt-1 text-xs text-text-secondary">{employee?.name ?? claim.employee_id}{employee?.email ? ` · ${employee.email}` : ''}</p><p className="mt-1 text-[11px] text-text-secondary">{claim.claim_type === 'skill' ? `Claimed proficiency: ${claim.claimed_level}/5` : claim.claim_type === 'experience' ? `${claim.claimed_years} years claimed` : claim.organization || (claim.claim_type === 'education' ? 'Education' : claim.claim_type === 'employment' ? 'Work experience' : claim.claim_type === 'job-title' ? 'Requested job-title change' : 'Certification / credential')} · Submitted {new Date(claim.submitted_at).toLocaleDateString()}</p></div></div>
             <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyles[claim.status] ?? 'border-base-border text-text-secondary'}`}>{statusLabels[claim.status] ?? claim.status}</span>
           </div>
           {claim.organization && <p className="mt-3 text-xs text-text-secondary"><span className="font-semibold text-text-primary">Organization / provider:</span> {claim.organization}</p>}

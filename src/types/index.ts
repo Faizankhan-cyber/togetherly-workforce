@@ -33,7 +33,7 @@ export interface EmployeeSkill {
   level: number; // 1 to 5
 }
 
-export type EmployeeProfileClaimType = 'skill' | 'experience' | 'certification' | 'employment' | 'education';
+export type EmployeeProfileClaimType = 'skill' | 'experience' | 'certification' | 'employment' | 'education' | 'job-title';
 export type EmployeeProfileClaimStatus =
   | 'pending-verification'
   | 'verified'
