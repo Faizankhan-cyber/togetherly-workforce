@@ -14,6 +14,7 @@ import {
 import { PageHeader } from '@/components/PageHeader';
 import { Avatar } from '@/components/Avatar';
 import { MatchScore } from '@/components/MatchScore';
+import { MatchFactorBreakdown } from '@/components/MatchFactorBreakdown';
 import { Reveal } from '@/components/Reveal';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
@@ -117,14 +118,51 @@ export function TeamBuilderPage() {
 
   function autoAssembleTeam() {
     if (!project) return;
-    // Pick top feasible candidates up to targetTeamSize
-    const eligible = recommendations
-      .filter((r) => r.capacityFeasible)
-      .slice(0, project.targetTeamSize)
-      .map((r) => r.employeeId);
 
-    setTeamIds(eligible);
-    showToast('info', `Algorithmic best-fit team of ${eligible.length} selected.`);
+    // Cover as many additional required skills as possible first; use weighted match score
+    // as a tie-breaker. Every selected candidate must remain availability/capacity feasible.
+    const selectedIds: string[] = [];
+    const remaining = recommendations.filter((item) => item.capacityFeasible);
+    while (selectedIds.length < project.targetTeamSize && remaining.length > 0) {
+      const currentCoverage = getTeamSkillCoverage(selectedIds, project, employees);
+      let bestIndex = -1;
+      let bestNewCoverage = -1;
+      let bestMatchScore = -1;
+
+      remaining.forEach((candidate, index) => {
+        const employee = employees.find((item) => item.id === candidate.employeeId);
+        if (!employee || employee.availability === 'unavailable') return;
+        const trialIds = [...selectedIds, employee.id];
+        const trialProjects = projects.map((item) => item.id === project.id
+          ? { ...item, assignedEmployeeIds: trialIds }
+          : item);
+        if (getActiveAssignmentCount(employee.id, trialProjects) > MAX_CONCURRENT_PROJECTS) return;
+
+        const nextCoverage = getTeamSkillCoverage(trialIds, project, employees);
+        const newlyCovered = nextCoverage.filter((item, coverageIndex) =>
+          item.covered && !currentCoverage[coverageIndex]?.covered
+        ).length;
+
+        if (newlyCovered > bestNewCoverage ||
+          (newlyCovered === bestNewCoverage && candidate.matchScore > bestMatchScore)) {
+          bestIndex = index;
+          bestNewCoverage = newlyCovered;
+          bestMatchScore = candidate.matchScore;
+        }
+      });
+
+      if (bestIndex < 0) break;
+      selectedIds.push(remaining[bestIndex].employeeId);
+      remaining.splice(bestIndex, 1);
+    }
+
+    const finalCoverage = getTeamSkillCoverage(selectedIds, project, employees);
+    const covered = finalCoverage.filter((item) => item.covered).length;
+    setTeamIds(selectedIds);
+    showToast(
+      selectedIds.length === project.targetTeamSize && covered === finalCoverage.length ? 'success' : 'warning',
+      `Built a ${selectedIds.length}-person draft. ${covered}/${finalCoverage.length} required skills covered; review remaining gaps before saving.`
+    );
   }
 
   function handleSaveRoster() {
@@ -231,6 +269,19 @@ export function TeamBuilderPage() {
 
       <ProjectIntelligencePanel project={project} nextRoute="/workforce-twin" />
 
+      <section className="card flex flex-col gap-2.5 border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xs font-bold text-text-primary">How the squad builder decides</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-secondary">
+            Auto-assembly first prioritizes candidates who close new required-skill gaps, then uses the weighted match score as a tie-breaker. Unavailable or over-capacity candidates are skipped. Review the remaining skill gaps and candidate evidence before saving.
+          </p>
+        </div>
+        <div className="shrink-0 rounded-lg border border-base-border bg-base-card px-3 py-2 text-[10px] leading-relaxed text-text-secondary">
+          <span className="font-semibold text-text-primary">Ranking weights</span><br />
+          Skills {settings.matchWeights.skills}% · Experience {settings.matchWeights.experience}% · Availability {settings.matchWeights.availability}%
+        </div>
+      </section>
+
       {/* Main Grid: Candidate Recommendations vs Active Squad */}
       <div className="grid gap-5 xl:grid-cols-[1.3fr_0.85fr]">
         {/* Candidate List */}
@@ -297,6 +348,8 @@ export function TeamBuilderPage() {
                               </span>
                             ))}
                           </div>
+
+                          <MatchFactorBreakdown recommendation={rec} />
 
                           {/* Skill Tags */}
                           <div className="mt-3 flex flex-wrap gap-1.5">

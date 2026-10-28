@@ -21,6 +21,7 @@ import { ProjectIntelligencePanel } from '@/components/ProjectIntelligencePanel'
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { MatchScore } from '@/components/MatchScore';
+import { MatchFactorBreakdown } from '@/components/MatchFactorBreakdown';
 import { useData } from '@/context/DataContext';
 import {
   calculateEmployeeUtilization,
@@ -115,6 +116,11 @@ export function WorkforceTwinPage() {
     project.assignedEmployeeIds.length !== teamIds.length ||
     project.assignedEmployeeIds.some((employeeId) => !teamIds.includes(employeeId))
   );
+
+  const addedMemberCount = project ? teamIds.filter((id) => !project.assignedEmployeeIds.includes(id)).length : 0;
+  const removedMemberCount = project ? project.assignedEmployeeIds.filter((id) => !teamIds.includes(id)).length : 0;
+  const changedUtilizationCount = postSimulation.filter(({ before, after }) => before !== after).length;
+  const coveredSkillCount = coverage.filter((item) => item.covered).length;
 
   function toggleMember(employeeId: string) {
     setTeamIds((current) => current.includes(employeeId)
@@ -268,6 +274,31 @@ export function WorkforceTwinPage() {
 
       <ProjectIntelligencePanel project={project} />
 
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Roster changes</p>
+          <p className="mt-2 text-xl font-bold text-text-primary">+{addedMemberCount} <span className="text-text-muted">/</span> −{removedMemberCount}</p>
+          <p className="mt-1 text-[11px] text-text-secondary">Adds / removals vs saved roster</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Required skills covered</p>
+          <p className="mt-2 text-xl font-bold text-text-primary">{coveredSkillCount}<span className="text-sm font-medium text-text-muted"> / {coverage.length}</span></p>
+          <p className="mt-1 text-[11px] text-text-secondary">Based on recorded team skill levels</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Workload shifts</p>
+          <p className="mt-2 text-xl font-bold text-text-primary">{changedUtilizationCount}</p>
+          <p className="mt-1 text-[11px] text-text-secondary">People whose estimated utilization changes</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Validation blockers</p>
+          <p className={`mt-2 text-xl font-bold ${capacityViolations.length || missingSkills.length || !exactTeamSize ? 'text-warning' : 'text-success'}`}>
+            {capacityViolations.length + missingSkills.length + (!exactTeamSize ? 1 : 0)}
+          </p>
+          <p className="mt-1 text-[11px] text-text-secondary">Capacity, skill, or team-size checks</p>
+        </div>
+      </section>
+
       <div className="grid gap-5 xl:grid-cols-[1.3fr_0.85fr]">
         {/* Left: Recommended Talent */}
         <Reveal delay={60}>
@@ -329,6 +360,8 @@ export function WorkforceTwinPage() {
                             </p>
                           ))}
                         </div>
+
+                        <MatchFactorBreakdown recommendation={recommendation} />
 
                         {/* Skill Tags */}
                         <div className="mt-3 flex flex-wrap gap-1.5">

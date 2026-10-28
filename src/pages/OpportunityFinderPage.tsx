@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { MatchScore } from '@/components/MatchScore';
+import { MatchFactorBreakdown } from '@/components/MatchFactorBreakdown';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { generateRecommendations, getSkillName } from '@/utils';
@@ -36,6 +37,23 @@ export function OpportunityFinderPage() {
     .filter((item) => item.openSeats > 0 && item.recommendation.matchScore >= 25)
     .sort((a, b) => b.recommendation.matchScore - a.recommendation.matchScore || a.openSeats - b.openSeats)
     .slice(0, 12), [activeProjects, employees, projects, projectFilter, settings]);
+
+  const opportunityDiagnostics = useMemo(() => {
+    const scope = activeProjects.filter((project) => projectFilter === 'all' || project.id === projectFilter);
+    let openSeats = 0;
+    let capacitySafePairs = 0;
+    let belowThresholdPairs = 0;
+    for (const project of scope) {
+      const seats = Math.max(0, project.targetTeamSize - project.assignedEmployeeIds.length);
+      openSeats += seats;
+      if (seats === 0) continue;
+      const candidates = generateRecommendations(employees, project, settings.matchWeights, projects, settings)
+        .filter((recommendation) => recommendation.capacityFeasible && !project.assignedEmployeeIds.includes(recommendation.employeeId));
+      capacitySafePairs += candidates.filter((recommendation) => recommendation.matchScore >= 25).length;
+      belowThresholdPairs += candidates.filter((recommendation) => recommendation.matchScore < 25).length;
+    }
+    return { projectCount: scope.length, openSeats, capacitySafePairs, belowThresholdPairs };
+  }, [activeProjects, employees, projects, projectFilter, settings]);
 
   function useProjectContext() {
     setMarketQuery(selectedProject
@@ -70,7 +88,7 @@ export function OpportunityFinderPage() {
         <section className="card p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-warning/10 via-base-card to-primary/10 border-warning/30 shadow-md">
           <div className="max-w-xl">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning mb-1"><Lightbulb size={16} /> Explainable Match Intelligence</div>
-            <p className="text-xs text-text-secondary leading-relaxed">Togetherly evaluates project competencies, bandwidth, and experience. TinyFish adds live external research without changing internal match scores.</p>
+            <p className="text-xs text-text-secondary leading-relaxed">Candidates must be unassigned to the project, pass capacity checks, and score at least 25/100. The score combines skills, experience, and availability; TinyFish research stays separate from internal fit scores.</p>
           </div>
           <label className="flex items-center gap-2.5 text-xs text-text-secondary">
             <span className="font-semibold text-text-primary">Project:</span>
@@ -136,7 +154,7 @@ export function OpportunityFinderPage() {
 
       <div className="flex items-center gap-2"><UsersRound size={17} className="text-primary" /><h2 className="text-sm font-bold text-text-primary">Internal talent matches</h2><span className="rounded-full bg-base-hover px-2 py-0.5 text-[10px] font-semibold text-text-secondary">{opportunities.length}</span></div>
       {opportunities.length === 0 ? (
-        <Reveal><div className="card p-10 text-center shadow-lg"><div className="w-12 h-12 rounded-2xl bg-base-hover flex items-center justify-center mx-auto text-text-secondary mb-3"><UsersRound size={26} /></div><h2 className="text-base font-bold text-text-primary">No Open Capacity-Safe Matches Found</h2><p className="mt-1.5 text-xs text-text-secondary max-w-md mx-auto">All selected projects are either fully staffed or candidates currently lack open capacity allocations.</p></div></Reveal>
+        <Reveal><div className="card p-8 shadow-lg"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-base-hover text-text-secondary"><UsersRound size={26} /></div><h2 className="text-center text-base font-bold text-text-primary">No internal matches meet the current rules</h2><p className="mx-auto mt-1.5 max-w-xl text-center text-xs leading-relaxed text-text-secondary">{opportunityDiagnostics.openSeats === 0 ? 'There are no unfilled team seats in the selected project scope.' : opportunityDiagnostics.capacitySafePairs === 0 && opportunityDiagnostics.belowThresholdPairs === 0 ? 'Open seats exist, but no unassigned candidate currently passes capacity checks.' : 'Capacity-safe candidates exist, but none reaches the minimum match score of 25/100. Review the project requirements or skill inventory before lowering the threshold.'}</p><div className="mt-5 grid gap-2 sm:grid-cols-3"><div className="rounded-lg border border-base-border p-3 text-center"><div className="text-lg font-bold text-text-primary">{opportunityDiagnostics.openSeats}</div><div className="text-[10px] text-text-secondary">Open seats</div></div><div className="rounded-lg border border-base-border p-3 text-center"><div className="text-lg font-bold text-success">{opportunityDiagnostics.capacitySafePairs}</div><div className="text-[10px] text-text-secondary">Pairs scoring 25+</div></div><div className="rounded-lg border border-base-border p-3 text-center"><div className="text-lg font-bold text-warning">{opportunityDiagnostics.belowThresholdPairs}</div><div className="text-[10px] text-text-secondary">Below threshold</div></div></div></div></Reveal>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {opportunities.map(({ project, recommendation, employee, openSeats }, index) => (
@@ -147,6 +165,7 @@ export function OpportunityFinderPage() {
                   <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-base-border/60 bg-base-bg/60"><div className="flex min-w-0 items-center gap-3"><Avatar name={employee.name} color={employee.avatarColor} size="sm" /><div className="min-w-0"><div className="truncate text-xs font-bold text-text-primary">{employee.name}</div><div className="truncate text-[11px] text-text-secondary">{employee.role} · <span className="font-mono text-success">{recommendation.availableCapacity}% available</span></div></div></div><button className="btn-primary text-xs py-1.5 px-3 flex-shrink-0" onClick={() => navigate('/workforce-twin', { state: { projectId: project.id, employeeId: employee.id } })}><span>Simulate</span><ArrowRight size={13} /></button></div>
                   <div className="mt-3 flex flex-wrap gap-1.5">{recommendation.matchedSkills.length > 0 ? recommendation.matchedSkills.slice(0, 4).map((skillId) => <span key={skillId} className="rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">✓ {getSkillName(skillId)}</span>) : <span className="text-[11px] text-text-secondary italic">Transferable skills applicable</span>}</div>
                   <ul className="mt-3 space-y-1 pt-2 border-t border-base-border/30">{recommendation.reasons.slice(0, 2).map((reason) => <li key={reason} className="text-[11px] text-text-secondary flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" /><span className="truncate">{reason}</span></li>)}</ul>
+                  <MatchFactorBreakdown recommendation={recommendation} />
                 </div>
               </article>
             </Reveal>
