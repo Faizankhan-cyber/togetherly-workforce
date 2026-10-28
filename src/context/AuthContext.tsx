@@ -53,6 +53,11 @@ interface AuthContextType {
     requestedDepartment: string;
     requestedJobTitle?: string;
   }) => Promise<{ success: boolean; error?: string }>;
+  reapplyMyRegistrationRequest: (updates: {
+    applicantName: string;
+    requestedDepartment: string;
+    requestedJobTitle?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   enterDemoMode: () => void;
   exitDemoMode: () => void;
@@ -476,6 +481,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: false, error: friendlyMessage };
         }
 
+        // Supabase may return a user with an empty identities array for an existing email.
+        // That is not a new signup, and it does not send another verification email.
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          const duplicateAccountMessage =
+            'This signup did not create a new account. Try signing in with this email instead. ' +
+            'If your application was previously declined, sign in to reapply for approval.';
+          setAuthError(duplicateAccountMessage);
+          return { success: false, error: duplicateAccountMessage };
+        }
+
         const requiresEmailConfirmation = !data.session && !!data.user;
 
         if (data.session && data.user) {
@@ -531,6 +546,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     [user]
+  );
+
+  // Allow a signed-in applicant to submit a fresh review request after a prior rejection.
+  // This uses a narrowly scoped RPC; applicants cannot directly change approval status.
+  const reapplyMyRegistrationRequest = useCallback(
+    async (updates: {
+      applicantName: string;
+      requestedDepartment: string;
+      requestedJobTitle?: string;
+    }) => {
+      if (!supabase || !user) {
+        return { success: false, error: 'Sign in to reapply for organization access.' };
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('reapply_my_registration_request', {
+          p_applicant_name: updates.applicantName.trim(),
+          p_requested_department: updates.requestedDepartment.trim(),
+          p_requested_job_title: updates.requestedJobTitle?.trim() ?? null,
+        });
+
+        if (error) {
+          return { success: false, error: error.message };
+        }
+
+        if (data && typeof data === 'object') {
+          setRegistrationRequest(mapRegistrationRow(data as Record<string, unknown>));
+        }
+
+        // The RPC clears the rejected app-metadata flag. Refresh the JWT so client-side
+        // identity checks see the latest authoritative status rather than a stale claim.
+        const { data: refreshedSession, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.warn('Session refresh after registration reapplication:', refreshError.message);
+        }
+        if (refreshedSession.session) {
+          setSession(refreshedSession.session);
+          setUser(refreshedSession.session.user);
+          await syncUserDatabaseIdentity(refreshedSession.session.user);
+        }
+
+        return { success: true };
+      } catch (err: unknown) {
+        return {
+          success: false,
+          error: (err as Error)?.message || 'Could not resubmit your registration request.',
+        };
+      }
+    },
+    [user, syncUserDatabaseIdentity]
   );
 
   // Sign out cleanly
@@ -672,6 +737,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithEmail,
     signUpWithEmail,
     updateMyRegistrationRequest,
+    reapplyMyRegistrationRequest,
     signOut,
     enterDemoMode,
     exitDemoMode,

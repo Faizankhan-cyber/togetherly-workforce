@@ -39,6 +39,7 @@ export function IdentityPendingPage() {
     registrationRequest,
     registrationTableMissing,
     updateMyRegistrationRequest,
+    reapplyMyRegistrationRequest,
   } = useAuth();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -69,6 +70,12 @@ export function IdentityPendingPage() {
     setRequestedJobTitle(defaultTitle);
   }, [registrationRequest, user]);
 
+  // Prefer database request state when available so a successful reapply immediately clears
+  // the rejected screen even if a client token still contains a stale app-metadata claim.
+  const isRejected = registrationRequest
+    ? registrationRequest.status === 'rejected'
+    : user?.app_metadata?.registration_status === 'rejected';
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setSaveMessage(null);
@@ -85,15 +92,23 @@ export function IdentityPendingPage() {
     setIsSavingDetails(true);
     setSaveMessage(null);
     try {
-      const res = await updateMyRegistrationRequest({
-        applicantName: applicantName.trim(),
-        requestedDepartment: requestedDepartment.trim(),
-        requestedJobTitle: requestedJobTitle.trim() || undefined,
-      });
+      const res = isRejected
+        ? await reapplyMyRegistrationRequest({
+            applicantName: applicantName.trim(),
+            requestedDepartment: requestedDepartment.trim(),
+            requestedJobTitle: requestedJobTitle.trim(),
+          })
+        : await updateMyRegistrationRequest({
+            applicantName: applicantName.trim(),
+            requestedDepartment: requestedDepartment.trim(),
+            requestedJobTitle: requestedJobTitle.trim() || undefined,
+          });
       if (res.success) {
         setSaveMessage({
           type: 'success',
-          text: 'Your application details have been updated in the administrator verification queue.',
+          text: isRejected
+            ? 'Your application has been resubmitted and is back in the administrator approval queue.'
+            : 'Your application details have been updated in the administrator verification queue.',
         });
         setIsEditingRequest(false);
       } else {
@@ -107,9 +122,36 @@ export function IdentityPendingPage() {
     }
   };
 
-  const isRejected =
-    registrationRequest?.status === 'rejected' ||
-    user?.app_metadata?.registration_status === 'rejected';
+  const handleReapply = async () => {
+    if (!applicantName.trim()) {
+      setSaveMessage({ type: 'error', text: 'Applicant name is required.' });
+      return;
+    }
+
+    setIsSavingDetails(true);
+    setSaveMessage(null);
+    try {
+      const res = await reapplyMyRegistrationRequest({
+        applicantName: applicantName.trim(),
+        requestedDepartment: requestedDepartment.trim(),
+        requestedJobTitle: requestedJobTitle.trim(),
+      });
+      if (res.success) {
+        setSaveMessage({
+          type: 'success',
+          text: 'Your application has been resubmitted and is back in the administrator approval queue.',
+        });
+        setIsEditingRequest(false);
+      } else {
+        setSaveMessage({
+          type: 'error',
+          text: res.error || 'Could not resubmit your application.',
+        });
+      }
+    } finally {
+      setIsSavingDetails(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-base-bg flex flex-col justify-between text-text-primary">
@@ -213,6 +255,11 @@ export function IdentityPendingPage() {
                     {new Date(registrationRequest.reviewedAt).toLocaleString()}
                   </p>
                 )}
+                <p className="mt-2 text-[11px] leading-relaxed text-rose-800">
+                  {user?.email_confirmed_at
+                    ? 'Your email is already verified. Reapply using this account; a new verification email is not required.'
+                    : 'Verify your email address before reapplying for organization access.'}
+                </p>
               </div>
             )}
 
@@ -236,18 +283,20 @@ export function IdentityPendingPage() {
                 <span className="font-bold text-text-primary uppercase tracking-wider text-[10px]">
                   Submitted Registration Profile
                 </span>
-                {!isRejected && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingRequest((v) => !v)}
-                    className="text-[11px] font-semibold text-primary hover:underline"
-                  >
-                    {isEditingRequest ? 'Cancel Edit' : 'Update Request Details'}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setIsEditingRequest((v) => !v)}
+                  className="text-[11px] font-semibold text-primary hover:underline"
+                >
+                  {isEditingRequest
+                    ? 'Cancel Edit'
+                    : isRejected
+                      ? 'Edit details to reapply'
+                      : 'Update Request Details'}
+                </button>
               </div>
 
-              {isEditingRequest && !isRejected ? (
+              {isEditingRequest ? (
                 <form onSubmit={handleSaveDetails} className="space-y-3 pt-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -316,7 +365,9 @@ export function IdentityPendingPage() {
                       className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
                     >
                       <Save size={13} />
-                      {isSavingDetails ? 'Saving…' : 'Save Application Details'}
+                      {isSavingDetails
+                        ? isRejected ? 'Resubmitting…' : 'Saving…'
+                        : isRejected ? 'Save Details & Reapply' : 'Save Application Details'}
                     </button>
                   </div>
                 </form>
@@ -386,6 +437,18 @@ export function IdentityPendingPage() {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              {isRejected && !isEditingRequest && (
+                <button
+                  type="button"
+                  onClick={handleReapply}
+                  disabled={isSavingDetails}
+                  className="btn-primary w-full sm:w-auto text-xs px-4 py-2 flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 size={13} />
+                  {isSavingDetails ? 'Resubmitting…' : 'Reapply for approval'}
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={handleRefresh}
