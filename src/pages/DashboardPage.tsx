@@ -29,6 +29,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { ChartCard } from '@/components/ChartCard';
 import { Reveal } from '@/components/Reveal';
 import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
+import { RoleDashboardHero } from '@/components/RoleDashboardHero';
 import { Avatar } from '@/components/Avatar';
 import {
   calculateEmployeeUtilization,
@@ -177,6 +178,16 @@ export function DashboardPage() {
             </button>
           </>
         }
+      />
+
+      <RoleDashboardHero
+        variant="manager"
+        eyebrow="Manager command center"
+        title="Build balanced teams. Deliver with clarity."
+        description={`Track ${activeProjects.length} active projects, ${understaffedProjects.length} staffing gaps, and the capacity signals shaping delivery across your team.`}
+        to="/team-builder"
+        actionLabel="Open Team Builder"
+        icon={Users}
       />
 
       <TinyFishLaunchCard description="Investigate staffing gaps, delivery risks, skills demand, and useful public research without leaving the workspace." />

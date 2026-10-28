@@ -4,6 +4,7 @@ import {
   Building2,
   KeyRound,
   Mail,
+  UserRoundMinus,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -72,6 +73,9 @@ export function AdminManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isDemotingTeammate, setIsDemotingTeammate] = useState(false);
+  const [demotionEmployeeId, setDemotionEmployeeId] = useState('');
+  const [selectedTeammateDemotion, setSelectedTeammateDemotion] = useState<PromotableAccount | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAdmin, setSelectedAdmin] = useState<AdminAccount | null>(null);
@@ -129,6 +133,31 @@ export function AdminManagementPage() {
     : selectedPromotionAccount
       ? ['admin']
       : [];
+  const demotableAccounts = promotableAccounts.filter((account) => account.system_role === 'manager' || account.system_role === 'hr');
+  const selectedDemotionAccount = demotableAccounts.find((account) => account.employee_id === demotionEmployeeId);
+
+  async function handleDemoteTeammate() {
+    if (!selectedTeammateDemotion || !supabase || !isSupabaseConfigured()) return;
+    setIsDemotingTeammate(true);
+    try {
+      const { error } = await supabase.rpc('demote_employee_system_role', {
+        p_employee_id: selectedTeammateDemotion.employee_id,
+        p_target_role: 'employee',
+      });
+      if (error) throw error;
+
+      showToast('success', selectedTeammateDemotion.full_name + ' is now an Employee. Their dashboard and permissions will update automatically.');
+      setSelectedTeammateDemotion(null);
+      setDemotionEmployeeId('');
+      await loadAdmins(true);
+    } catch (err: unknown) {
+      const message = (err as Error)?.message || 'The account could not be demoted.';
+      showToast('error', message);
+      setErrorMessage(message);
+    } finally {
+      setIsDemotingTeammate(false);
+    }
+  }
 
   async function handlePromoteAccount() {
     if (!selectedPromotionAccount || !promotionRole || !supabase || !isSupabaseConfigured()) return;
@@ -416,6 +445,65 @@ export function AdminManagementPage() {
       <Reveal>
         <section className="card overflow-hidden">
           <div className="flex items-start gap-3 border-b border-base-border p-4 sm:p-5">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-rose-700">
+              <UserRoundMinus size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-text-primary">Demote a teammate</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-text-secondary">
+                Move an active Manager or HR teammate back to Employee when their responsibilities change. Admin demotions remain in the protected administrator list above. Every change is audited and existing work history is preserved.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-800">
+              Admin only
+            </span>
+          </div>
+          <form
+            className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(180px,0.6fr)_auto] sm:items-end sm:p-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (selectedDemotionAccount) setSelectedTeammateDemotion(selectedDemotionAccount);
+            }}
+          >
+            <div className="min-w-0 space-y-1.5">
+              <label htmlFor="demotion-account" className="block text-xs font-medium text-text-secondary">Manager or HR account</label>
+              <select
+                id="demotion-account"
+                className="input-field w-full"
+                value={demotionEmployeeId}
+                disabled={isDemotingTeammate || isLoading}
+                onChange={(event) => setDemotionEmployeeId(event.target.value)}
+                required
+              >
+                <option value="">Choose a teammate…</option>
+                {demotableAccounts.map((account) => (
+                  <option key={account.employee_id} value={account.employee_id}>
+                    {account.full_name} · {account.email} · {account.system_role.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="rounded-lg border border-base-border bg-base-bg px-3 py-2.5 text-xs text-text-secondary">
+              New role <strong className="ml-1 text-text-primary">Employee</strong>
+            </div>
+            <button
+              type="submit"
+              className="btn-secondary h-10 justify-center whitespace-nowrap text-critical hover:border-critical/30 hover:bg-critical/5"
+              disabled={isDemotingTeammate || !selectedDemotionAccount || isLoading}
+            >
+              <UserRoundMinus size={15} />
+              Review demotion
+            </button>
+          </form>
+          {!isLoading && demotableAccounts.length === 0 && !errorMessage && (
+            <p className="border-t border-base-border px-5 py-3 text-xs text-text-secondary">There are no active Manager or HR accounts eligible for demotion.</p>
+          )}
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className="card overflow-hidden">
+          <div className="flex items-start gap-3 border-b border-base-border p-4 sm:p-5">
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-amber-700">
               <Mail size={20} />
             </div>
@@ -460,6 +548,28 @@ export function AdminManagementPage() {
           )}
         </section>
       </Reveal>
+
+      <ConfirmationDialog
+        open={Boolean(selectedTeammateDemotion)}
+        onClose={() => { if (!isDemotingTeammate) setSelectedTeammateDemotion(null); }}
+        onConfirm={() => { void handleDemoteTeammate(); }}
+        title="Demote teammate to Employee?"
+        message={
+          'This will change ' + (selectedTeammateDemotion?.full_name ?? 'this account') +
+          ' from ' + (selectedTeammateDemotion?.system_role === 'hr' ? 'HR' : 'Manager') +
+          ' to Employee. They will lose role-specific HR or management access, while their account, assignments, and work history remain.'
+        }
+        details={
+          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
+            <p className="font-semibold">This action is audited.</p>
+            <p>The role and dashboard will update for the teammate after the change. It does not delete their account or historical records.</p>
+          </div>
+        }
+        confirmLabel={isDemotingTeammate ? 'Demoting…' : 'Demote to Employee'}
+        variant="danger"
+        closeOnConfirm={false}
+        confirmDisabled={isDemotingTeammate || !selectedTeammateDemotion || selectedTeammateDemotion.auth_user_id === user?.id}
+      />
 
       <ConfirmationDialog
         open={Boolean(selectedAdmin)}
