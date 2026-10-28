@@ -20,6 +20,8 @@ import { SkillTag } from '@/components/SkillTag';
 import { Reveal } from '@/components/Reveal';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
   calculateEmployeeUtilization,
   getEmployeeProjects,
@@ -29,7 +31,9 @@ import { skillsList } from '@/data/mockData';
 import type { Employee, AvailabilityStatus } from '@/types';
 
 export function EmployeesPage() {
-  const { employees, projects, settings, addEmployee, updateEmployee, deleteEmployee, showToast } = useData();
+  const { employees, projects, settings, addEmployee, deleteEmployee, showToast } = useData();
+  const { systemRole } = useAuth();
+  const isAdmin = systemRole === 'admin';
   const location = useLocation();
   const stateEmployeeId = (location.state as { employeeId?: string } | null)?.employeeId;
 
@@ -38,7 +42,10 @@ export function EmployeesPage() {
   const [availFilter, setAvailFilter] = useState('all');
   const [selectedEmpId, setSelectedEmpId] = useState<string | null>(stateEmployeeId || null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [titleRequestEmployee, setTitleRequestEmployee] = useState<Employee | null>(null);
+  const [requestedTitle, setRequestedTitle] = useState('');
+  const [titleRequestReason, setTitleRequestReason] = useState('');
+  const [submittingTitleRequest, setSubmittingTitleRequest] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [removeReason, setRemoveReason] = useState('');
   const [isRemovingEmployee, setIsRemovingEmployee] = useState(false);
@@ -74,7 +81,6 @@ export function EmployeesPage() {
   );
 
   function openCreateModal() {
-    setEditingEmp(null);
     setFormName('');
     setFormRole('');
     setFormDept('Engineering');
@@ -88,54 +94,81 @@ export function EmployeesPage() {
     setModalOpen(true);
   }
 
-  function openEditModal(emp: Employee) {
-    setEditingEmp(emp);
-    setFormName(emp.name);
-    setFormRole(emp.role);
-    setFormDept(emp.department);
-    setFormEmail(emp.email);
-    setFormAvail(emp.availability);
-    setFormExp(emp.yearsExperience || emp.experienceYears || 3);
-    setFormSkills(emp.skills);
-    setModalOpen(true);
-  }
-
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!formName.trim() || !formRole.trim()) {
-      showToast('error', 'Name and Role are required.');
+      showToast('error', 'Name and job title are required for a new employee.');
       return;
     }
 
-    if (editingEmp) {
-      updateEmployee(editingEmp.id, {
-        name: formName,
-        role: formRole,
-        department: formDept,
-        email: formEmail,
-        availability: formAvail,
-        yearsExperience: formExp,
-        skills: formSkills,
-      });
-      showToast('success', `Updated ${formName}'s profile.`);
-    } else {
-      const colors = ['#0078D4', '#107C10', '#5C2D91', '#008272', '#D83B01', '#004E8C'];
-      const avatarColor = colors[Math.floor(Math.random() * colors.length)];
-      addEmployee({
-        name: formName,
-        role: formRole,
-        department: formDept,
-        email: formEmail || `${formName.toLowerCase().replace(/\s+/g, '.')}@togetherly.io`,
-        avatarColor,
-        availability: formAvail,
-        yearsExperience: formExp,
-        experienceYears: formExp,
-        targetUtilization: 100,
-        skills: formSkills,
-        trainingAssignments: [],
-      });
-    }
+    const colors = ['#0078D4', '#107C10', '#5C2D91', '#008272', '#D83B01', '#004E8C'];
+    const avatarColor = colors[Math.floor(Math.random() * colors.length)];
+    addEmployee({
+      name: formName.trim(),
+      role: formRole.trim(),
+      department: formDept,
+      email: formEmail || (formName.toLowerCase().replace(/\s+/g, '.') + '@togetherly.io'),
+      avatarColor,
+      availability: formAvail,
+      yearsExperience: formExp,
+      experienceYears: formExp,
+      targetUtilization: 100,
+      skills: formSkills,
+      trainingAssignments: [],
+    });
+    showToast('success', 'Created employee profile for ' + formName.trim() + '.');
     setModalOpen(false);
+  }
+
+  function openTitleRequest(emp: Employee) {
+    if (!isAdmin) {
+      showToast('error', 'Only an administrator can request job-title changes for employees.');
+      return;
+    }
+    setTitleRequestEmployee(emp);
+    setRequestedTitle(emp.role);
+    setTitleRequestReason('');
+  }
+
+  async function handleTitleRequestSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isAdmin || !supabase || !isSupabaseConfigured() || !titleRequestEmployee) {
+      showToast('error', 'The administrator job-title request service is not available.');
+      return;
+    }
+
+    const title = requestedTitle.trim();
+    const reason = titleRequestReason.trim();
+    if (!title || !reason) {
+      showToast('error', 'Enter the requested job title and a reason for the change.');
+      return;
+    }
+    if (title.toLocaleLowerCase() === titleRequestEmployee.role.trim().toLocaleLowerCase()) {
+      showToast('error', 'The requested title matches the current official title.');
+      return;
+    }
+    if (title.length > 180 || reason.length > 2000) {
+      showToast('error', 'The title must be 180 characters or fewer and the reason 2,000 characters or fewer.');
+      return;
+    }
+
+    setSubmittingTitleRequest(true);
+    const { error } = await supabase.rpc('admin_submit_employee_job_title_claim', {
+      p_employee_id: titleRequestEmployee.id,
+      p_requested_title: title,
+      p_reason: reason,
+    });
+    setSubmittingTitleRequest(false);
+
+    if (error) {
+      showToast('error', error.message || 'Could not submit the job-title change request.');
+      return;
+    }
+
+    showToast('success', 'Job-title change for ' + titleRequestEmployee.name + ' was submitted for independent verification. The official title has not changed.');
+    setTitleRequestEmployee(null);
+    setRequestedTitle('');
+    setTitleRequestReason('');
   }
 
   function toggleSkillInForm(skillId: string) {
@@ -311,14 +344,17 @@ export function EmployeesPage() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(selectedEmployee)}
-                      className="p-1.5 rounded-md border border-base-border hover:bg-base-hover text-text-secondary hover:text-text-primary transition-colors"
-                      title="Edit employee"
-                    >
-                      <Edit2 size={13} />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => openTitleRequest(selectedEmployee)}
+                        className="p-1.5 rounded-md border border-base-border hover:bg-base-hover text-text-secondary hover:text-text-primary transition-colors"
+                        title="Request job-title change for verification"
+                        aria-label={'Request job-title change for ' + selectedEmployee.name}
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => { setDeleteConfirmId(selectedEmployee.id); setRemoveReason(''); }}
@@ -447,7 +483,7 @@ export function EmployeesPage() {
           <div className="card w-full max-w-xl p-5 sm:p-6 bg-white border-base-border shadow-modal max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-base-border mb-4">
               <h3 className="text-sm sm:text-base font-bold text-text-primary">
-                {editingEmp ? 'Edit Employee Profile' : 'Add New Employee'}
+                Add New Employee
               </h3>
               <button
                 type="button"
@@ -472,7 +508,7 @@ export function EmployeesPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-text-secondary uppercase mb-1 block">Role / Title *</label>
+                  <label className="text-[11px] font-semibold text-text-secondary uppercase mb-1 block">Initial Job Title *</label>
                   <input
                     type="text"
                     required
@@ -597,7 +633,58 @@ export function EmployeesPage() {
                 </button>
                 <button type="submit" className="btn-primary text-xs">
                   <Check size={13} />
-                  <span>{editingEmp ? 'Save Changes' : 'Create Profile'}</span>
+                  <span>Create Profile</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {titleRequestEmployee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div className="card w-full max-w-lg border-base-border bg-white p-5 shadow-modal sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3 border-b border-base-border pb-3">
+              <div>
+                <h3 className="text-base font-bold text-text-primary">Request job-title change</h3>
+                <p className="mt-1 text-xs text-text-secondary">
+                  {titleRequestEmployee.name} · Current official title: {titleRequestEmployee.role}
+                </p>
+              </div>
+              <button type="button" onClick={() => setTitleRequestEmployee(null)} className="p-1 text-text-secondary hover:text-text-primary" aria-label="Close title request">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-relaxed text-text-secondary">
+              This submits a claim to Talent Verification. The official title stays unchanged until a different authorized reviewer verifies it. The requesting administrator cannot approve their own request.
+            </p>
+            <form className="space-y-4" onSubmit={(event) => void handleTitleRequestSubmit(event)}>
+              <label className="block text-xs font-semibold text-text-secondary">
+                Requested job title *
+                <input
+                  className="input-field mt-1.5 w-full"
+                  value={requestedTitle}
+                  onChange={(event) => setRequestedTitle(event.target.value)}
+                  maxLength={180}
+                  required
+                  placeholder="e.g. Senior Cloud Engineer"
+                />
+              </label>
+              <label className="block text-xs font-semibold text-text-secondary">
+                Reason / supporting context *
+                <textarea
+                  className="input-field mt-1.5 min-h-24 w-full"
+                  value={titleRequestReason}
+                  onChange={(event) => setTitleRequestReason(event.target.value)}
+                  maxLength={2000}
+                  required
+                  placeholder="Explain the role change and its basis for the reviewer."
+                />
+              </label>
+              <div className="flex justify-end gap-2 border-t border-base-border pt-3">
+                <button type="button" className="btn-secondary text-xs" onClick={() => setTitleRequestEmployee(null)} disabled={submittingTitleRequest}>Cancel</button>
+                <button type="submit" className="btn-primary text-xs" disabled={submittingTitleRequest}>
+                  <Check size={13} /> {submittingTitleRequest ? 'Submitting…' : 'Submit for verification'}
                 </button>
               </div>
             </form>
