@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BadgeCheck, BriefcaseBusiness, ExternalLink, FileCheck2, RefreshCw, ShieldCheck, Users, XCircle } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, BriefcaseBusiness, ExternalLink, FileCheck2, RefreshCw, Search, ShieldCheck, Users, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { EmptyState } from '@/components/EmptyState';
@@ -37,6 +37,7 @@ export function TalentVerificationPage() {
   const [audit, setAudit] = useState<Array<Record<string, unknown>>>([]);
   const [evidenceLinks, setEvidenceLinks] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'pending-verification' | 'all' | 'verified' | 'rejected' | 'needs-more-evidence'>('pending-verification');
+  const [claimSearch, setClaimSearch] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,15 +101,32 @@ export function TalentVerificationPage() {
   const pendingCount = claims.filter((claim) => claim.status === 'pending-verification').length;
   const verifiedCount = claims.filter((claim) => claim.status === 'verified').length;
   const submissionIds = useMemo(() => new Set(submissions.map((submission) => submission.id)), [submissions]);
+  const normalizedClaimSearch = claimSearch.trim().toLocaleLowerCase();
   const filteredClaims = useMemo(
     () => (filter === 'all' ? claims : claims.filter((claim) => claim.status === filter))
-      .filter((claim) => !claim.submission_id || !submissionIds.has(claim.submission_id)),
-    [claims, filter, submissionIds],
+      .filter((claim) => !claim.submission_id || !submissionIds.has(claim.submission_id))
+      .filter((claim) => {
+        if (!normalizedClaimSearch) return true;
+        const employee = employeeById.get(claim.employee_id);
+        const skill = skillById.get(claim.skill_id ?? '');
+        return [employee?.name, employee?.department, claim.claim_type, claim.title, claim.organization,
+          claim.description, skill?.name, skill?.category]
+          .some((value) => String(value ?? '').toLocaleLowerCase().includes(normalizedClaimSearch));
+      }),
+    [claims, filter, submissionIds, normalizedClaimSearch, employeeById, skillById],
   );
   const filteredSubmissions = useMemo(() => submissions.filter((submission) => {
-    if (filter === 'all') return true;
-    return claims.some((claim) => claim.submission_id === submission.id && claim.status === filter);
-  }), [submissions, claims, filter]);
+    const packageClaims = claims.filter((claim) => claim.submission_id === submission.id);
+    if (filter !== 'all' && !packageClaims.some((claim) => claim.status === filter)) return false;
+    if (!normalizedClaimSearch) return true;
+    const employee = employeeById.get(submission.employee_id);
+    const searchableValues = [employee?.name, employee?.department, submission.professional_summary,
+      submission.resume_file_name, ...packageClaims.flatMap((claim) => {
+        const skill = skillById.get(claim.skill_id ?? '');
+        return [claim.claim_type, claim.title, claim.organization, claim.description, skill?.name, skill?.category];
+      })];
+    return searchableValues.some((value) => String(value ?? '').toLocaleLowerCase().includes(normalizedClaimSearch));
+  }), [submissions, claims, filter, normalizedClaimSearch, employeeById, skillById]);
 
   async function handleDecision(claim: EmployeeProfileClaim, decision: EmployeeProfileClaimDecision) {
     if (!supabase || savingClaimId) return;
@@ -160,7 +178,11 @@ export function TalentVerificationPage() {
         <select id="talent-claim-filter" className="input-field py-1.5 text-xs" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}>
           <option value="pending-verification">Pending review</option><option value="all">All claims</option><option value="verified">Verified</option><option value="needs-more-evidence">More evidence requested</option><option value="rejected">Rejected</option>
         </select>
-        <span className="ml-auto text-xs text-text-secondary">{filteredSubmissions.length} profile package{filteredSubmissions.length === 1 ? '' : 's'} · {filteredClaims.length} older claim{filteredClaims.length === 1 ? '' : 's'}</span>
+        <div className="relative min-w-[220px] flex-1">
+          <Search size={14} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <input type="search" value={claimSearch} onChange={(event) => setClaimSearch(event.target.value)} placeholder="Search skills, categories, employees…" aria-label="Search verification claims by skill, category, or employee" className="input-field w-full py-1.5 pl-8 pr-3 text-xs" />
+        </div>
+        <span className="text-xs text-text-secondary">{filteredSubmissions.length} profile package{filteredSubmissions.length === 1 ? '' : 's'} · {filteredClaims.length} older claim{filteredClaims.length === 1 ? '' : 's'}</span>
       </div>
 
       {errorMessage && <div className="rounded-xl border border-critical/25 bg-critical/5 p-4 text-xs text-critical">{errorMessage}</div>}
