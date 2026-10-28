@@ -190,7 +190,7 @@ begin
 
   return pg_catalog.to_jsonb(v_claim);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.review_employee_profile_claim(p_claim_id uuid, p_decision text, p_notes text DEFAULT NULL::text)
@@ -233,7 +233,7 @@ BEGIN
  INSERT INTO public.employee_profile_claim_audit(claim_id,employee_id,action,actor_employee_id,actor_name,actor_role,note) VALUES(v_claim.id,v_claim.employee_id,v_decision,v_reviewer_id,v_reviewer_name,CASE WHEN v_reviewer_role IN ('manager','hr','admin') THEN v_reviewer_role ELSE 'manager' END,v_notes);
  RETURN pg_catalog.to_jsonb(v_claim);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.admin_submit_employee_job_title_claim(
