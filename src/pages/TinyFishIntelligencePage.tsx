@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { AlertCircle, ArrowDownToLine, ArrowRight, CheckCircle2, ExternalLink, FileSearch, Globe, LoaderCircle, Search, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
+import { AlertCircle, ArrowDownToLine, ArrowRight, CheckCircle2, ClipboardList, ExternalLink, FileSearch, Globe, LoaderCircle, Search, ShieldCheck, Sparkles, WandSparkles } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,69 @@ type AgentRun = {
   steps?: Array<{ id?: string; status?: string; action?: string; purpose?: string; timestamp?: string; error?: unknown }>;
 };
 type Mode = 'search' | 'fetch' | 'agent';
+
+type TaskTemplate = {
+  id: string;
+  title: string;
+  description: string;
+  mode: Mode;
+  icon: typeof Search;
+  query?: string;
+  fetchUrls?: string;
+  agentUrl?: string;
+  agentGoal?: string;
+  outputHint: string;
+};
+
+const TASK_TEMPLATES: TaskTemplate[] = [
+  {
+    id: 'skills-demand-scan',
+    title: 'Skills Demand Scan',
+    description: 'Discover current technology and cybersecurity skills showing up in India’s job market.',
+    mode: 'search',
+    icon: Search,
+    query: 'Research current in-demand technology and cybersecurity skills in India using recent public sources and job-market signals. Include cloud security, DevSecOps, AI security, cloud architecture, and data engineering.',
+    outputHint: 'Use recent sources and compare recurring skills, not just a single headline.',
+  },
+  {
+    id: 'opportunity-discovery',
+    title: 'Opportunity Discovery',
+    description: 'Find relevant internships, entry-level roles, and hackathons with useful eligibility details.',
+    mode: 'search',
+    icon: Globe,
+    query: 'Find current internships, entry-level opportunities, and hackathons in India related to cloud computing, cybersecurity, AI, and software engineering. Prioritize official organizer or employer pages and capture eligibility, deadline when available, location or remote status, and source URL.',
+    outputHint: 'Verify deadlines and eligibility on the original source before applying.',
+  },
+  {
+    id: 'source-pack-reader',
+    title: 'Source Pack Reader',
+    description: 'Fetch clean content from a small set of public pages for side-by-side review.',
+    mode: 'fetch',
+    icon: FileSearch,
+    fetchUrls: 'https://www.tinyfish.ai/\nhttps://docs.tinyfish.ai/search-api',
+    outputHint: 'Replace these examples with URLs from Search when researching another topic.',
+  },
+  {
+    id: 'company-intelligence-brief',
+    title: 'Company Intelligence Brief',
+    description: 'Turn a public company or product website into a structured, source-backed brief.',
+    mode: 'agent',
+    icon: WandSparkles,
+    agentUrl: 'https://www.tinyfish.ai/',
+    agentGoal: 'Inspect this public website and prepare a concise company intelligence brief. Identify the organization and product or service, target users, key capabilities, stated use cases, and any relevant workforce or hiring implications explicitly supported by the site. Return a structured JSON object with summary, organization, product_or_service, target_users, key_capabilities (array), use_cases (array), workforce_implications (array), evidence (array of objects with claim and source_url), and uncertainties. Use only information visible on public pages, distinguish facts from inference, and do not invent missing details.',
+    outputHint: 'The starting URL is a public demo site. Replace it with a public source you are authorized to inspect.',
+  },
+  {
+    id: 'job-requirements-extractor',
+    title: 'Job Requirements Extractor',
+    description: 'Extract required skills and experience from a public job listing or careers page.',
+    mode: 'agent',
+    icon: FileSearch,
+    agentUrl: '',
+    agentGoal: 'Inspect the public job listing or careers page at the starting URL. Extract the job title, employer if stated, location or remote status, required skills, preferred skills, experience requirements, core responsibilities, and application deadline if explicitly listed. Return a structured JSON object with job_title, employer, location, required_skills (array), preferred_skills (array), experience_requirements, responsibilities (array), deadline, source_url, and fields_not_found (array). Use only information visible on the public page, do not infer missing requirements, and note when the page is inaccessible or lacks a field.',
+    outputHint: 'Paste a public job or careers-page URL into the Agent form before starting the run.',
+  },
+];
 
 function hostLabel(value: string): string { try { return new URL(value).hostname; } catch { return value; } }
 function isHttpUrl(value: string): boolean {
@@ -61,6 +124,7 @@ function getAgentGoalFailure(result: unknown): string {
 export function TinyFishIntelligencePage() {
   const { session } = useAuth();
   const [mode, setMode] = useState<Mode>('search');
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [query, setQuery] = useState('Current demand for cloud security and cybersecurity skills in India');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
@@ -150,6 +214,24 @@ export function TinyFishIntelligencePage() {
 
   function moveToFetch(url: string) { setFetchUrls(url); setFetchError(''); setFetchData(null); setMode('fetch'); }
   function moveToAgent(url: string) { setAgentUrl(url); setAgentError(''); setAgentRun(null); setAgentAcknowledged(false); setMode('agent'); }
+
+
+  function applyTaskTemplate(template: TaskTemplate) {
+    setMode(template.mode);
+    setActiveTemplateId(template.id);
+    if (template.query !== undefined) setQuery(template.query);
+    if (template.fetchUrls !== undefined) setFetchUrls(template.fetchUrls);
+    if (template.agentUrl !== undefined) setAgentUrl(template.agentUrl);
+    if (template.agentGoal !== undefined) setAgentGoal(template.agentGoal);
+    setSearchError('');
+    setSearchData(null);
+    setFetchError('');
+    setFetchData(null);
+    setAgentError('');
+    setAgentRun(null);
+    setAgentProgress('');
+    setAgentAcknowledged(false);
+  }
 
   async function fetchPages(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -261,6 +343,35 @@ export function TinyFishIntelligencePage() {
             </div>
           </div>
           <div className="grid gap-px bg-base-border sm:grid-cols-3">{tabs.map((tab, index) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => setMode(tab.id)} className={'flex items-center gap-3 bg-base-card p-4 text-left transition-colors hover:bg-base-hover ' + (mode === tab.id ? 'ring-2 ring-inset ring-primary/60' : '')}><span className={'flex h-9 w-9 items-center justify-center rounded-lg ' + (mode === tab.id ? 'bg-primary text-white' : 'bg-base-hover text-primary')}><Icon size={17} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-bold text-text-primary">{index + 1}. {tab.title}</span><span className="mt-0.5 block text-[11px] text-text-secondary">{tab.description}</span></span><ArrowRight size={14} className="text-text-muted" /></button>; })}</div>
+        </section>
+      </Reveal>
+
+      <Reveal direction="up">
+        <section className="card p-5 sm:p-6" aria-labelledby="tinyfish-templates-title">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2"><ClipboardList size={18} className="text-primary" /><h2 id="tinyfish-templates-title" className="text-sm font-bold text-text-primary">Start with a task template</h2></div>
+              <p className="max-w-2xl text-xs leading-relaxed text-text-secondary">Load a practical task into Search, Fetch, or Agent. Review and edit the inputs before running; choosing a template never starts a metered Agent run.</p>
+            </div>
+            <span className="shrink-0 rounded-full border border-base-border bg-base-bg px-2.5 py-1 text-[10px] font-semibold text-text-muted">5 reusable presets</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {TASK_TEMPLATES.map((template) => {
+              const Icon = template.icon;
+              const selected = activeTemplateId === template.id;
+              return <button key={template.id} type="button" aria-pressed={selected} onClick={() => applyTaskTemplate(template)} disabled={agentIsActive} className={'group flex h-full flex-col rounded-xl border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ' + (selected ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20' : 'border-base-border bg-base-card hover:border-primary/30 hover:bg-base-hover')}>
+                <div className="mb-3 flex w-full items-start justify-between gap-3">
+                  <span className={'flex h-9 w-9 items-center justify-center rounded-lg ' + (selected ? 'bg-primary text-white' : 'bg-base-hover text-primary')}><Icon size={17} /></span>
+                  <span className="rounded-full border border-base-border px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-text-muted">{template.mode}</span>
+                </div>
+                <span className="text-sm font-bold text-text-primary">{template.title}</span>
+                <span className="mt-1.5 flex-1 text-xs leading-relaxed text-text-secondary">{template.description}</span>
+                <span className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-primary">{selected ? 'Template loaded' : 'Use template'} <ArrowRight size={13} /></span>
+                <span className="mt-2 border-t border-base-border pt-2 text-[10px] leading-relaxed text-text-muted">{template.outputHint}</span>
+              </button>;
+            })}
+          </div>
+          {agentIsActive && <p className="mt-3 text-[11px] text-text-muted">Templates are temporarily disabled while an Agent run is active so its run ID and progress are not lost.</p>}
         </section>
       </Reveal>
 

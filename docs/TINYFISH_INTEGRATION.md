@@ -37,3 +37,15 @@ Official TinyFish API docs:
 - https://docs.tinyfish.ai/search-api
 - https://docs.tinyfish.ai/fetch-api
 - https://docs.tinyfish.ai/agent-api
+
+## Task templates
+
+The TinyFish Intelligence page includes five curated task templates:
+
+- **Skills Demand Scan** — pre-fills Search with a query about current technology and cybersecurity skill demand in India.
+- **Opportunity Discovery** — pre-fills Search with a query for internships, entry-level roles, and hackathons.
+- **Source Pack Reader** — pre-fills Fetch with public TinyFish overview and Search API documentation URLs; users can replace them.
+- **Company Intelligence Brief** — pre-fills Agent with a read-only, structured company/product research goal and the public TinyFish website.
+- **Job Requirements Extractor** — pre-fills Agent with a structured extraction goal; the user must supply a public job listing or careers-page URL.
+
+Selecting a template only fills the existing workflow form. It does not call the TinyFish API or consume Agent credits. Users should review and edit all values before submitting. Agent runs retain the existing public-web, read-only guardrails and metered-run acknowledgement. The presets are shipped with the client and are not user-created or persisted custom templates.
