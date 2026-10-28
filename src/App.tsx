@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppSidebar } from '@/components/AppSidebar';
+import { ProfileCompletionPrompt } from '@/components/ProfileCompletionPrompt';
 import { Topbar } from '@/components/Topbar';
 import { ToastContainer } from '@/components/Toast';
 import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute';
@@ -55,10 +56,12 @@ function WorkspaceLayout() {
         <Topbar onOpenMobileNav={() => setMobileSidebarOpen(true)} />
 
         <main className="flex-1 p-4 sm:p-5 lg:p-6 max-w-[1600px] w-full mx-auto animate-fade-in">
+          <ProfileCompletionPrompt />
           <Routes>
             {/* Common / Shared entry */}
             <Route path="/" element={workspaceRole === 'admin' ? <AdminDashboardPage /> : workspaceRole === 'hr' ? <HRDashboardPage /> : <DashboardPage />} />
             <Route path="/roadmap" element={<DevelopmentRoadmapPage />} />
+            <Route path="/my-profile" element={<EmployeeProfilePage />} />
             <Route path="/intelligence" element={<TinyFishIntelligencePage />} />
 
             {/* Administrator-only route protected by real database administrator authorization (not demo role switcher) */}
@@ -133,7 +136,6 @@ function WorkspaceLayout() {
                 <Route path="/my-workload" element={<EmployeeWorkloadPage />} />
                 <Route path="/my-skills" element={<EmployeeSkillsPage />} />
                 <Route path="/my-settings" element={<EmployeeSettingsPage />} />
-                <Route path="/my-profile" element={<EmployeeProfilePage />} />
               </>
             )}
 
