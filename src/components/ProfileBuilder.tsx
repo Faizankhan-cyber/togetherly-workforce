@@ -54,10 +54,6 @@ export function ProfileBuilder({ employeeId, skills, onSubmitted }: ProfileBuild
       showToast('error', 'Choose a skill for every skill row that contains details or evidence.');
       return;
     }
-    if (populatedSkills.length === 0) {
-      showToast('error', 'Add at least one skill before submitting your profile.');
-      return;
-    }
     if (new Set(populatedSkills.map((entry) => entry.skillId)).size !== populatedSkills.length) {
       showToast('error', 'Each skill can appear only once in a profile submission.');
       return;
@@ -72,6 +68,10 @@ export function ProfileBuilder({ employeeId, skills, onSubmitted }: ProfileBuild
     if (!educationEntries) return;
     const certificationEntries = validateEntries(certifications, 'certification', false);
     if (!certificationEntries) return;
+    if (populatedSkills.length === 0 && workEntries.length === 0 && educationEntries.length === 0 && certificationEntries.length === 0 && !yearsExperience.trim()) {
+      showToast('error', 'Add at least one profile item or enter your total years of experience before submitting.');
+      return;
+    }
     if (resumeFile && (!resumeFile.name.toLowerCase().endsWith('.pdf') || (resumeFile.type && resumeFile.type !== 'application/pdf'))) {
       showToast('error', 'Upload your resume as a PDF file.');
       return;
