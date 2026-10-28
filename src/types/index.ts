@@ -33,7 +33,7 @@ export interface EmployeeSkill {
   level: number; // 1 to 5
 }
 
-export type EmployeeProfileClaimType = 'skill' | 'experience' | 'certification';
+export type EmployeeProfileClaimType = 'skill' | 'experience' | 'certification' | 'employment' | 'education';
 export type EmployeeProfileClaimStatus =
   | 'pending-verification'
   | 'verified'
@@ -44,6 +44,7 @@ export type EmployeeProfileClaimDecision = 'verified' | 'rejected' | 'needs-more
 export interface EmployeeProfileClaim {
   id: string;
   employee_id: string;
+  submission_id: string | null;
   claim_type: EmployeeProfileClaimType;
   skill_id: string | null;
   claimed_level: number | null;
@@ -62,6 +63,18 @@ export interface EmployeeProfileClaim {
   reviewer_notes: string | null;
   submitted_at: string;
   reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeProfileSubmission {
+  id: string;
+  employee_id: string;
+  professional_summary: string | null;
+  claimed_years_experience: number | null;
+  resume_storage_path: string | null;
+  resume_file_name: string | null;
+  submitted_at: string;
   created_at: string;
   updated_at: string;
 }
