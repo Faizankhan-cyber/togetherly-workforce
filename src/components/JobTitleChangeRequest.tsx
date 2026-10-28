@@ -51,7 +51,7 @@ export function JobTitleChangeRequest({
     }
 
     setSubmitting(true);
-    const { error } = await supabase.rpc('submit_employee_profile_claim_with_evidence', {
+    const { error } = await supabase.rpc('submit_employee_profile_claim', {
       p_claim_type: 'job-title',
       p_skill_id: null,
       p_claimed_level: null,
@@ -64,7 +64,6 @@ export function JobTitleChangeRequest({
       p_evidence_url: null,
       p_evidence_label: null,
       p_claim_id: null,
-      p_evidence_storage_path: null,
     });
     setSubmitting(false);
 

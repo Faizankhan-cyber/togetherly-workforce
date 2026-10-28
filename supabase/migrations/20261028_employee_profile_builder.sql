@@ -222,7 +222,6 @@ declare
   v_start_date date;
   v_end_date date;
   v_claim_count integer := 0;
-  v_skill_count integer := 0;
 begin
   if v_uid is null or v_employee_id is null then
     raise exception 'Your account must be linked to an approved employee profile before submitting a profile package.';
@@ -304,7 +303,6 @@ begin
       if exists (select 1 from public.employee_profile_claims c where c.submission_id = v_submission.id and c.claim_type = 'skill' and c.skill_id = v_skill_id) then
         raise exception 'A skill can only appear once in a profile package.';
       end if;
-      v_skill_count := v_skill_count + 1;
     elsif v_type in ('employment', 'education', 'certification') and v_title is null then
       raise exception 'Work experience, education, and certification items require a title.';
     end if;
@@ -344,8 +342,8 @@ begin
     v_claim_count := v_claim_count + 1;
   end loop;
 
-  if v_skill_count = 0 then
-    raise exception 'Add at least one skill before submitting your profile package.';
+  if v_claim_count = 0 and p_years_experience is null then
+    raise exception 'Add at least one profile item or enter total professional experience before submitting your profile package.';
   end if;
 
   if p_years_experience is not null then
