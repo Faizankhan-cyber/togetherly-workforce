@@ -61,6 +61,7 @@ const managerNavGroups: SidebarNavGroup[] = [
     items: [
       { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
       { to: '/roadmap', label: 'Development Roadmap', icon: Map },
+      { to: '/my-profile', label: 'My Profile', icon: UserRound },
     ],
   },
   {
@@ -105,6 +106,7 @@ const hrNavItems: SidebarNavItem[] = [
   { to: '/talent-verification', label: 'Talent Verification', icon: UserCheck },
   { to: '/skills', label: 'Skills & Training', icon: GraduationCap },
   { to: '/roadmap', label: 'Development Roadmap', icon: Map },
+  { to: '/my-profile', label: 'My Profile', icon: UserRound },
   { to: '/analytics', label: 'People Analytics', icon: BarChart3 },
   tinyFishNavItem,
 ];

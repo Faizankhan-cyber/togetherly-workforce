@@ -149,7 +149,7 @@ export function ProfileBuilder({ employeeId, skills, onSubmitted }: ProfileBuild
     <section className="card overflow-hidden border-primary/20 shadow-md">
       <div className="flex items-start gap-3 border-b border-base-border/60 bg-primary/5 p-5">
         <div className="rounded-xl border border-primary/20 bg-primary/10 p-2.5 text-primary"><UserRoundCheck size={20} /></div>
-        <div><h2 className="text-base font-bold text-text-primary">Build your employee profile</h2><p className="mt-1 text-xs leading-relaxed text-text-secondary">Submit skills, experience, education and credentials together. Your manager reviews one profile package instead of disconnected forms.</p></div>
+        <div><h2 className="text-base font-bold text-text-primary">Build your professional profile</h2><p className="mt-1 text-xs leading-relaxed text-text-secondary">Submit skills, experience, education and credentials together. Authorized reviewers assess one profile package instead of disconnected forms.</p></div>
       </div>
       <form className="space-y-6 p-5" onSubmit={(event) => void submitProfile(event)}>
         <section className="space-y-3">
