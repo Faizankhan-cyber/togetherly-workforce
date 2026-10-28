@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -15,14 +13,41 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-function isMissingAuthUser(message: string) {
-  const lower = message.toLowerCase();
-  return lower.includes("not found") || lower.includes("does not exist") || lower.includes("no user");
+async function responseBody(response: Response): Promise<any> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function errorMessage(body: any, fallback: string) {
+  return String(body?.message || body?.msg || body?.error_description || body?.error || fallback);
 }
 
 function placeholderEmail(employeeId: string) {
   const safeId = employeeId.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
   return "offboarded+" + safeId + "@removed.invalid";
+}
+
+function userRequestHeaders(anonKey: string, authorization: string, json = false): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: anonKey,
+    Authorization: authorization,
+  };
+  if (json) headers["Content-Type"] = "application/json";
+  return headers;
+}
+
+function serviceRequestHeaders(serviceRoleKey: string, json = false): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: serviceRoleKey,
+    Authorization: "Bearer " + serviceRoleKey,
+  };
+  if (json) headers["Content-Type"] = "application/json";
+  return headers;
 }
 
 Deno.serve(async (request: Request) => {
@@ -34,25 +59,23 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ success: false, error: "Authentication required." }, 401);
   }
 
-  const url = Deno.env.get("SUPABASE_URL");
+  const url = Deno.env.get("SUPABASE_URL")?.replace(/\/+$/, "");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !anonKey || !serviceRoleKey) {
     return jsonResponse({ success: false, error: "Server-side Supabase Auth administration is not configured." }, 500);
   }
 
-  const userClient = createClient(url, anonKey, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const adminClient = createClient(url, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
   try {
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    const user = userData.user;
-    if (userError || !user) return jsonResponse({ success: false, error: "The caller's session is invalid or expired." }, 401);
+    // Verify the caller using their own bearer token. No service credential is returned to the browser.
+    const userResponse = await fetch(url + "/auth/v1/user", {
+      headers: userRequestHeaders(anonKey, authorization),
+    });
+    const userData = await responseBody(userResponse);
+    if (!userResponse.ok || !userData?.id) {
+      return jsonResponse({ success: false, error: "The caller's session is invalid or expired." }, 401);
+    }
+    const userId = String(userData.id);
 
     const body = await request.json().catch(() => ({}));
     const action = body?.action as LifecycleAction | undefined;
@@ -61,15 +84,20 @@ Deno.serve(async (request: Request) => {
       return jsonResponse({ success: false, error: "A valid action and employeeId are required." }, 400);
     }
 
-    const { data: actor, error: actorError } = await adminClient
-      .from("employees")
-      .select("id, name, system_role, employment_status, auth_user_id")
-      .eq("auth_user_id", user.id)
-      .eq("employment_status", "active")
-      .maybeSingle();
+    const serviceHeaders = serviceRequestHeaders(serviceRoleKey);
+    const employeeFields = "id,name,system_role,employment_status,auth_user_id,email";
+    const actorResponse = await fetch(
+      url + "/rest/v1/employees?auth_user_id=eq." + encodeURIComponent(userId) +
+        "&employment_status=eq.active&select=" + employeeFields + "&limit=1",
+      { headers: serviceHeaders },
+    );
+    const actorRows = await responseBody(actorResponse);
+    if (!actorResponse.ok || !Array.isArray(actorRows) || !actorRows[0]) {
+      return jsonResponse({ success: false, error: "An active linked workspace profile is required." }, 403);
+    }
+    const actor = actorRows[0];
+    const actorRole = String(actor.system_role || "");
 
-    if (actorError || !actor) return jsonResponse({ success: false, error: "An active linked workspace profile is required." }, 403);
-    const actorRole = String(actor.system_role ?? "");
     if (action === "cleanup" && actorRole !== "admin") {
       return jsonResponse({ success: false, error: "Only an active administrator can retry Auth cleanup." }, 403);
     }
@@ -77,19 +105,21 @@ Deno.serve(async (request: Request) => {
       return jsonResponse({ success: false, error: "Only an active Manager, HR reviewer, or Administrator can offboard an employee." }, 403);
     }
 
-    const { data: target, error: targetError } = await adminClient
-      .from("employees")
-      .select("id, auth_user_id, name, email, system_role, employment_status")
-      .eq("id", employeeId)
-      .maybeSingle();
-
-    if (targetError || !target) return jsonResponse({ success: false, error: "The employee record was not found." }, 404);
+    const targetResponse = await fetch(
+      url + "/rest/v1/employees?id=eq." + encodeURIComponent(employeeId) + "&select=" + employeeFields + "&limit=1",
+      { headers: serviceHeaders },
+    );
+    const targetRows = await responseBody(targetResponse);
+    if (!targetResponse.ok || !Array.isArray(targetRows) || !targetRows[0]) {
+      return jsonResponse({ success: false, error: "The employee record was not found." }, 404);
+    }
+    const target = targetRows[0];
 
     if (action === "offboard") {
       if (target.employment_status !== "active") {
         return jsonResponse({ success: false, error: "This employee is already offboarded. Use Admin Access to retry Auth cleanup." }, 409);
       }
-      if (target.auth_user_id === user.id) return jsonResponse({ success: false, error: "You cannot offboard your own account." }, 403);
+      if (target.auth_user_id === userId) return jsonResponse({ success: false, error: "You cannot offboard your own account." }, 403);
       if (target.system_role === "admin" && actorRole !== "admin") {
         return jsonResponse({ success: false, error: "Only an administrator can offboard another administrator." }, 403);
       }
@@ -99,17 +129,23 @@ Deno.serve(async (request: Request) => {
         return jsonResponse({ success: false, error: "Enter a reason between 5 and 1000 characters." }, 400);
       }
 
-      const { error: offboardError } = await userClient.rpc("offboard_employee", {
-        p_employee_id: employeeId,
-        p_reason: reason,
+      // The SQL RPC atomically preserves the original email in the audit, frees the unique
+      // employee email, marks the profile offboarded, and clears active project allocations.
+      const offboardResponse = await fetch(url + "/rest/v1/rpc/offboard_employee", {
+        method: "POST",
+        headers: userRequestHeaders(anonKey, authorization, true),
+        body: JSON.stringify({ p_employee_id: employeeId, p_reason: reason }),
       });
-      if (offboardError) return jsonResponse({ success: false, error: offboardError.message }, 400);
+      if (!offboardResponse.ok) {
+        const failure = await responseBody(offboardResponse);
+        return jsonResponse({ success: false, error: errorMessage(failure, "Could not complete employee offboarding.") }, 400);
+      }
 
       if (!target.auth_user_id) {
         return jsonResponse({ success: true, authCleanupPending: false, message: "Offboarding completed; no Supabase Auth account was linked." });
       }
 
-      const cleanup = await deleteAndUnlinkAuthUser(adminClient, employeeId, target.auth_user_id);
+      const cleanup = await deleteAndUnlinkAuthUser(url, serviceRoleKey, employeeId, String(target.auth_user_id));
       return jsonResponse({
         success: true,
         authCleanupPending: !cleanup.success,
@@ -127,7 +163,7 @@ Deno.serve(async (request: Request) => {
       return jsonResponse({ success: true, authCleanupPending: false, alreadyCleaned: true });
     }
 
-    const cleanup = await deleteAndUnlinkAuthUser(adminClient, employeeId, target.auth_user_id);
+    const cleanup = await deleteAndUnlinkAuthUser(url, serviceRoleKey, employeeId, String(target.auth_user_id));
     if (!cleanup.success) {
       return jsonResponse({ success: false, authCleanupPending: true, error: cleanup.error }, 500);
     }
@@ -140,35 +176,63 @@ Deno.serve(async (request: Request) => {
 });
 
 async function deleteAndUnlinkAuthUser(
-  adminClient: ReturnType<typeof createClient>,
+  url: string,
+  serviceRoleKey: string,
   employeeId: string,
   authUserId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const { data: userData, error: lookupError } = await adminClient.auth.admin.getUserById(authUserId);
-  if (lookupError && !isMissingAuthUser(lookupError.message)) {
-    return { success: false, error: "Could not verify the old Auth account: " + lookupError.message };
+  const adminHeaders = serviceRequestHeaders(serviceRoleKey);
+  const authUserUrl = url + "/auth/v1/admin/users/" + encodeURIComponent(authUserId);
+  const lookupResponse = await fetch(authUserUrl, { headers: adminHeaders });
+
+  if (!lookupResponse.ok && lookupResponse.status !== 404) {
+    const failure = await responseBody(lookupResponse);
+    return { success: false, error: "Could not verify the old Auth account: " + errorMessage(failure, "Auth lookup failed.") };
   }
 
-  if (userData.user) {
-    const { error: deleteError } = await adminClient.auth.admin.deleteUser(authUserId);
-    if (deleteError && !isMissingAuthUser(deleteError.message)) {
-      return { success: false, error: "Supabase could not delete the old Auth account: " + deleteError.message };
+  if (lookupResponse.ok) {
+    // A successful lookup confirms this auth.users record still exists and must be permanently deleted.
+    const deleteResponse = await fetch(authUserUrl, { method: "DELETE", headers: adminHeaders });
+    if (!deleteResponse.ok && deleteResponse.status !== 404) {
+      const failure = await responseBody(deleteResponse);
+      return { success: false, error: "Supabase could not delete the old Auth account: " + errorMessage(failure, "Auth deletion failed.") };
     }
   }
 
-  const { error: unlinkError } = await adminClient
-    .from("employees")
-    .update({
-      auth_user_id: null,
-      email: placeholderEmail(employeeId),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", employeeId)
-    .eq("employment_status", "offboarded")
-    .eq("auth_user_id", authUserId);
+  const updateResponse = await fetch(
+    url + "/rest/v1/employees?id=eq." + encodeURIComponent(employeeId) +
+      "&employment_status=eq.offboarded&auth_user_id=eq." + encodeURIComponent(authUserId) +
+      "&select=id,auth_user_id",
+    {
+      method: "PATCH",
+      headers: {
+        ...serviceRequestHeaders(serviceRoleKey, true),
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        auth_user_id: null,
+        email: placeholderEmail(employeeId),
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
 
-  if (unlinkError) {
-    return { success: false, error: "The Auth account was handled, but its historical profile could not be unlinked yet: " + unlinkError.message };
+  if (!updateResponse.ok) {
+    const failure = await responseBody(updateResponse);
+    return { success: false, error: "The Auth account was handled, but its historical profile could not be unlinked yet: " + errorMessage(failure, "Profile update failed.") };
   }
-  return { success: true };
+
+  const updatedRows = await responseBody(updateResponse);
+  if (Array.isArray(updatedRows) && updatedRows.length > 0) return { success: true };
+
+  // Idempotent retry: if a prior request already unlinked the identity, treat it as complete.
+  const verifyResponse = await fetch(
+    url + "/rest/v1/employees?id=eq." + encodeURIComponent(employeeId) + "&select=id,auth_user_id,employment_status&limit=1",
+    { headers: adminHeaders },
+  );
+  const verifyRows = await responseBody(verifyResponse);
+  if (verifyResponse.ok && Array.isArray(verifyRows) && verifyRows[0]?.employment_status === "offboarded" && !verifyRows[0]?.auth_user_id) {
+    return { success: true };
+  }
+  return { success: false, error: "Auth cleanup could not verify that the historical account was unlinked. Retry from Admin Access." };
 }
