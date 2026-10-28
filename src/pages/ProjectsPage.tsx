@@ -44,6 +44,7 @@ export function ProjectsPage() {
   const [formStatus, setFormStatus] = useState<ProjectStatus>('planning');
   const [formTeamSize, setFormTeamSize] = useState(3);
   const [formDeadline, setFormDeadline] = useState('2026-12-31');
+  const [skillSearch, setSkillSearch] = useState('');
   const [formSkills, setFormSkills] = useState<ProjectRequirement[]>([
     { skillId: 'skl-react', minLevel: 4, importance: 'required' },
     { skillId: 'skl-typescript', minLevel: 3, importance: 'required' },
@@ -53,6 +54,11 @@ export function ProjectsPage() {
     () => Array.from(new Set(projects.map((p) => p.department))).sort(),
     [projects]
   );
+
+  const filteredSkillOptions = useMemo(() => {
+    const term = skillSearch.trim().toLocaleLowerCase();
+    return skillsList.filter((skill) => `${skill.name} ${skill.category}`.toLocaleLowerCase().includes(term));
+  }, [skillSearch]);
 
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
@@ -71,6 +77,7 @@ export function ProjectsPage() {
   );
 
   function openCreateModal() {
+    setSkillSearch('');
     setEditingProj(null);
     setFormName('');
     setFormDesc('');
@@ -86,6 +93,7 @@ export function ProjectsPage() {
   }
 
   function openEditModal(proj: Project) {
+    setSkillSearch('');
     setEditingProj(proj);
     setFormName(proj.name);
     setFormDesc(proj.description);
@@ -525,8 +533,23 @@ export function ProjectsPage() {
                 <label className="text-[11px] font-semibold text-text-secondary uppercase mb-1.5 block">
                   Required Competencies & Minimum Proficiency
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto p-2 rounded-lg bg-base-subtle border border-base-border">
-                  {skillsList.map((skill) => {
+                <div className="relative mb-2">
+                  <Search size={14} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <input
+                    type="search"
+                    value={skillSearch}
+                    onChange={(event) => setSkillSearch(event.target.value)}
+                    placeholder="Search skills (e.g. Azure, SIEM, Python)…"
+                    aria-label="Search project skill requirements"
+                    className="input-field w-full pl-8 pr-3 text-xs"
+                  />
+                </div>
+                <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-text-secondary">
+                  <span>{formSkills.length} skill requirement{formSkills.length === 1 ? '' : 's'} selected</span>
+                  {skillSearch && <button type="button" className="font-semibold text-primary hover:underline" onClick={() => setSkillSearch('')}>Clear search</button>}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-52 overflow-y-auto p-2 rounded-lg bg-base-subtle border border-base-border">
+                  {filteredSkillOptions.map((skill) => {
                     const active = formSkills.find((s) => s.skillId === skill.id);
                     return (
                       <div
@@ -564,6 +587,7 @@ export function ProjectsPage() {
                       </div>
                     );
                   })}
+                  {filteredSkillOptions.length === 0 && <p className="col-span-full p-4 text-center text-xs text-text-secondary">No skills match that search. Try Azure, security, a language, or a tool name.</p>}
                 </div>
               </div>
 

@@ -2,6 +2,7 @@ import { useState, type FormEvent, type Dispatch, type SetStateAction } from 're
 import { ArrowUpRight, BriefcaseBusiness, FileCheck2, GraduationCap, Plus, ShieldCheck, Trash2, UploadCloud, UserRoundCheck } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { SearchableSkillSelect } from '@/components/SearchableSkillSelect';
 
 type SkillOption = { id: string; name: string; category: string };
 type SkillDraft = { key: string; skillId: string; level: number; details: string; evidenceUrl: string };
@@ -165,7 +166,7 @@ export function ProfileBuilder({ employeeId, skills, onSubmitted }: ProfileBuild
               <div key={entry.key} className="rounded-xl border border-base-border/70 bg-base-bg/40 p-4">
                 <div className="mb-3 flex items-center justify-between"><span className="text-xs font-bold text-text-secondary">Skill {index + 1}</span>{skillEntries.length > 1 && <button type="button" className="btn-secondary px-2 py-1 text-xs text-critical" aria-label={'Remove skill ' + (index + 1)} onClick={() => setSkillEntries((current) => current.filter((item) => item.key !== entry.key))}><Trash2 size={13}/> Remove</button>}</div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block text-xs font-semibold text-text-secondary">Skill<select className="input-field mt-1.5 w-full" value={entry.skillId} onChange={(event) => updateSkill(entry.key, 'skillId', event.target.value)}><option value="">Select a skill</option>{skills.map((skill) => <option key={skill.id} value={skill.id}>{skill.name}{skill.category ? ' · ' + skill.category : ''}</option>)}</select></label>
+                  <div><label htmlFor={`profile-skill-${entry.key}`} className="mb-1.5 block text-xs font-semibold text-text-secondary">Skill</label><SearchableSkillSelect inputId={`profile-skill-${entry.key}`} options={skills} value={entry.skillId} onChange={(value) => updateSkill(entry.key, 'skillId', value)} placeholder="Search skills (e.g. Azure, Python)…" /></div>
                   <label className="block text-xs font-semibold text-text-secondary">Claimed proficiency<select className="input-field mt-1.5 w-full" value={entry.level} onChange={(event) => updateSkill(entry.key, 'level', Number(event.target.value))}>{[1,2,3,4,5].map((level) => <option key={level} value={level}>{level} · {levelLabels[level]}</option>)}</select></label>
                   <label className="block text-xs font-semibold text-text-secondary md:col-span-2">Project or context (optional)<input className="input-field mt-1.5 w-full" value={entry.details} onChange={(event) => updateSkill(entry.key, 'details', event.target.value)} placeholder="Where have you used this skill?"/></label>
                   <label className="block text-xs font-semibold text-text-secondary md:col-span-2">Supporting link (optional)<input className="input-field mt-1.5 w-full" type="url" value={entry.evidenceUrl} onChange={(event) => updateSkill(entry.key, 'evidenceUrl', event.target.value)} placeholder="https://..."/></label>
