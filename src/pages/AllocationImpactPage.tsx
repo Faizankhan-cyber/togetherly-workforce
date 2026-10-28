@@ -69,19 +69,36 @@ export function AllocationImpactPage() {
     let ids = [...project.assignedEmployeeIds];
     const candidates = generateRecommendations(employees, project, settings.matchWeights, projects, settings)
       .filter((candidate) => candidate.capacityFeasible && !ids.includes(candidate.employeeId));
+
     while (ids.length < project.targetTeamSize && candidates.length > 0) {
-      const candidateIndex = candidates.findIndex((candidate) => {
+      const currentCoverage = getTeamSkillCoverage(ids, project, employees);
+      let bestIndex = -1;
+      let bestNewCoverage = -1;
+      let bestMatchScore = -1;
+
+      candidates.forEach((candidate, index) => {
         const employee = employees.find((item) => item.id === candidate.employeeId);
-        if (!employee) return false;
-        const after = [...projects.filter((item) => item.id !== project.id), {
-          ...project,
-          assignedEmployeeIds: [...ids, employee.id],
-        }];
-        return calculateEmployeeUtilization(employee.id, after, employee.targetUtilization) <= 100;
+        if (!employee || employee.availability === 'unavailable') return;
+        const after = projects.map((item) => item.id === project.id
+          ? { ...item, assignedEmployeeIds: [...ids, employee.id] }
+          : item);
+        if (calculateEmployeeUtilization(employee.id, after, employee.targetUtilization) > 100) return;
+
+        const nextCoverage = getTeamSkillCoverage([...ids, employee.id], project, employees);
+        const newlyCovered = nextCoverage.filter((item, coverageIndex) =>
+          item.covered && !currentCoverage[coverageIndex]?.covered
+        ).length;
+        if (newlyCovered > bestNewCoverage ||
+          (newlyCovered === bestNewCoverage && candidate.matchScore > bestMatchScore)) {
+          bestIndex = index;
+          bestNewCoverage = newlyCovered;
+          bestMatchScore = candidate.matchScore;
+        }
       });
-      if (candidateIndex < 0) break;
-      ids = [...ids, candidates[candidateIndex].employeeId];
-      candidates.splice(candidateIndex, 1);
+
+      if (bestIndex < 0) break;
+      ids = [...ids, candidates[bestIndex].employeeId];
+      candidates.splice(bestIndex, 1);
     }
     return ids;
   }, [employees, project, projects, settings]);
@@ -151,7 +168,7 @@ export function AllocationImpactPage() {
       <Reveal direction="down">
         <section className="card p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-primary/10 via-base-card to-cyan/10 border-primary/30">
           <p className="max-w-2xl text-xs sm:text-sm text-text-secondary leading-relaxed">
-            This impact analysis models talent availability, current project commitments, and skill levels. Simulations can be previewed or modified directly in Workforce Twin.
+            The proposal keeps the saved team intact and fills open seats only. It prioritizes closing new required-skill gaps, then weighted match score, while excluding candidates that fail capacity checks. Review any remaining gaps and existing load risks before changing assignments.
           </p>
           <label className="flex items-center gap-2.5 text-xs text-text-secondary">
             <span className="font-semibold text-text-primary">Target Project:</span>
@@ -226,6 +243,15 @@ export function AllocationImpactPage() {
           </div>
         </Reveal>
       </div>
+
+      {proposedStaffing < reportProject.targetTeamSize && (
+        <div role="status" className="rounded-xl border border-warning/30 bg-warning/5 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-warning"><AlertTriangle size={16} /> The proposal cannot fill every seat safely</div>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            {proposedStaffing} of {reportProject.targetTeamSize} seats can be filled from the current recorded workforce without exceeding the estimated 100% capacity ceiling. Review missing skills, availability, or workforce data in Workforce Twin before making a staffing decision.
+          </p>
+        </div>
+      )}
 
       {/* Side-by-Side Comparison */}
       <div className="grid gap-5 xl:grid-cols-2">

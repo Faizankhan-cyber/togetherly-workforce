@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Building2,
+  History,
   KeyRound,
   Mail,
   UserRoundMinus,
@@ -54,6 +55,22 @@ interface CleanupAccount {
   department: string;
 }
 
+interface RoleAuditEvent {
+  id: string;
+  actor_name: string;
+  target_name: string;
+  target_email: string;
+  from_system_role: string;
+  to_system_role: string;
+  created_at: string;
+}
+
+function displayRole(role: string) {
+  if (role === 'hr') return 'HR';
+  if (role === 'admin') return 'Administrator';
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 const promotionRoleLabels: Record<PromotionRole, string> = {
   manager: 'Manager',
   hr: 'HR',
@@ -66,6 +83,8 @@ export function AdminManagementPage() {
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
   const [promotableAccounts, setPromotableAccounts] = useState<PromotableAccount[]>([]);
   const [cleanupAccounts, setCleanupAccounts] = useState<CleanupAccount[]>([]);
+  const [auditEvents, setAuditEvents] = useState<RoleAuditEvent[]>([]);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [promotionEmployeeId, setPromotionEmployeeId] = useState('');
   const [promotionRole, setPromotionRole] = useState<PromotionRole | ''>('');
   const [isPromoting, setIsPromoting] = useState(false);
@@ -95,16 +114,19 @@ export function AdminManagementPage() {
     setErrorMessage(null);
 
     try {
-      const [adminResult, promotionResult, cleanupResult] = await Promise.all([
+      const [adminResult, promotionResult, cleanupResult, auditResult] = await Promise.all([
         supabase.rpc('list_active_admin_accounts'),
         supabase.rpc('list_promotable_employee_accounts'),
         supabase.rpc('list_offboarded_auth_cleanup_accounts'),
+        supabase.rpc('list_admin_role_audit_events', { p_limit: 12 }),
       ]);
       const queryError = adminResult.error ?? promotionResult.error ?? cleanupResult.error;
       if (queryError) throw queryError;
       setAdmins((adminResult.data ?? []) as AdminAccount[]);
       setPromotableAccounts((promotionResult.data ?? []) as PromotableAccount[]);
       setCleanupAccounts((cleanupResult.data ?? []) as CleanupAccount[]);
+      setAuditEvents(auditResult.error ? [] : (auditResult.data ?? []) as RoleAuditEvent[]);
+      setAuditError(auditResult.error ? 'Recent role history could not be loaded. Check the audit-history function and its admin access policy.' : null);
     } catch (err: unknown) {
       const message = (err as Error)?.message || 'Could not load administrator accounts.';
       setErrorMessage(message);
@@ -240,6 +262,55 @@ export function AdminManagementPage() {
           </button>
         }
       />
+
+      <Reveal>
+        <section className="card overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-base-border bg-gradient-to-r from-primary/5 via-base-card to-cyan/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg border border-primary/15 bg-primary/5 p-2.5 text-primary">
+                <History size={20} />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Recent role-change audit</h2>
+                <p className="mt-1 max-w-xl text-xs leading-relaxed text-text-secondary">
+                  See who promoted or demoted an account and which role changed. Entries are read from the protected audit log.
+                </p>
+              </div>
+            </div>
+            <span className="w-fit rounded-md border border-base-border bg-base-card px-2.5 py-1 text-[10px] font-semibold text-text-secondary">
+              Latest {auditEvents.length} events
+            </span>
+          </div>
+          {auditError ? (
+            <div role="status" className="p-4 text-xs leading-relaxed text-warning">{auditError}</div>
+          ) : auditEvents.length === 0 ? (
+            <div className="p-5 text-xs text-text-secondary">No role changes have been recorded yet.</div>
+          ) : (
+            <div className="divide-y divide-base-border">
+              {auditEvents.map((event) => (
+                <div key={event.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-text-primary">
+                      {event.actor_name} changed {event.target_name}
+                    </p>
+                    <p className="mt-1 break-all text-[11px] text-text-secondary">{event.target_email}</p>
+                    <p className="mt-1 text-[10px] text-text-muted">
+                      {new Date(event.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                  <div className="flex w-fit shrink-0 items-center gap-2">
+                    <span className="rounded-md border border-base-border bg-base-bg px-2 py-1 text-[10px] font-semibold text-text-secondary">{displayRole(event.from_system_role)}</span>
+                    <span aria-hidden="true" className="text-xs text-text-muted">→</span>
+                    <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${event.to_system_role === 'admin' ? 'border-violet-200 bg-violet-50 text-violet-800' : event.to_system_role === 'employee' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+                      {displayRole(event.to_system_role)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </Reveal>
 
       <Reveal>
         <section className="card overflow-hidden">

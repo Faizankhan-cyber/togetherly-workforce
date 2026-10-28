@@ -51,6 +51,16 @@ export function SkillsTrainingPage() {
     return submissions.filter((s) => s.status === 'pending-verification').length;
   }, [submissions]);
 
+  const learningPulse = useMemo(() => {
+    const assignments = employees.flatMap((employee) => employee.trainingAssignments);
+    return {
+      assigned: assignments.length,
+      inProgress: assignments.filter((assignment) => assignment.status === 'in-progress').length,
+      courseworkCompleted: assignments.filter((assignment) => assignment.status === 'completed').length,
+      verifiedClaims: submissions.filter((submission) => submission.status === 'verified').length,
+    };
+  }, [employees, submissions]);
+
   const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
   const activeProjects = projects.filter((p) => p.status !== 'completed');
 
@@ -127,6 +137,34 @@ export function SkillsTrainingPage() {
           ) : undefined
         }
       />
+
+      <section aria-label="Workforce learning pulse" className="mb-5 space-y-3">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <div className="card p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Courses assigned</p>
+            <p className="mt-2 text-2xl font-bold text-text-primary">{learningPulse.assigned}</p>
+            <p className="mt-1 text-[11px] text-text-secondary">Across current employee records</p>
+          </div>
+          <div className="card p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">In progress</p>
+            <p className="mt-2 text-2xl font-bold text-primary">{learningPulse.inProgress}</p>
+            <p className="mt-1 text-[11px] text-text-secondary">Assignments with recorded progress</p>
+          </div>
+          <div className="card p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Coursework completed</p>
+            <p className="mt-2 text-2xl font-bold text-success">{learningPulse.courseworkCompleted}</p>
+            <p className="mt-1 text-[11px] text-text-secondary">Progress marked complete by a user</p>
+          </div>
+          <div className="card p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Verified claims</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-700">{learningPulse.verifiedClaims}</p>
+            <p className="mt-1 text-[11px] text-text-secondary">{pendingVerificationCount} awaiting review</p>
+          </div>
+        </div>
+        <p className="text-[11px] leading-relaxed text-text-muted">
+          Coursework progress and verified credentials are separate signals. Marking a course complete does not verify a skill or certification; verification requires a reviewed claim and evidence.
+        </p>
+      </section>
 
       {/* Module Navigation Tabs */}
       <div className="flex items-center gap-2 mb-5 border-b border-base-border pb-2.5">

@@ -83,15 +83,32 @@ export function WorkloadPlannerPage() {
   }
 
   function handleSimulate(empId: string, projectId: string, action: 'assign' | 'unassign') {
-    const existing = simulations.find((s) => s.employeeId === empId && s.projectId === projectId);
-    if (existing) {
-      setSimulations(simulations.filter((s) => s !== existing));
-    } else {
-      setSimulations([...simulations, { employeeId: empId, projectId, action }]);
-    }
+    setSimulations((current) => {
+      const existing = current.find((item) => item.employeeId === empId && item.projectId === projectId);
+      if (existing) return current.filter((item) => item !== existing);
+      return [...current.filter((item) => !(item.employeeId === empId && item.projectId === projectId)), { employeeId: empId, projectId, action }];
+    });
+  }
+
+  function handleSimulateReassignment(from: Employee, to: Employee, projectId: string) {
+    const savedProject = projects.find((project) => project.id === projectId);
+    if (!savedProject) return;
+    setSimulations((current) => {
+      const next = current.filter((item) =>
+        item.projectId !== projectId || (item.employeeId !== from.id && item.employeeId !== to.id)
+      );
+      // Store only the delta from the saved roster so apply remains idempotent.
+      if (savedProject.assignedEmployeeIds.includes(from.id)) next.push({ employeeId: from.id, projectId, action: 'unassign' });
+      if (!savedProject.assignedEmployeeIds.includes(to.id)) next.push({ employeeId: to.id, projectId, action: 'assign' });
+      return next;
+    });
   }
 
   function handleConfirm() {
+    if (assignmentRisks.length > 0) {
+      showToast('error', 'Resolve the capacity warnings before applying these changes.');
+      return;
+    }
     for (const s of simulations) {
       if (s.action === 'assign') {
         assignEmployeeToProject(s.employeeId, s.projectId);
@@ -120,24 +137,73 @@ export function WorkloadPlannerPage() {
   const overloaded = filteredEmployees.filter((e) => getUtilizationStatus(getSimulatedUtilization(e.id), settings) === 'overloaded');
   const underutilized = filteredEmployees.filter((e) => getUtilizationStatus(getSimulatedUtilization(e.id), settings) === 'underutilized');
 
-  // Suggested reassignments: overloaded employees on active projects where underutilized employees could take over
+  // Suggest only handoffs that preserve the project's recorded skill requirements and
+  // do not move an employee who is unavailable or already at the project-concurrency limit.
   const suggestions = useMemo(() => {
-    const sugg: { from: Employee; to: Employee; projectId: string; projectName: string }[] = [];
+    const sugg: {
+      from: Employee;
+      to: Employee;
+      projectId: string;
+      projectName: string;
+      fromLoad: number;
+      toLoadAfter: number;
+      matchedSkills: number;
+    }[] = [];
     for (const over of overloaded) {
-      const overProjects = getEmployeeProjects(over.id, simulatedProjects).filter((p) => p.status !== 'completed');
-      for (const proj of overProjects) {
+      const overProjects = getEmployeeProjects(over.id, simulatedProjects).filter((project) => project.status !== 'completed');
+      for (const project of overProjects) {
         for (const under of underutilized) {
-          if (!proj.assignedEmployeeIds.includes(under.id)) {
-            sugg.push({ from: over, to: under, projectId: proj.id, projectName: proj.name });
-            break;
-          }
+          if (under.availability === 'unavailable' || project.assignedEmployeeIds.includes(under.id)) continue;
+          if (getActiveAssignmentCount(under.id, simulatedProjects) >= MAX_CONCURRENT_PROJECTS) continue;
+
+          const missingRequiredSkills = project.requiredSkills.filter((requirement) => {
+            const skill = under.skills.find((item) => item.skillId === requirement.skillId);
+            return !skill || skill.level < requirement.minLevel;
+          });
+          if (missingRequiredSkills.length > 0) continue;
+
+          const projectedProjects = simulatedProjects.map((item) => item.id === project.id
+            ? { ...item, assignedEmployeeIds: [...item.assignedEmployeeIds.filter((id) => id !== over.id), under.id] }
+            : item);
+          const toLoadAfter = calculateEmployeeUtilization(under.id, projectedProjects, under.targetUtilization);
+          if (toLoadAfter > 100) continue;
+
+          sugg.push({
+            from: over,
+            to: under,
+            projectId: project.id,
+            projectName: project.name,
+            fromLoad: getSimulatedUtilization(over.id),
+            toLoadAfter,
+            matchedSkills: project.requiredSkills.length,
+          });
+          break;
         }
         if (sugg.length >= 3) break;
       }
       if (sugg.length >= 3) break;
     }
     return sugg;
-  }, [overloaded, underutilized, simulatedProjects]);
+  }, [overloaded, underutilized, simulatedProjects, projects, employees]);
+
+  const assignmentRisks = useMemo(() => {
+    const risks = new Set<string>();
+    for (const change of simulations) {
+      if (change.action !== 'assign') continue;
+      const employee = employees.find((item) => item.id === change.employeeId);
+      if (!employee) {
+        risks.add('A selected employee is no longer in the active workforce list.');
+        continue;
+      }
+      if (employee.availability === 'unavailable') {
+        risks.add(`${employee.name} is marked unavailable.`);
+      }
+      if (getActiveAssignmentCount(employee.id, simulatedProjects) > MAX_CONCURRENT_PROJECTS) {
+        risks.add(`${employee.name} would exceed the ${MAX_CONCURRENT_PROJECTS}-project concurrency limit.`);
+      }
+    }
+    return Array.from(risks);
+  }, [simulations, employees, simulatedProjects]);
 
   return (
     <div>
@@ -154,7 +220,7 @@ export function WorkloadPlannerPage() {
               </button>
             )}
             {simulations.length > 0 && (
-              <button className="btn-primary" onClick={() => setConfirmOpen(true)}>
+              <button className="btn-primary" onClick={() => setConfirmOpen(true)} disabled={assignmentRisks.length > 0}>
                 <Check size={16} /> Apply {simulations.length} Change{simulations.length > 1 ? 's' : ''}
               </button>
             )}
@@ -188,7 +254,7 @@ export function WorkloadPlannerPage() {
       </Reveal>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4 xl:grid-cols-4">
         <Reveal delay={0}>
           <div className="card p-4 text-center">
             <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Overloaded</div>
@@ -209,10 +275,27 @@ export function WorkloadPlannerPage() {
             <div className="text-xl font-bold text-cyan">{underutilized.length}</div>
           </div>
         </Reveal>
+        <Reveal delay={220}>
+          <div className="card p-4 text-center">
+            <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Draft Changes</div>
+            <div className="text-xl font-bold text-primary">{simulations.length}</div>
+            <div className="mt-1 text-[10px] text-text-muted">{new Set(simulations.map((change) => change.projectId)).size} projects affected</div>
+          </div>
+        </Reveal>
       </div>
       <p className="mb-4 -mt-2 text-xs text-text-secondary">
         Workload is an estimate: each active project assignment counts as {ESTIMATED_PROJECT_LOAD_PERCENT}% capacity because the demo data does not include timesheets.
       </p>
+
+      {assignmentRisks.length > 0 && (
+        <div role="alert" className="mb-4 rounded-xl border border-critical/30 bg-critical/5 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-critical"><AlertTriangle size={16} /> Review assignment risks before applying</div>
+          <ul className="mt-2 space-y-1">
+            {assignmentRisks.map((risk) => <li key={risk} className="text-xs leading-relaxed text-critical">• {risk}</li>)}
+          </ul>
+          <p className="mt-2 text-[11px] text-text-secondary">Remove or adjust the risky draft assignments. Togetherly will not apply a draft that assigns an unavailable employee or exceeds the concurrency limit.</p>
+        </div>
+      )}
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
@@ -230,13 +313,12 @@ export function WorkloadPlannerPage() {
                 <ArrowRight size={16} className="text-text-secondary" />
                 <Avatar name={s.to.name} color={s.to.avatarColor} size="sm" />
                 <span className="text-sm text-text-primary">{s.to.name}</span>
-                <span className="text-xs text-text-secondary ml-auto">{s.projectName}</span>
+                <span className="ml-auto text-right text-[10px] leading-relaxed text-text-secondary">{s.projectName}<br />Load {s.fromLoad}% → {s.toLoadAfter}% · {s.matchedSkills} required skills covered</span>
                 <button
                   className="btn-secondary text-xs"
                   onClick={() => {
-                    handleSimulate(s.from.id, s.projectId, 'unassign');
-                    handleSimulate(s.to.id, s.projectId, 'assign');
-                    showToast('info', `Simulated: reassign ${s.from.name} → ${s.to.name} on ${s.projectName}`);
+                    handleSimulateReassignment(s.from, s.to, s.projectId);
+                    showToast('info', `Drafted a skill-matched handoff: ${s.from.name} → ${s.to.name} on ${s.projectName}`);
                   }}
                 >
                   Simulate
@@ -315,6 +397,7 @@ export function WorkloadPlannerPage() {
                         <option value="">+ Assign to...</option>
                         {activeProjects
                            .filter((p) => p.assignedEmployeeIds.length < p.targetTeamSize && !empSimProjects.some((ep) => ep.id === p.id))
+                           .filter(() => emp.availability !== 'unavailable')
                            .filter(() => getActiveAssignmentCount(emp.id, simulatedProjects) < MAX_CONCURRENT_PROJECTS)
                           .map((p) => (
                             <option key={p.id} value={p.id}>{p.name.slice(0, 25)}{p.name.length > 25 ? '...' : ''}</option>
@@ -342,6 +425,7 @@ export function WorkloadPlannerPage() {
         title="Apply Workload Changes"
         message={`Apply ${simulations.length} workload change${simulations.length > 1 ? 's' : ''}? This will update project assignments permanently.`}
         confirmLabel="Apply Changes"
+        confirmDisabled={assignmentRisks.length > 0}
       />
     </div>
   );

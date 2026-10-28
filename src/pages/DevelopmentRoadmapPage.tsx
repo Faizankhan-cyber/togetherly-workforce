@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenCheck,
   CheckCircle2,
@@ -18,7 +18,6 @@ import { Reveal } from '@/components/Reveal';
 import { TrainingSubmissionModal } from '@/components/TrainingSubmissionModal';
 import { EvidenceReviewModal } from '@/components/EvidenceReviewModal';
 import { useData } from '@/context/DataContext';
-import { demoEmployeeId } from '@/data/mockData';
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
 import { getEmployeeProjects, getSkillName } from '@/utils';
 import type { TrainingSubmission } from '@/types';
@@ -46,11 +45,20 @@ const coursesBySkill: Record<string, { course: string; provider: string }> = {
 export function DevelopmentRoadmapPage() {
   const { employees, projects, submissions, role, addTrainingAssignment, updateTrainingAssignment, showToast } = useData();
   const currentEmployee = useCurrentEmployee();
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(demoEmployeeId);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);
   const [resubmitClaim, setResubmitClaim] = useState<TrainingSubmission | undefined>(undefined);
   const [initialClaimData, setInitialClaimData] = useState<Partial<TrainingSubmission> | undefined>(undefined);
+
+  useEffect(() => {
+    if (role === 'employee' || employees.length === 0) return;
+    setSelectedEmployeeId((current) => {
+      if (employees.some((item) => item.id === current)) return current;
+      if (currentEmployee && employees.some((item) => item.id === currentEmployee.id)) return currentEmployee.id;
+      return employees[0].id;
+    });
+  }, [role, employees, currentEmployee]);
 
   const employeeId = role === 'employee' ? (currentEmployee?.id ?? '') : selectedEmployeeId;
   const employee = role === 'employee' ? currentEmployee : employees.find((item) => item.id === employeeId);
@@ -91,6 +99,13 @@ export function DevelopmentRoadmapPage() {
   const selectedEmployee = employee;
   const completedCount = employee.trainingAssignments.filter((training) => training.status === 'completed').length;
   const totalCount = employee.trainingAssignments.length;
+
+  const verifiedClaimCount = submissions.filter((submission) =>
+    submission.employeeId === employee.id && submission.status === 'verified'
+  ).length;
+  const pendingReviewCount = submissions.filter((submission) =>
+    submission.employeeId === employee.id && submission.status === 'pending-verification'
+  ).length;
 
   function advanceTraining(trainingId: string, progress: number, status: 'not-started' | 'in-progress' | 'completed') {
     const nextProgress = status === 'not-started' ? Math.max(10, progress) : Math.min(100, progress + 25);
@@ -146,7 +161,7 @@ export function DevelopmentRoadmapPage() {
         </Reveal>
       )}
 
-      <div className="mb-4 grid gap-4 sm:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Reveal delay={0}>
           <div className="card flex items-center gap-3 p-4 border-base-border/70 hover:border-primary/30 transition-colors">
             <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
@@ -177,6 +192,28 @@ export function DevelopmentRoadmapPage() {
             <div>
               <div className="text-xs text-text-secondary">Project Skills to Develop</div>
               <div className="mt-0.5 text-2xl font-bold text-text-primary tracking-tight">{growthNeeds.length}</div>
+            </div>
+          </div>
+        </Reveal>
+        <Reveal delay={220}>
+          <div className="card flex items-center gap-3 p-4 border-base-border/70 hover:border-success/30 transition-colors">
+            <div className="p-2.5 rounded-xl bg-success/10 border border-success/20 text-success">
+              <Award size={20} />
+            </div>
+            <div>
+              <div className="text-xs text-text-secondary">Verified Claims</div>
+              <div className="mt-0.5 text-2xl font-bold text-text-primary tracking-tight">{verifiedClaimCount}</div>
+            </div>
+          </div>
+        </Reveal>
+        <Reveal delay={280}>
+          <div className="card flex items-center gap-3 p-4 border-base-border/70 hover:border-warning/30 transition-colors">
+            <div className="p-2.5 rounded-xl bg-warning/10 border border-warning/20 text-warning">
+              <AlertCircle size={20} />
+            </div>
+            <div>
+              <div className="text-xs text-text-secondary">Claims Awaiting Review</div>
+              <div className="mt-0.5 text-2xl font-bold text-text-primary tracking-tight">{pendingReviewCount}</div>
             </div>
           </div>
         </Reveal>

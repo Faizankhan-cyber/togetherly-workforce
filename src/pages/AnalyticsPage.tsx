@@ -26,6 +26,7 @@ import {
   getDepartmentStats,
   getProjectStaffingProgress,
   exportToCsv,
+  ESTIMATED_PROJECT_LOAD_PERCENT,
 } from '@/utils';
 
 export function AnalyticsPage() {
@@ -33,11 +34,12 @@ export function AnalyticsPage() {
   const [deptFilter, setDeptFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
 
-  const departments = useMemo(() => Array.from(new Set(employees.map((e) => e.department))).sort(), [employees]);
+  const activeEmployees = useMemo(() => employees.filter((employee) => employee.employmentStatus !== 'offboarded'), [employees]);
+  const departments = useMemo(() => Array.from(new Set(activeEmployees.map((e) => e.department))).sort(), [activeEmployees]);
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((e) => deptFilter === 'all' || e.department === deptFilter);
-  }, [employees, deptFilter]);
+    return activeEmployees.filter((e) => deptFilter === 'all' || e.department === deptFilter);
+  }, [activeEmployees, deptFilter]);
 
   const filteredProjects = useMemo(() => {
     if (dateFilter === 'all') return projects;
@@ -45,6 +47,7 @@ export function AnalyticsPage() {
     return projects.filter((p) => {
       const start = new Date(p.startDate);
       const diffMonths = (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30);
+      if (diffMonths < 0) return false;
       if (dateFilter === '3m') return diffMonths <= 3;
       if (dateFilter === '6m') return diffMonths <= 6;
       if (dateFilter === '1y') return diffMonths <= 12;
@@ -57,22 +60,22 @@ export function AnalyticsPage() {
     const depts = Array.from(new Set(filteredEmployees.map((e) => e.department)));
     return depts.map((dept) => {
       const deptEmps = filteredEmployees.filter((e) => e.department === dept);
-      const avgUtil = deptEmps.reduce((sum, e) => sum + calculateEmployeeUtilization(e.id, projects, e.targetUtilization), 0) / (deptEmps.length || 1);
+      const avgUtil = deptEmps.reduce((sum, e) => sum + calculateEmployeeUtilization(e.id, filteredProjects, e.targetUtilization), 0) / (deptEmps.length || 1);
       return { department: dept, utilization: Math.round(avgUtil) };
     });
-  }, [filteredEmployees, projects]);
+  }, [filteredEmployees, filteredProjects]);
 
   // Workload distribution
   const workloadDist = useMemo(() => {
-    const overloaded = filteredEmployees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'overloaded').length;
-    const balanced = filteredEmployees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'balanced').length;
-    const underutilized = filteredEmployees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, projects, e.targetUtilization), settings) === 'underutilized').length;
+    const overloaded = filteredEmployees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, filteredProjects, e.targetUtilization), settings) === 'overloaded').length;
+    const balanced = filteredEmployees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, filteredProjects, e.targetUtilization), settings) === 'balanced').length;
+    const underutilized = filteredEmployees.filter((e) => getUtilizationStatus(calculateEmployeeUtilization(e.id, filteredProjects, e.targetUtilization), settings) === 'underutilized').length;
     return [
       { name: 'Overloaded', value: overloaded, color: '#F87171' },
       { name: 'Balanced', value: balanced, color: '#22C55E' },
       { name: 'Underutilized', value: underutilized, color: '#22D3EE' },
     ];
-  }, [filteredEmployees, projects, settings]);
+  }, [filteredEmployees, filteredProjects, settings]);
 
   // Skill distribution
   const skillDist = useMemo(() => getSkillDistribution(filteredEmployees).slice(0, 8), [filteredEmployees]);
@@ -98,7 +101,7 @@ export function AnalyticsPage() {
   function handleExportUtilization() {
     const headers = ['Employee', 'Department', 'Utilization', 'Status'];
     const rows = filteredEmployees.map((e) => {
-      const util = calculateEmployeeUtilization(e.id, projects, e.targetUtilization);
+      const util = calculateEmployeeUtilization(e.id, filteredProjects, e.targetUtilization);
       const status = getUtilizationStatus(util, settings);
       return [e.name, e.department, `${util}%`, status];
     });
@@ -164,6 +167,38 @@ export function AnalyticsPage() {
           </FilterToolbar>
         </div>
       </Reveal>
+
+      <section className="card border-base-border/80 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-text-primary">Report scope & data quality</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-secondary">
+              Charts below use the selected department and project-start window. Offboarded profiles are excluded from active workforce metrics. Utilization is an estimate based on project assignments, not timesheet hours.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-lg border border-base-border bg-base-bg px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Employees</p>
+              <p className="mt-1 text-lg font-bold text-text-primary">{filteredEmployees.length}</p>
+            </div>
+            <div className="rounded-lg border border-base-border bg-base-bg px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Projects</p>
+              <p className="mt-1 text-lg font-bold text-text-primary">{filteredProjects.length}</p>
+            </div>
+            <div className="rounded-lg border border-base-border bg-base-bg px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Database profiles</p>
+              <p className="mt-1 text-lg font-bold text-success">{filteredEmployees.filter((employee) => employee.dataSource === 'database').length}</p>
+            </div>
+            <div className="rounded-lg border border-base-border bg-base-bg px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Demo / unlabelled</p>
+              <p className="mt-1 text-lg font-bold text-text-primary">{filteredEmployees.filter((employee) => employee.dataSource !== 'database').length}</p>
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 border-t border-base-border pt-3 text-[11px] leading-relaxed text-text-muted">
+          Workload model: each active project assignment counts as approximately {ESTIMATED_PROJECT_LOAD_PERCENT}% capacity. Treat utilization as a planning estimate until Togetherly records timesheet or effort data.
+        </p>
+      </section>
 
       {/* Row 1: Utilization + Workload Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -383,7 +418,7 @@ export function AnalyticsPage() {
             <div className="p-3 rounded-xl bg-base-bg/60 border border-base-border/50">
               <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Mean Utilization</div>
               <div className="text-2xl font-extrabold text-success mt-1">
-                {Math.round(filteredEmployees.reduce((sum, e) => sum + calculateEmployeeUtilization(e.id, projects, e.targetUtilization), 0) / (filteredEmployees.length || 1))}%
+                {Math.round(filteredEmployees.reduce((sum, e) => sum + calculateEmployeeUtilization(e.id, filteredProjects, e.targetUtilization), 0) / (filteredEmployees.length || 1))}%
               </div>
             </div>
             <div className="p-3 rounded-xl bg-base-bg/60 border border-base-border/50">

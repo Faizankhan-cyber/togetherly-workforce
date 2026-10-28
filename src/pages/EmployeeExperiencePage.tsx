@@ -82,6 +82,91 @@ export function EmployeeDashboardPage() {
     );
   }
 
+  const missingProfileItems = [
+    !employee.email?.trim() ? 'email' : null,
+    employee.skills.length === 0 ? 'skills' : null,
+    employee.yearsExperience <= 0 ? 'experience' : null,
+  ].filter((item): item is string => Boolean(item));
+  const nextDeadlineDays = nextDeadlineProject ? daysUntil(nextDeadlineProject.deadline) : null;
+
+  const nextBestAction = nextDeadlineProject && nextDeadlineDays !== null && nextDeadlineDays < 0
+    ? {
+        eyebrow: 'Needs attention',
+        title: 'Review an overdue delivery',
+        description: `${nextDeadlineProject.name} is ${Math.abs(nextDeadlineDays)} day${Math.abs(nextDeadlineDays) === 1 ? '' : 's'} overdue. Check the current status and update the project owner.`,
+        to: '/my-projects',
+        action: 'Review project',
+        tone: 'border-critical/30 bg-critical/5',
+        accent: 'text-critical',
+        icon: AlertCircle,
+      }
+    : utilizationStatus === 'overloaded'
+      ? {
+          eyebrow: 'Capacity priority',
+          title: 'Review your workload',
+          description: `Your estimated utilization is ${utilization}%, above the configured workload threshold. Review assignments before accepting more work.`,
+          to: '/my-workload',
+          action: 'Review workload',
+          tone: 'border-warning/30 bg-warning/5',
+          accent: 'text-warning',
+          icon: Target,
+        }
+      : nextDeadlineProject && nextDeadlineDays !== null && nextDeadlineDays <= 7
+        ? {
+            eyebrow: 'Coming up soon',
+            title: 'Get ahead of your next delivery',
+            description: `${nextDeadlineProject.name} is due ${nextDeadlineDays === 0 ? 'today' : `in ${nextDeadlineDays} day${nextDeadlineDays === 1 ? '' : 's'}`}. Review the outstanding tasks and required skills.`,
+            to: '/my-projects',
+            action: 'View projects',
+            tone: 'border-primary/25 bg-primary/5',
+            accent: 'text-primary',
+            icon: CalendarClock,
+          }
+        : missingProfileItems.length > 0
+          ? {
+              eyebrow: 'Profile improvement',
+              title: 'Complete your talent profile',
+              description: `Add your ${missingProfileItems.join(', ')} details so matching and development recommendations have better evidence to work with.`,
+              to: '/my-profile',
+              action: 'Complete profile',
+              tone: 'border-cyan/30 bg-cyan/5',
+              accent: 'text-cyan',
+              icon: ShieldCheck,
+            }
+          : growthSkills.length > 0
+            ? {
+                eyebrow: 'Career development',
+                title: 'Close a project skill gap',
+                description: `${growthSkills.length} required skill${growthSkills.length === 1 ? '' : 's'} could be developed for your current assignments. Review the learning path and available courses.`,
+                to: '/roadmap',
+                action: 'Open roadmap',
+                tone: 'border-violet-200 bg-violet-50/70',
+                accent: 'text-violet-700',
+                icon: GraduationCap,
+              }
+            : activeTraining.length > 0
+              ? {
+                  eyebrow: 'Keep momentum',
+                  title: 'Continue your learning plan',
+                  description: `${activeTraining.length} course${activeTraining.length === 1 ? '' : 's'} remain in progress. Update your course progress or submit evidence when coursework is complete.`,
+                  to: '/roadmap',
+                  action: 'Continue learning',
+                  tone: 'border-emerald-200 bg-emerald-50/70',
+                  accent: 'text-emerald-700',
+                  icon: GraduationCap,
+                }
+              : {
+                  eyebrow: 'You are up to date',
+                  title: 'Keep your momentum going',
+                  description: 'No overdue deadline, workload alert, or core profile gap is currently detected from the data available in Togetherly.',
+                  to: '/my-projects',
+                  action: 'View projects',
+                  tone: 'border-success/25 bg-success/5',
+                  accent: 'text-success',
+                  icon: CheckCircle2,
+                };
+  const NextBestActionIcon = nextBestAction.icon;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -222,6 +307,24 @@ export function EmployeeDashboardPage() {
           </div>
         </div>
       </section>
+
+      <Reveal delay={100}>
+        <section className={`card flex flex-col gap-4 border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${nextBestAction.tone}`}>
+          <div className="flex min-w-0 items-start gap-3">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-current/15 bg-white ${nextBestAction.accent}`}>
+              <NextBestActionIcon size={19} />
+            </div>
+            <div className="min-w-0">
+              <p className={`text-[10px] font-bold uppercase tracking-[0.15em] ${nextBestAction.accent}`}>{nextBestAction.eyebrow}</p>
+              <h2 className="mt-1 text-sm font-bold text-text-primary">{nextBestAction.title}</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-secondary">{nextBestAction.description}</p>
+            </div>
+          </div>
+          <Link to={nextBestAction.to} className="btn-secondary w-fit shrink-0 justify-center text-xs">
+            {nextBestAction.action} <ArrowRight size={13} />
+          </Link>
+        </section>
+      </Reveal>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
         {/* Current Projects */}
