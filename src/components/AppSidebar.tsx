@@ -16,7 +16,6 @@ import {
   Map,
   UserRound,
   BriefcaseBusiness,
-  Layers,
   GitFork,
   UserCheck,
   Lock,
@@ -28,6 +27,7 @@ import {
 import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Avatar } from './Avatar';
+import { BrandMark } from './BrandMark';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut } from 'lucide-react';
@@ -232,8 +232,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
       >
         {/* Togetherly brand header */}
         <div className={`flex items-center gap-2.5 h-14 px-4 border-b border-base-border flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 text-white">
-            <Layers size={17} />
+          <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+            <BrandMark className="w-7 h-7" />
           </div>
           {!collapsed && (
             <div className="overflow-hidden">

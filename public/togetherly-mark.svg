@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 178 138" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Togetherly</title>
+  <desc id="desc">Modern T mark in blue and cyan gradient</desc>
+  <defs>
+    <linearGradient id="crossbar" x1="16" y1="0" x2="165" y2="47" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1237C8"/>
+      <stop offset="0.46" stop-color="#087AF5"/>
+      <stop offset="1" stop-color="#08C7EB"/>
+    </linearGradient>
+    <linearGradient id="stem" x1="67" y1="40" x2="116" y2="133" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#073CCB"/>
+      <stop offset="0.52" stop-color="#075DE5"/>
+      <stop offset="1" stop-color="#0879EA"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="17" y1="7" x2="163" y2="25" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1C48E9"/>
+      <stop offset="0.56" stop-color="#087AF5"/>
+      <stop offset="1" stop-color="#05C9EC"/>
+    </linearGradient>
+  </defs>
+  <path d="M30 5H146C158 5 166 12 166 23C166 35 157 43 144 43H32C20 43 12 35 12 23C12 12 19 5 30 5Z" fill="url(#crossbar)"/>
+  <path d="M68 42H112V111C112 124 104 132 92 132H87C75 132 68 124 68 112V66C68 56 72 48 81 42H68Z" fill="url(#stem)"/>
+  <path d="M31 6H146C151 6 156 8 159 12C155 11 151 11 147 13L113 29C105 33 98 35 89 35H30C21 35 15 29 14 21C15 12 21 6 31 6Z" fill="url(#sheen)" opacity="0.72"/>
+</svg>
