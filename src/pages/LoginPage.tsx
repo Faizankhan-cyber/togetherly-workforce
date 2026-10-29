@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { BrandMark } from '@/components/BrandMark';
 import {
-  Layers,
   Lock,
   Mail,
   ArrowRight,
@@ -154,8 +154,8 @@ export function LoginPage() {
       {/* Top micro-bar */}
       <div className="bg-white border-b border-base-border py-2.5 px-4 sm:px-8 flex items-center justify-between text-xs text-text-secondary">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-primary text-white flex items-center justify-center font-bold text-[10px]">
-            T
+          <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center">
+            <BrandMark className="w-5 h-5" />
           </div>
           <span className="font-semibold text-text-primary tracking-tight">Togetherly Enterprise Portal</span>
         </div>
@@ -194,8 +194,8 @@ export function LoginPage() {
         <div className="max-w-md w-full">
           {/* Card branding */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-white shadow-md shadow-primary/20 mb-3">
-              <Layers size={24} />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 shadow-md shadow-primary/10 mb-3 p-2">
+              <BrandMark className="w-full h-full" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
               Togetherly
