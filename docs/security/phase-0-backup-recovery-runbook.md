@@ -90,7 +90,7 @@ PITR can provide finer-than-daily recovery when enabled and when the required re
 3. Review the current Supabase plan and any potential costs. Do not upgrade the plan, enable PITR, enable S3 protocol, or create billable resources without separate explicit approval.
 4. Select an encrypted, private off-project backup destination and test its access controls before exporting.
 5. Install a current supported Supabase CLI, Docker, and PostgreSQL client on a trusted operator workstation. The Supabase CLI `db dump` command uses Docker.
-6. Obtain a database connection string from the verified source project's Connect panel. Keep it in a password manager or protected process environment. Never put it in command history, a script, a ticket, a Git file, or terminal output.
+6. Obtain a database connection string from the verified source project Connect panel. Keep it in a password manager or protected process environment. Never put it in command history, a script, a ticket, a Git file, or terminal output.
 7. Confirm there is sufficient protected local disk space. Use a dedicated local directory with owner-only permissions.
 
 ### 4.2 Create database exports
@@ -101,7 +101,7 @@ The command structure below follows the official Supabase CLI backup guide. Repl
 set -euo pipefail
 umask 077
 
-: "${OLD_DB_URL:?Set OLD_DB_URL securely from the verified source project's Connect panel}"
+: "${OLD_DB_URL:?Set OLD_DB_URL securely from the verified source project Connect panel}"
 : "${BACKUP_DIR:?Set BACKUP_DIR to an approved private local backup directory}"
 
 mkdir -m 700 -p "$BACKUP_DIR"
@@ -190,7 +190,7 @@ The following manual logical restore structure is documented by Supabase. Run it
 ```bash
 set -euo pipefail
 
-: "${NEW_DB_URL:?Set NEW_DB_URL from the verified isolated target's Connect panel}"
+: "${NEW_DB_URL:?Set NEW_DB_URL from the verified isolated target Connect panel}"
 : "${BACKUP_DIR:?Set BACKUP_DIR to the verified private backup directory}"
 
 psql \
@@ -280,5 +280,6 @@ Until those checks pass, Phase 0 remains **PARTIALLY COMPLETE** and production d
 - [Supabase Restore to a New Project](https://supabase.com/docs/guides/platform/clone-project)
 - [Supabase Storage: Download Objects](https://supabase.com/docs/guides/storage/management/download-objects)
 - [Supabase CLI: Preview Branches](https://supabase.com/docs/reference/cli/supabase-branches)
+
 
 
