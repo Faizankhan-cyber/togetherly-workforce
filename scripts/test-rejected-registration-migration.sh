@@ -14,3 +14,10 @@ psql --no-psqlrc --set ON_ERROR_STOP=1 \
   --username "$PGUSER" \
   --dbname "$PGDATABASE" \
   --file "$repo_root/supabase/tests/reapply_registration.test.sql"
+
+psql --no-psqlrc --set ON_ERROR_STOP=1 \
+  --host "$PGHOST" \
+  --port "$PGPORT" \
+  --username "$PGUSER" \
+  --dbname "$PGDATABASE" \
+  --file "$repo_root/supabase/tests/employee_skills_rls.test.sql"
