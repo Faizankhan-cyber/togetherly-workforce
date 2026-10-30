@@ -10,6 +10,14 @@ const BLOCKED_SUFFIXES = [
   '.invalid',
   '.example',
   '.onion',
+  '.localdomain',
+  '.arpa',
+  '.corp',
+  '.home',
+  '.lan',
+  '.intranet',
+  '.private',
+  '.home.arpa',
 ];
 
 const BLOCKED_HOSTS = new Set([
