@@ -23,3 +23,5 @@ vitest.config.cts.timestamp-*.mjs
 *.backup
 *.backup.gz
 *.sql.gz
+
+dist/
