@@ -11,12 +11,12 @@ Production project identity, confirmed read-only:
 
 | Attribute | Verified value |
 |---|---|
-| Project name | \`togetherly\` |
-| Project reference | \`yabogftzcmqeybjnoazy\` |
-| Region | \`ap-southeast-1\` |
+| Project name | `togetherly` |
+| Project reference | `yabogftzcmqeybjnoazy` |
+| Region | `ap-southeast-1` |
 | Postgres | 17.11.0.003 |
-| Project status | \`ACTIVE_HEALTHY\` |
-| Organization plan | \`free\` |
+| Project status | `ACTIVE_HEALTHY` |
+| Organization plan | `free` |
 | Backups returned by the project backup inventory | 0 |
 | PITR | Disabled |
 | WAL-G metadata flag | Enabled; this is not evidence of an available backup or restore point |
@@ -30,18 +30,18 @@ Production project identity, confirmed read-only:
 | P0-01 | The connected Supabase organization is on the Free plan. | Organization metadata; verified. | High |
 | P0-02 | The live backup inventory returned an empty list and PITR is disabled. | Current project backup inventory; verified at recheck. | Critical |
 | P0-03 | WAL-G is reported enabled, but no backup record or recovery point is exposed. | Backup inventory metadata; verified. Not a proof of backup coverage. | High |
-| P0-04 | A branch called \`security-remediation-test\` is listed with \`with_data=false\`, \`persistent=false\`, and the same exposed \`project_ref\` as its parent. A distinct database ref/host was not returned. | Branch metadata; verified. Isolation is unverified. | Critical |
-| P0-05 | The live \`supabase_migrations.schema_migrations\` ledger contains 20 versions. | Read-only query; verified. The two remediation migrations described below are not in this ledger. | High |
+| P0-04 | A branch called `security-remediation-test` is listed with `with_data=false`, `persistent=false`, and the same exposed `project_ref` as its parent. A distinct database ref/host was not returned. | Branch metadata; verified. Isolation is unverified. | Critical |
+| P0-05 | The live `supabase_migrations.schema_migrations` ledger contains 20 versions. | Read-only query; verified. The two remediation migrations described below are not in this ledger. | High |
 | P0-06 | No separate Supabase project is visible to the connected account. | Project inventory; verified for the connected account only. | High |
 | P0-07 | Who can create backups, initiate restores, access backup artifacts, or change billing was not exposed by the available read-only integration. | Unknown; requires Dashboard owner review. | Medium |
 | P0-08 | The existing schema/security JSON snapshot is metadata-only, not a recoverable database backup. | Repository artifact inspection; verified. | Critical |
 
 At the recheck, the two remediation migrations present in the feature branch but absent from the live 20-version ledger were:
 
-- \`20261028_reapply_rejected_registration.sql\`
-- \`20261030100000_employee_skills_visibility.sql\`
+- `20261028_reapply_rejected_registration.sql`
+- `20261030100000_employee_skills_visibility.sql`
 
-Do not use \`supabase migration repair\` to make the ledger appear aligned. First compare every repository migration with the live ledger and determine why any entries differ. A migration-history edit is a database change.
+Do not use `supabase migration repair` to make the ledger appear aligned. First compare every repository migration with the live ledger and determine why any entries differ. A migration-history edit is a database change.
 
 The current GitHub PR and branch details, including the corrected main-branch protection state, are recorded in the current recheck document. GitHub CI success is not evidence of a database backup or restore.
 
@@ -53,7 +53,7 @@ The current GitHub PR and branch details, including the corrected main-branch pr
 |---|---|---|---|
 | Supabase-managed daily physical backups | Database schema and data; platform restore can include Auth user data when restoring to a new project. Retention depends on paid plan. | Does not include Storage object files. Custom role passwords and project-level settings require separate work. | Not available in the current verified Free-plan state. |
 | Supabase PITR | Database recovery to a selected point with seconds-level time granularity while a usable recovery window exists. | Paid-plan add-on; requires at least Small compute. Restore makes the target project inaccessible during recovery. Storage objects and project configuration still need separate recovery. | Disabled; no current restore points. |
-| Supabase CLI logical dump | Schema, application data, and roles when explicitly exported. Migration history requires a separate dump. | CLI dump excludes managed \`auth\`, \`storage\`, and extension schemas. It does not include Storage file contents or provide a complete Auth-user recovery. | Proposed database-only RPO: 24 hours for a successfully completed daily export. RTO unmeasured. |
+| Supabase CLI logical dump | Schema, application data, and roles when explicitly exported. Migration history requires a separate dump. | CLI dump excludes managed `auth`, `storage`, and extension schemas. It does not include Storage file contents or provide a complete Auth-user recovery. | Proposed database-only RPO: 24 hours for a successfully completed daily export. RTO unmeasured. |
 | Storage object export | Actual files from private buckets, copied separately using supported Supabase Storage CLI or an S3-compatible client. | Does not by itself restore database metadata, bucket configuration, Auth, or application database state. | Proposed object RPO: 24 hours if a daily copy is implemented and verified. RTO unmeasured. |
 | Restore to a new Supabase project | Supabase documents database schema, data, indexes, roles/permissions/users, Auth user data, and encryption root key as transferred. | Paid plans and source physical backups required. Storage objects/settings, Edge Functions, Auth settings/API keys, Realtime settings, extensions and database settings need manual reconfiguration. New-project costs must be reviewed. | Not currently available; no cost or restore action approved. |
 
@@ -86,10 +86,10 @@ PITR can provide finer-than-daily recovery when enabled and when the required re
 ### 4.1 Preconditions
 
 1. Obtain explicit approval from the project owner for a production read-only export, the data classification, destination, retention, and operators.
-2. Confirm the current source project in the Supabase Dashboard: ref \`yabogftzcmqeybjnoazy\`, region \`ap-southeast-1\`. Stop if either differs.
+2. Confirm the current source project in the Supabase Dashboard: ref `yabogftzcmqeybjnoazy`, region `ap-southeast-1`. Stop if either differs.
 3. Review the current Supabase plan and any potential costs. Do not upgrade the plan, enable PITR, enable S3 protocol, or create billable resources without separate explicit approval.
 4. Select an encrypted, private off-project backup destination and test its access controls before exporting.
-5. Install a current supported Supabase CLI, Docker, and PostgreSQL client on a trusted operator workstation. The Supabase CLI \`db dump\` command uses Docker.
+5. Install a current supported Supabase CLI, Docker, and PostgreSQL client on a trusted operator workstation. The Supabase CLI `db dump` command uses Docker.
 6. Obtain a database connection string from the verified source project's Connect panel. Keep it in a password manager or protected process environment. Never put it in command history, a script, a ticket, a Git file, or terminal output.
 7. Confirm there is sufficient protected local disk space. Use a dedicated local directory with owner-only permissions.
 
@@ -97,7 +97,7 @@ PITR can provide finer-than-daily recovery when enabled and when the required re
 
 The command structure below follows the official Supabase CLI backup guide. Replace only the environment variable value using the secret-handling procedure approved by the project owner. Do not paste a real connection string into this runbook or a chat.
 
-\`\`\`bash
+```bash
 set -euo pipefail
 umask 077
 
@@ -125,11 +125,11 @@ chmod -R go-rwx "$BACKUP_DIR"
 sha256sum --check "$BACKUP_DIR/SHA256SUMS"
 
 unset OLD_DB_URL
-\`\`\`
+```
 
-The \`storage.buckets_vectors\` and \`storage.vector_indexes\` exclusions are shown in Supabase's documented data-dump example. Review whether they exist in the current source before executing; do not silently change the command for an unfamiliar schema.
+The `storage.buckets_vectors` and `storage.vector_indexes` exclusions are shown in Supabase's documented data-dump example. Review whether they exist in the current source before executing; do not silently change the command for an unfamiliar schema.
 
-**Coverage warning:** Supabase CLI logical dumps exclude managed \`auth\`, \`storage\`, and extension schemas. The \`history_*\` exports preserve the CLI migration ledger, not Auth users. Review the project's customisations to managed schemas separately. Supabase documents that Auth/Storage custom triggers and policies may need to be recreated from reviewed migrations or a schema diff. Do not assume the generic dump has captured them.
+**Coverage warning:** Supabase CLI logical dumps exclude managed `auth`, `storage`, and extension schemas. The `history_*` exports preserve the CLI migration ledger, not Auth users. Review the project's customisations to managed schemas separately. Supabase documents that Auth/Storage custom triggers and policies may need to be recreated from reviewed migrations or a schema diff. Do not assume the generic dump has captured them.
 
 ### 4.3 Verify and store the files
 
@@ -141,7 +141,7 @@ The operator must record the following evidence without recording secrets or per
 - Archive/dump parsing or SQL inspection completed. Because these are plain SQL files, a checksum alone does not prove they can be restored.
 - Private destination path/object version, server-side encryption status, access-control owner, retention/deletion policy, and successful re-download of the stored artifacts.
 - A malware/secret scan of scripts and documentation, not a scan that uploads production SQL to a public service.
-- \`git status --short\` is clean of backup artifacts and \`git check-ignore -v\` confirms the protected backup paths are ignored.
+- `git status --short` is clean of backup artifacts and `git check-ignore -v` confirms the protected backup paths are ignored.
 - The operator confirms that no production dump, generated data file, password, token, connection string, or personal record was committed.
 
 Do not include backup files, hashes that identify individual records, or sensitive metadata in the PR. Keep an evidence record with artifact names, timestamps, checksums and restricted storage references only.
@@ -173,9 +173,9 @@ A human project owner must provision or identify a separate, disposable non-prod
 
 For the existing preview branch, the Supabase CLI exposes a branch-details command:
 
-\`\`\`bash
+```bash
 supabase --experimental branches get security-remediation-test --project-ref yabogftzcmqeybjnoazy
-\`\`\`
+```
 
 Use it only as a read-only inspection. Treat all connection output as sensitive. Record only whether the returned database reference and host are distinct from production; do not copy credentials into logs or Git. Until a distinct target is confirmed, this branch remains **unverified and prohibited for restore testing**.
 
@@ -183,11 +183,11 @@ Creating a new project, upgrading a plan, or using paid Restore-to-a-new-project
 
 ### 5.2 Restore a logical database backup
 
-Use only after the target has passed the isolation checks above and the project owner has approved the restore. Confirm the target connection string from the target project's own Connect panel; store it securely in \`NEW_DB_URL\`. Never set it to the production source URL.
+Use only after the target has passed the isolation checks above and the project owner has approved the restore. Confirm the target connection string from the target project's own Connect panel; store it securely in `NEW_DB_URL`. Never set it to the production source URL.
 
 The following manual logical restore structure is documented by Supabase. Run it from a trusted workstation against the verified isolated target only:
 
-\`\`\`bash
+```bash
 set -euo pipefail
 
 : "${NEW_DB_URL:?Set NEW_DB_URL from the verified isolated target's Connect panel}"
@@ -211,18 +211,18 @@ psql \
   --dbname "$NEW_DB_URL"
 
 unset NEW_DB_URL
-\`\`\`
+```
 
 This is a logical database restore, not a full-project restore. Review the target's default privileges, custom roles, extensions, webhooks, triggers, Auth/Storage schema customisations and encryption requirements before execution. Supabase's restore guide notes that custom roles may need password resets and that managed-schema customisations may need a separate diff/migration process. Stop on any unexpected ownership, privilege, extension, or SQL error. Do not bypass an error by granting broad privileges or disabling security controls.
 
 ### 5.3 Post-restore validation checklist
 
 - [ ] Verified that the target project ref and database host are not production.
-- [ ] Restore commands exited successfully with \`ON_ERROR_STOP\`; logs contain no credentials or personal data.
+- [ ] Restore commands exited successfully with `ON_ERROR_STOP`; logs contain no credentials or personal data.
 - [ ] Schema/table/view inventory matches the expected source inventory.
 - [ ] Constraints, foreign keys, unique indexes, non-unique indexes, and extension dependencies are present.
 - [ ] RLS enablement, force-RLS state, policy definitions, function ownership/ACLs, SECURITY DEFINER status/search paths, and trigger definitions match the approved snapshot.
-- [ ] The \`supabase_migrations\` history matches the backup manifest and the source ledger captured at backup time.
+- [ ] The `supabase_migrations` history matches the backup manifest and the source ledger captured at backup time.
 - [ ] Aggregate row counts for approved critical tables match. Do not print user-level rows or identities.
 - [ ] Database roles and grants are correct; custom role passwords are rotated/reset securely.
 - [ ] Auth user recovery has been separately demonstrated with a designated test account using the approved method. A successful database restore alone does not satisfy this check.
@@ -246,7 +246,7 @@ A restore drill is successful only after these checks are evidenced. Merely writ
 
 ## 7. Rollback and escalation
 
-- The existing file \`supabase/rollback/20261028_reapply_rejected_registration.rollback.sql\` reverses the proposed registration RPC/trigger function change only. It does not restore table rows, Auth accounts, Storage objects, or the entire database. Review its preconditions before ever using it.
+- The existing file `supabase/rollback/20261028_reapply_rejected_registration.rollback.sql` reverses the proposed registration RPC/trigger function change only. It does not restore table rows, Auth accounts, Storage objects, or the entire database. Review its preconditions before ever using it.
 - For a failed database migration, use the migration-specific rollback only when it is demonstrably safe and reviewed; otherwise use an isolated restore/recovery plan.
 - Production restore, PITR enablement, plan changes, creation of billable resources, S3 configuration changes, and any command with a production write path require explicit project-owner approval.
 - The operator performing a restore must be authorised for the source and target project. The connected integration did not expose role membership or backup/restore permissions. The owner must verify those roles in the Supabase Dashboard before execution.
@@ -276,8 +276,9 @@ Until those checks pass, Phase 0 remains **PARTIALLY COMPLETE** and production d
 
 - [Supabase Database Backups](https://supabase.com/docs/guides/platform/backups)
 - [Supabase Backup and Restore using the CLI](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
-- [Supabase CLI: \`db dump\`](https://supabase.com/docs/reference/cli/supabase-db-dump)
+- [Supabase CLI: `db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump)
 - [Supabase Restore to a New Project](https://supabase.com/docs/guides/platform/clone-project)
 - [Supabase Storage: Download Objects](https://supabase.com/docs/guides/storage/management/download-objects)
 - [Supabase CLI: Preview Branches](https://supabase.com/docs/reference/cli/supabase-branches)
+
 
