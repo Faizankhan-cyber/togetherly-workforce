@@ -66,7 +66,12 @@ BEGIN
     IF NOT v_is_admin_ctx THEN
       IF v_is_self_reapply THEN
         IF NEW.status IS DISTINCT FROM 'pending'
-           OR NEW.email IS DISTINCT FROM OLD.email
+           OR NEW.email IS DISTINCT FROM (
+             SELECT pg_catalog.btrim(u.email)
+             FROM auth.users AS u
+             WHERE u.id = auth.uid()
+               AND u.email_confirmed_at IS NOT NULL
+           )
            OR NEW.assigned_role IS NOT NULL
            OR NEW.assigned_department IS NOT NULL
            OR NEW.assigned_job_title IS NOT NULL

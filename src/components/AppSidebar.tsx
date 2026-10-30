@@ -150,7 +150,6 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
     ? (employees.find((employee) => employee.authUserId === user.id) ?? mappedEmployee)
     : null;
   const profile = user ? authenticatedProfile : demoProfile;
-  const navItems = employeeNavItems;
   const pendingCount = submissions.filter((s) => s.status === 'pending-verification').length;
   // Visible to authenticated users whose verified database-backed system role is 'admin'
   // (and visible as a locked gateway link when in unauthenticated Demo Mode so users can access admin sign-in).

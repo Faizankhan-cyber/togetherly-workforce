@@ -76,7 +76,7 @@ export function ScenarioSimulatorPage() {
       setActiveScenarioId(defaults[0]?.id ?? '');
     }
     setLoadedScenarioKey(scenarioStorageKey);
-  }, [scenarioStorageKey, employees.length, projects.length]);
+  }, [scenarioStorageKey, employees, projects]);
 
   // Persist only after the correct account's scenario set has been restored.
   useEffect(() => {

@@ -12,3 +12,16 @@ vitest.config.cjs.timestamp-*.mjs
 vitest.config.ts.timestamp-*.mjs
 vitest.config.mts.timestamp-*.mjs
 vitest.config.cts.timestamp-*.mjs
+
+# Private database backup artifacts must never be committed.
+/backups/
+/backup/
+/.private-backups/
+/private-backups/
+*.dump
+*.dump.gz
+*.backup
+*.backup.gz
+*.sql.gz
+
+dist/

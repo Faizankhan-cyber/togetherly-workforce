@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowUpRight, BriefcaseBusiness, ExternalLink, FileCheck2, Plus, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowUpRight, ExternalLink, FileCheck2, Plus, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
 import { ProfileBuilder } from '@/components/ProfileBuilder';
