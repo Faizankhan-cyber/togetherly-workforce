@@ -101,8 +101,8 @@ The command structure below follows the official Supabase CLI backup guide. Repl
 set -euo pipefail
 umask 077
 
-: "\${OLD_DB_URL:?Set OLD_DB_URL securely from the verified source project's Connect panel}"
-: "\${BACKUP_DIR:?Set BACKUP_DIR to an approved private local backup directory}"
+: "${OLD_DB_URL:?Set OLD_DB_URL securely from the verified source project's Connect panel}"
+: "${BACKUP_DIR:?Set BACKUP_DIR to an approved private local backup directory}"
 
 mkdir -m 700 -p "$BACKUP_DIR"
 
@@ -148,7 +148,7 @@ Do not include backup files, hashes that identify individual records, or sensiti
 
 ### 4.4 Storage files, Auth, and project configuration
 
-Database backups do **not** include the binary objects stored via Supabase Storage. The existing project inventory identifies the private buckets \`employee-profile-evidence\` and \`training-evidence\`. Back up the actual files from each bucket separately using a supported Supabase Storage CLI workflow or a reviewed S3-compatible client workflow. Preserve object paths, MIME type, cache-control and other required metadata. Verify file counts and checksums in the protected backup destination. Do not enable the S3 protocol or create S3 credentials without approval.
+Database backups do **not** include the binary objects stored via Supabase Storage. The CLI logical-dump route above also excludes the managed storage schema, so the storage.buckets and storage.objects metadata rows are not contained in those SQL files. Restore bucket definitions and object metadata separately. The existing project inventory identifies the private buckets `employee-profile-evidence` and `training-evidence`. Back up the actual files from each bucket separately using a supported Supabase Storage CLI workflow or a reviewed S3-compatible client workflow. Preserve object paths, MIME type, cache-control and other required metadata. Verify file counts and checksums in the protected backup destination. Do not enable the S3 protocol or create S3 credentials without approval.
 
 The Supabase CLI logical database dump excludes the managed Auth schema. A full Auth-user restore is not established by the current Free-plan CLI route. Have the project owner confirm a supported, tested Auth recovery method with Supabase. The paid Restore-to-a-new-project feature documents that Auth user data is transferred, but it still requires paid-plan eligibility and source physical backups and does not copy Storage objects/settings or project configuration.
 
@@ -174,7 +174,7 @@ A human project owner must provision or identify a separate, disposable non-prod
 For the existing preview branch, the Supabase CLI exposes a branch-details command:
 
 \`\`\`bash
-supabase branches get security-remediation-test --project-ref yabogftzcmqeybjnoazy
+supabase --experimental branches get security-remediation-test --project-ref yabogftzcmqeybjnoazy
 \`\`\`
 
 Use it only as a read-only inspection. Treat all connection output as sensitive. Record only whether the returned database reference and host are distinct from production; do not copy credentials into logs or Git. Until a distinct target is confirmed, this branch remains **unverified and prohibited for restore testing**.
@@ -190,8 +190,8 @@ The following manual logical restore structure is documented by Supabase. Run it
 \`\`\`bash
 set -euo pipefail
 
-: "\${NEW_DB_URL:?Set NEW_DB_URL from the verified isolated target's Connect panel}"
-: "\${BACKUP_DIR:?Set BACKUP_DIR to the verified private backup directory}"
+: "${NEW_DB_URL:?Set NEW_DB_URL from the verified isolated target's Connect panel}"
+: "${BACKUP_DIR:?Set BACKUP_DIR to the verified private backup directory}"
 
 psql \
   --single-transaction \
@@ -280,3 +280,4 @@ Until those checks pass, Phase 0 remains **PARTIALLY COMPLETE** and production d
 - [Supabase Restore to a New Project](https://supabase.com/docs/guides/platform/clone-project)
 - [Supabase Storage: Download Objects](https://supabase.com/docs/guides/storage/management/download-objects)
 - [Supabase CLI: Preview Branches](https://supabase.com/docs/reference/cli/supabase-branches)
+
