@@ -184,7 +184,7 @@ export function WorkloadPlannerPage() {
       if (sugg.length >= 3) break;
     }
     return sugg;
-  }, [overloaded, underutilized, simulatedProjects, projects, employees, getSimulatedUtilization]);
+  }, [overloaded, underutilized, simulatedProjects, getSimulatedUtilization]);
 
   const assignmentRisks = useMemo(() => {
     const risks = new Set<string>();
