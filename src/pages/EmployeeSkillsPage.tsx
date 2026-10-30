@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { SkillTag } from '@/components/SkillTag';
 import { useData } from '@/context/DataContext';
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
-import { getEmployeeProjects, getSkillName } from '@/utils';
+import { getEmployeeProjects } from '@/utils';
 
 const levelLabels: Record<number, string> = { 1: 'Beginner', 2: 'Developing', 3: 'Proficient', 4: 'Advanced', 5: 'Expert' };
 

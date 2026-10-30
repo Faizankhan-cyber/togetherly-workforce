@@ -41,7 +41,7 @@ import {
 import type { ProjectRequirement, TrainingSubmission } from '@/types';
 
 export function EmployeeDashboardPage() {
-  const { employees, projects, settings, submissions } = useData();
+  const { projects, settings, submissions } = useData();
   const employee = useCurrentEmployee();
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<TrainingSubmission | null>(null);

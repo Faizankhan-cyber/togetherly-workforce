@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -70,11 +70,11 @@ export function WorkloadPlannerPage() {
     return sim;
   }, [projects, simulations]);
 
-  function getSimulatedUtilization(empId: string): number {
+  const getSimulatedUtilization = useCallback((empId: string): number => {
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return 0;
     return calculateEmployeeUtilization(empId, simulatedProjects, emp.targetUtilization);
-  }
+  }, [employees, simulatedProjects]);
 
   function getCurrentUtilization(empId: string): number {
     const emp = employees.find((e) => e.id === empId);
@@ -184,7 +184,7 @@ export function WorkloadPlannerPage() {
       if (sugg.length >= 3) break;
     }
     return sugg;
-  }, [overloaded, underutilized, simulatedProjects, projects, employees]);
+  }, [overloaded, underutilized, simulatedProjects, projects, employees, getSimulatedUtilization]);
 
   const assignmentRisks = useMemo(() => {
     const risks = new Set<string>();

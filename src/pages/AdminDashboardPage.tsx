@@ -24,7 +24,6 @@ import {
   UserCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { Avatar } from '@/components/Avatar';
 import { PageHeader } from '@/components/PageHeader';
 import { TinyFishLaunchCard } from '@/components/TinyFishLaunchCard';
 import { RoleDashboardHero } from '@/components/RoleDashboardHero';

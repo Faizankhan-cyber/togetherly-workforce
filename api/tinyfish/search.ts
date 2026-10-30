@@ -19,7 +19,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return res.status(503).json({ error: 'Could not verify organization access right now. Please retry.' });
   }
   if ('status' in access) return res.status(access.status).json({ error: access.error });
-  const { token } = access;
   const tinyFishKey = process.env.TINYFISH_API_KEY;
   if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the server function environment.' });
   try {

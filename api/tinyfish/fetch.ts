@@ -34,7 +34,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed. Use POST.' }); }
   const access = await authorizeTinyFishManager(getHeader(req, 'authorization'));
   if ('status' in access) return res.status(access.status).json({ error: access.error });
-  const { token } = access;
   const tinyFishKey = process.env.TINYFISH_API_KEY;
   if (!tinyFishKey) return res.status(503).json({ error: 'TINYFISH_API_KEY is missing from the server function environment.' });
   try {

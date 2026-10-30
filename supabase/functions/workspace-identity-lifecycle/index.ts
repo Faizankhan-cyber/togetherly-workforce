@@ -5,6 +5,11 @@ const corsHeaders = {
 };
 
 type LifecycleAction = "offboard" | "cleanup";
+type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -13,18 +18,21 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-async function responseBody(response: Response): Promise<any> {
+async function responseBody(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) return {};
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as unknown;
   } catch {
     return { message: text };
   }
 }
 
-function errorMessage(body: any, fallback: string) {
-  return String(body?.message || body?.msg || body?.error_description || body?.error || fallback);
+function errorMessage(body: unknown, fallback: string): string {
+  if (!isJsonRecord(body)) return fallback;
+  const message = [body.message, body.msg, body.error_description, body.error]
+    .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return message ?? fallback;
 }
 
 function placeholderEmail(employeeId: string) {
@@ -72,14 +80,15 @@ Deno.serve(async (request: Request) => {
       headers: userRequestHeaders(anonKey, authorization),
     });
     const userData = await responseBody(userResponse);
-    if (!userResponse.ok || !userData?.id) {
+    if (!userResponse.ok || !isJsonRecord(userData) || typeof userData.id !== "string") {
       return jsonResponse({ success: false, error: "The caller's session is invalid or expired." }, 401);
     }
-    const userId = String(userData.id);
+    const userId = userData.id;
 
-    const body = await request.json().catch(() => ({}));
-    const action = body?.action as LifecycleAction | undefined;
-    const employeeId = typeof body?.employeeId === "string" ? body.employeeId.trim() : "";
+    const rawBody: unknown = await request.json().catch(() => ({}));
+    const body = isJsonRecord(rawBody) ? rawBody : {};
+    const action = body.action === "offboard" || body.action === "cleanup" ? body.action : undefined;
+    const employeeId = typeof body.employeeId === "string" ? body.employeeId.trim() : "";
     if (!employeeId || (action !== "offboard" && action !== "cleanup")) {
       return jsonResponse({ success: false, error: "A valid action and employeeId are required." }, 400);
     }
@@ -92,11 +101,11 @@ Deno.serve(async (request: Request) => {
       { headers: serviceHeaders },
     );
     const actorRows = await responseBody(actorResponse);
-    if (!actorResponse.ok || !Array.isArray(actorRows) || !actorRows[0]) {
+    if (!actorResponse.ok || !Array.isArray(actorRows) || !isJsonRecord(actorRows[0])) {
       return jsonResponse({ success: false, error: "An active linked workspace profile is required." }, 403);
     }
     const actor = actorRows[0];
-    const actorRole = String(actor.system_role || "");
+    const actorRole = typeof actor.system_role === "string" ? actor.system_role : "";
 
     if (action === "cleanup" && actorRole !== "admin") {
       return jsonResponse({ success: false, error: "Only an active administrator can retry Auth cleanup." }, 403);
@@ -110,7 +119,7 @@ Deno.serve(async (request: Request) => {
       { headers: serviceHeaders },
     );
     const targetRows = await responseBody(targetResponse);
-    if (!targetResponse.ok || !Array.isArray(targetRows) || !targetRows[0]) {
+    if (!targetResponse.ok || !Array.isArray(targetRows) || !isJsonRecord(targetRows[0])) {
       return jsonResponse({ success: false, error: "The employee record was not found." }, 404);
     }
     const target = targetRows[0];
@@ -231,7 +240,8 @@ async function deleteAndUnlinkAuthUser(
     { headers: adminHeaders },
   );
   const verifyRows = await responseBody(verifyResponse);
-  if (verifyResponse.ok && Array.isArray(verifyRows) && verifyRows[0]?.employment_status === "offboarded" && !verifyRows[0]?.auth_user_id) {
+  const verifiedEmployee = Array.isArray(verifyRows) && isJsonRecord(verifyRows[0]) ? verifyRows[0] : null;
+  if (verifyResponse.ok && verifiedEmployee?.employment_status === "offboarded" && !verifiedEmployee.auth_user_id) {
     return { success: true };
   }
   return { success: false, error: "Auth cleanup could not verify that the historical account was unlinked. Retry from Admin Access." };
