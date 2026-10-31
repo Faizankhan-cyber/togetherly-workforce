@@ -219,7 +219,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Import legacy browser data into the shared workspace for managers/admins.
     // This is idempotent: duplicate project identities are filtered before insert,
     // and legacy sequential IDs are replaced with stable content-derived IDs.
-    const canManageProjects = ['admin', 'manager'].includes(mappedEmployee.systemRole);
+    const canManageProjects = mappedEmployee.systemRole === 'admin' || mappedEmployee.systemRole === 'manager';
     if (canManageProjects && !projectImportInFlightRef.current) {
       projectImportInFlightRef.current = true;
       try {
