@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -10,6 +10,8 @@ import {
   UserRound,
   BookOpen,
   BriefcaseBusiness,
+  Camera,
+  LoaderCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { Reveal } from '@/components/Reveal';
@@ -18,6 +20,7 @@ import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
+import { supabase } from '@/lib/supabase';
 
 type EmployeePreferences = {
   projectUpdates: boolean;
@@ -57,6 +60,30 @@ export function EmployeeSettingsPage() {
   const preferenceKey = `togetherly:employee-preferences:${user?.id ?? employee?.id ?? 'demo'}`;
   const [preferences, setPreferences] = useState<EmployeePreferences>(() => readPreferences(preferenceKey));
   const [saved, setSaved] = useState(true);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(employee?.avatarUrl ?? null);
+
+  async function uploadAvatar(file?: File) {
+    if (!file || !employee || !user || !supabase) return;
+    if (!file.type.startsWith('image/')) { showToast('error', 'Choose an image file.'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('error', 'Profile pictures must be 5 MB or smaller.'); return; }
+    setUploadingAvatar(true);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${user.id}/avatar-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from('profile-avatars').upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('profile-avatars').getPublicUrl(path);
+      const avatarUrl = `${data.publicUrl}?v=${Date.now()}`;
+      const { error: updateError } = await supabase.from('employees').update({ avatar_url: data.publicUrl }).eq('id', employee.id).eq('auth_user_id', user.id);
+      if (updateError) throw updateError;
+      setAvatarPreview(avatarUrl);
+      showToast('success', 'Profile picture updated.');
+      window.dispatchEvent(new Event('togetherly:profile-updated'));
+    } catch (error) { showToast('error', error instanceof Error ? error.message : 'Could not upload profile picture.'); }
+    finally { setUploadingAvatar(false); if (avatarInputRef.current) avatarInputRef.current.value = ''; }
+  }
 
   const preferenceItems: { key: keyof EmployeePreferences; label: string; description: string; icon: typeof Bell }[] = [
     { key: 'projectUpdates', label: 'Project updates', description: 'Keep project and assignment updates enabled in your preferences.', icon: BriefcaseBusiness },
@@ -125,7 +152,7 @@ export function EmployeeSettingsPage() {
                 <h2 className="text-sm font-bold text-text-primary">My Profile</h2>
               </div>
               <div className="flex items-center gap-3 py-5">
-                <Avatar name={employee.name} color={employee.avatarColor} size="lg" />
+                <div className="relative shrink-0"><Avatar name={employee.name} color={employee.avatarColor} size="lg" imageUrl={avatarPreview ?? undefined} /><button type="button" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="absolute -bottom-1 -right-1 rounded-full border border-base-border bg-surface p-1.5 text-text-primary shadow" aria-label="Upload profile picture">{uploadingAvatar ? <LoaderCircle size={13} className="animate-spin" /> : <Camera size={13} />}</button><input ref={avatarInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(event) => void uploadAvatar(event.target.files?.[0])} /></div>
                 <div className="min-w-0">
                   <div className="text-base font-bold text-text-primary truncate">{employee.name}</div>
                   <div className="text-xs text-text-secondary">{employee.role}</div>

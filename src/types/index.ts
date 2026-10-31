@@ -168,6 +168,7 @@ export interface Employee {
   department: string;
   email: string;
   avatarColor: string;
+  avatarUrl?: string | null;
   availability: AvailabilityStatus;
   yearsExperience: number;
   experienceYears?: number; // alias
