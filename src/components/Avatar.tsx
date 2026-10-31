@@ -3,9 +3,10 @@ interface AvatarProps {
   color?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  imageUrl?: string;
 }
 
-export function Avatar({ name, color = '#0078D4', size = 'md', className = '' }: AvatarProps) {
+export function Avatar({ name, color = '#0078D4', size = 'md', className = '', imageUrl }: AvatarProps) {
   const initials = (name || '?')
     .split(' ')
     .filter(Boolean)
@@ -29,7 +30,7 @@ export function Avatar({ name, color = '#0078D4', size = 'md', className = '' }:
       title={name}
       aria-label={name}
     >
-      <span>{initials}</span>
+      {imageUrl ? <img src={imageUrl} alt={name} className="h-full w-full rounded-full object-cover" /> : <span>{initials}</span>}
     </div>
   );
 }
