@@ -475,7 +475,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return next;
     });
     databaseEmployeeIdsRef.current = fetchedEmployeeIds;
-  }, [user, identityStatus, mappedEmployee]);
+  }, [user, identityStatus, mappedEmployee, showToast]);
 
   useEffect(() => {
     void refreshVerifiedDirectory();
@@ -662,7 +662,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newProj: Project = { ...projData, id: projData.id || `proj-${crypto.randomUUID()}` };
     const identityKey = getProjectIdentityKey(newProj);
     if (projectCreationKeysRef.current.has(identityKey) || projects.some((project) => getProjectIdentityKey(project) === identityKey)) {
-      showToast('warning', `A matching project already exists: \"${newProj.name}\".`);
+      showToast('warning', `A matching project already exists: "${newProj.name}".`);
       return;
     }
 
@@ -681,7 +681,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: String(project.description ?? ''),
           department: String(project.department),
         }) === identityKey)) {
-          showToast('warning', `A matching project already exists in the shared workspace: \"${newProj.name}\".`);
+          showToast('warning', `A matching project already exists in the shared workspace: "${newProj.name}".`);
           await refreshProjects();
           return;
         }
@@ -694,7 +694,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProjects((previous) => dedupeProjects([...previous, newProj]));
       }
       addActivity(`Created new project: ${newProj.name}`, 'project');
-      showToast('success', `Project \"${newProj.name}\" created successfully.`);
+      showToast('success', `Project "${newProj.name}" created successfully.`);
     } finally {
       projectCreationKeysRef.current.delete(identityKey);
     }
@@ -716,7 +716,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const proj = projects.find((p) => p.id === id);
     if (hasMappedAuthIdentity && supabase) { const { error } = await supabase.from('projects').delete().eq('id', id); if (error) { showToast('error', `Project deletion failed: ${error.message}`); return; } await refreshProjects(); }
     else setProjects((prev) => prev.filter((p) => p.id !== id));
-    if (proj) { addActivity(`Deleted project: ${proj.name}`, 'project'); showToast('info', `Project \"${proj.name}\" removed.`); }
+    if (proj) { addActivity(`Deleted project: ${proj.name}`, 'project'); showToast('info', `Project "${proj.name}" removed.`); }
   };
 
   const assignEmployeeToProject = (employeeId: string, projectId: string) => {
@@ -771,8 +771,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) { showToast('error', `Course assignment failed: ${error.message}`); return; }
       await refreshVerifiedDirectory();
     } else setEmployees((prev) => prev.map((item) => item.id === employeeId ? { ...item, trainingAssignments: [...item.trainingAssignments, newTrn] } : item));
-    addActivity(`Assigned \"${newTrn.courseName}\" to ${emp.name}`, 'training');
-    showToast('success', `Assigned \"${newTrn.courseName}\" to ${emp.name}.`);
+    addActivity(`Assigned "${newTrn.courseName}" to ${emp.name}`, 'training');
+    showToast('success', `Assigned "${newTrn.courseName}" to ${emp.name}.`);
   };
 
   const updateTrainingAssignment = (
