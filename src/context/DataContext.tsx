@@ -401,11 +401,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('auth_user_id', user.id)
           .eq('employment_status', 'active');
 
-    if (employeeResult.error || !employeeResult.data) return;
+    if (employeeResult.error || !employeeResult.data) {
+      showToast('error', 'Could not load employees from the database. Check your access or connection and try again.');
+      return;
+    }
+
+    // Employee visibility must not depend on optional training or skill data.
+    // Keep the roster available if either supporting query fails, and report the
+    // failure without returning before setEmployees runs.
     const assignmentResult = await supabase.from('training_assignments').select('id,employee_id,course_name,provider,skill_id,status,progress,reason,assigned_date,completed_date,verification_status,submission_id');
-    if (assignmentResult.error) { showToast('error', 'Could not load course assignments from the database.'); return; }
     const assignmentsByEmployee = new Map<string, TrainingAssignment[]>();
-    for (const row of assignmentResult.data ?? []) { const key = String(row.employee_id); const list = assignmentsByEmployee.get(key) ?? []; list.push({ id: String(row.id), courseName: String(row.course_name), provider: String(row.provider ?? ''), skillId: String(row.skill_id ?? ''), status: row.status as TrainingAssignment['status'], progress: Number(row.progress ?? 0), reason: row.reason ? String(row.reason) : undefined, assignedDate: row.assigned_date ? String(row.assigned_date) : undefined, completedDate: row.completed_date ? String(row.completed_date) : undefined, verificationStatus: row.verification_status as TrainingAssignment['verificationStatus'], submissionId: row.submission_id ? String(row.submission_id) : undefined }); assignmentsByEmployee.set(key, list); }
+    if (assignmentResult.error) {
+      showToast('error', 'Employees loaded, but course assignments could not be loaded.');
+    } else {
+      for (const row of assignmentResult.data ?? []) { const key = String(row.employee_id); const list = assignmentsByEmployee.get(key) ?? []; list.push({ id: String(row.id), courseName: String(row.course_name), provider: String(row.provider ?? ''), skillId: String(row.skill_id ?? ''), status: row.status as TrainingAssignment['status'], progress: Number(row.progress ?? 0), reason: row.reason ? String(row.reason) : undefined, assignedDate: row.assigned_date ? String(row.assigned_date) : undefined, completedDate: row.completed_date ? String(row.completed_date) : undefined, verificationStatus: row.verification_status as TrainingAssignment['verificationStatus'], submissionId: row.submission_id ? String(row.submission_id) : undefined }); assignmentsByEmployee.set(key, list); }
+    }
 
     const skillResult = canReview
       ? await supabase.from('employee_skills').select('employee_id, skill_id, level')
@@ -414,15 +424,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('employee_id, skill_id, level')
           .eq('employee_id', mappedEmployee.id);
 
-    // Fail closed rather than treating stale local/claimed skills as verified when
-    // the canonical skill query fails.
-    if (skillResult.error || !skillResult.data) return;
-
+    // Never trust stale local/claimed skills when the canonical query fails,
+    // but do not hide the employee directory because of a skills-query failure.
     const skillsByEmployee = new Map<string, Employee['skills']>();
-    for (const skill of skillResult.data) {
-      const current = skillsByEmployee.get(skill.employee_id) ?? [];
-      current.push({ skillId: skill.skill_id, level: Number(skill.level) });
-      skillsByEmployee.set(skill.employee_id, current);
+    if (skillResult.error || !skillResult.data) {
+      showToast('error', 'Employees loaded, but verified skills could not be loaded.');
+    } else {
+      for (const skill of skillResult.data) {
+        const current = skillsByEmployee.get(skill.employee_id) ?? [];
+        current.push({ skillId: skill.skill_id, level: Number(skill.level) });
+        skillsByEmployee.set(skill.employee_id, current);
+      }
     }
 
     const fetchedEmployeeIds = new Set(employeeResult.data.map((row) => String(row.id)));
