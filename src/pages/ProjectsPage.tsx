@@ -18,8 +18,9 @@ import { Avatar } from '@/components/Avatar';
 import { Reveal } from '@/components/Reveal';
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { useData } from '@/context/DataContext';
-import { getProjectStaffingProgress, getSkillName, formatDate, daysUntil } from '@/utils';
+import { getProjectStaffingProgress, getSkillName, formatDate, daysUntil, getEmployeeProjects } from '@/utils';
 import { skillsList } from '@/data/mockData';
+import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
 import type { Project, ProjectStatus, ProjectRequirement } from '@/types';
 
 export function ProjectsPage() {
@@ -28,6 +29,8 @@ export function ProjectsPage() {
   const stateProjectId = (location.state as { projectId?: string } | null)?.projectId;
 
   const { projects, employees, addProject, updateProject, deleteProject, showToast } = useData();
+  const currentEmployee = useCurrentEmployee();
+  const isEmployeeView = currentEmployee?.systemRole === 'employee';
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -152,6 +155,32 @@ export function ProjectsPage() {
   function updateSkillLevelInForm(skillId: string, minLevel: number) {
     setFormSkills(
       formSkills.map((s) => (s.skillId === skillId ? { ...s, minLevel } : s))
+    );
+  }
+
+  if (isEmployeeView && currentEmployee) {
+    const myProjects = getEmployeeProjects(currentEmployee.id, projects);
+    const active = myProjects.filter((project) => project.status === 'active');
+    const upcoming = myProjects.filter((project) => project.deadline && daysUntil(project.deadline) >= 0 && project.status !== 'completed').sort((a, b) => daysUntil(a.deadline) - daysUntil(b.deadline));
+    const overdue = myProjects.filter((project) => project.deadline && daysUntil(project.deadline) < 0 && project.status !== 'completed');
+    return (
+      <div className="space-y-5">
+        <PageHeader title="My Projects" description="Your assigned work, deadlines, team contacts, and the skills each project needs." breadcrumb={['Home', 'My Projects']} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[{ label: 'Assigned projects', value: myProjects.length, note: 'All project statuses' }, { label: 'Active now', value: active.length, note: 'Currently in progress' }, { label: 'Upcoming deadlines', value: upcoming.length, note: 'Due today or later' }, { label: 'Past deadline', value: overdue.length, note: 'Check in with your lead' }].map((metric) => (
+            <div key={metric.label} className="card p-4"><p className="text-xs text-text-secondary">{metric.label}</p><p className="mt-2 text-2xl font-semibold text-text-primary">{metric.value}</p><p className="mt-1 text-xs text-text-secondary">{metric.note}</p></div>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-base font-semibold text-text-primary">Your project portfolio</h2><p className="mt-1 text-xs text-text-secondary">Only projects assigned to your employee profile are shown here.</p></div><div className="relative w-full sm:w-72"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your projects..." className="input-field w-full pl-8 text-xs"/></div></div>
+        {myProjects.filter((p) => search === '' || `${p.name} ${p.description} ${p.department}`.toLowerCase().includes(search.toLowerCase())).length === 0 ? <div className="card p-10 text-center"><FolderKanban className="mx-auto text-text-secondary" size={28}/><h3 className="mt-3 font-semibold text-text-primary">No projects assigned yet</h3><p className="mt-1 text-sm text-text-secondary">When a project lead assigns you to a project, its scope and deadlines will appear here.</p></div> : <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {myProjects.filter((p) => search === '' || `${p.name} ${p.description} ${p.department}`.toLowerCase().includes(search.toLowerCase())).map((project) => {
+            const team = employees.filter((employee) => project.assignedEmployeeIds.includes(employee.id));
+            const days = project.deadline ? daysUntil(project.deadline) : null;
+            const staffing = project.targetTeamSize > 0 ? Math.round((project.assignedEmployeeIds.length / project.targetTeamSize) * 100) : 0;
+            return <article key={project.id} className="card p-5 space-y-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-medium uppercase tracking-wide text-text-secondary">{project.department} · {project.priority ?? 'medium'} priority</p><h3 className="mt-1 text-lg font-semibold text-text-primary">{project.name}</h3></div><StatusBadge status={project.status}/></div><p className="text-sm leading-6 text-text-secondary">{project.description || 'No project description has been added yet.'}</p><div className="grid grid-cols-2 gap-3"><div className="rounded-lg bg-surface-secondary p-3"><p className="text-[11px] text-text-secondary">Deadline</p><p className="mt-1 text-sm font-semibold text-text-primary">{project.deadline ? formatDate(project.deadline) : 'Not set'}</p><p className={`mt-1 text-xs ${days !== null && days < 0 && project.status !== 'completed' ? 'text-red-500' : 'text-text-secondary'}`}>{project.status === 'completed' ? 'Completed' : days === null ? 'No deadline set' : days < 0 ? `${Math.abs(days)} days overdue` : days === 0 ? 'Due today' : `${days} days remaining`}</p></div><div className="rounded-lg bg-surface-secondary p-3"><p className="text-[11px] text-text-secondary">Team staffing</p><p className="mt-1 text-sm font-semibold text-text-primary">{project.assignedEmployeeIds.length} / {project.targetTeamSize} people</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-base-border"><div className="h-full rounded-full bg-accent" style={{width:`${Math.min(100, staffing)}%`}}/></div></div></div><div><p className="mb-2 text-xs font-semibold text-text-primary">Team members</p><div className="flex flex-wrap gap-2">{team.map((person) => <div key={person.id} className="flex items-center gap-2 rounded-full border border-base-border px-2 py-1"><span className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white" style={{backgroundColor:person.avatarColor}}>{person.name.split(/\s+/).map((part)=>part[0]).slice(0,2).join('')}</span><span className="text-xs text-text-secondary">{person.name}{person.id === currentEmployee.id ? ' (you)' : ''}</span></div>)}</div></div><div><p className="mb-2 text-xs font-semibold text-text-primary">Skills used or needed</p><div className="flex flex-wrap gap-2">{project.requiredSkills.length ? project.requiredSkills.map((requirement) => <span key={requirement.skillId} className="rounded-md border border-base-border px-2 py-1 text-xs text-text-secondary">{getSkillName(requirement.skillId)} · Level {requirement.minLevel}{requirement.importance === 'required' ? ' · Required' : ' · Preferred'}</span>) : <span className="text-xs text-text-secondary">No skills listed.</span>}</div></div><button className="btn-secondary w-full justify-center" onClick={() => navigate('/workload-planner', { state: { projectId: project.id } })}>View my workload details <GitCompareArrows size={14}/></button></article>;
+          })}
+        </div>}
+      </div>
     );
   }
 

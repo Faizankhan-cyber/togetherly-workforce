@@ -22,8 +22,12 @@ import {
   getUtilizationStatus,
   getEmployeeProjects,
   exportToCsv,
+  daysUntil,
+  formatDate,
+  getSkillName,
 } from '@/utils';
 import type { Employee } from '@/types';
+import { useCurrentEmployee } from '@/hooks/useCurrentEmployee';
 
 interface Simulation {
   employeeId: string;
@@ -33,6 +37,8 @@ interface Simulation {
 
 export function WorkloadPlannerPage() {
   const { employees, projects, settings, assignEmployeeToProject, unassignEmployeeFromProject, showToast, addActivity } = useData();
+  const currentEmployee = useCurrentEmployee();
+  const isEmployeeView = currentEmployee?.systemRole === 'employee';
   const [deptFilter, setDeptFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -204,6 +210,27 @@ export function WorkloadPlannerPage() {
     }
     return Array.from(risks);
   }, [simulations, employees, simulatedProjects]);
+
+  if (isEmployeeView && currentEmployee) {
+    const myProjects = getEmployeeProjects(currentEmployee.id, projects).filter((project) => project.status !== 'completed');
+    const myUtilization = calculateEmployeeUtilization(currentEmployee.id, projects, currentEmployee.targetUtilization);
+    const loadStatus = getUtilizationStatus(myUtilization, settings);
+    const deadlines = myProjects.filter((project) => project.deadline).sort((a, b) => daysUntil(a.deadline) - daysUntil(b.deadline));
+    const activeLoad = myProjects.filter((project) => project.status === 'active');
+    const assignedSkills = new Set(myProjects.flatMap((project) => project.requiredSkills.map((skill) => skill.skillId)));
+    const mySkillGaps = myProjects.flatMap((project) => project.requiredSkills.filter((requirement) => { const skill = currentEmployee.skills.find((item) => item.skillId === requirement.skillId); return !skill || skill.level < requirement.minLevel; }).map((requirement) => ({ project, requirement })));
+    return (
+      <div className="space-y-5">
+        <PageHeader title="My Workload" description="Understand your current project load, upcoming deadlines, and where to focus next." breadcrumb={['Home', 'My Workload']} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[{label:'Estimated workload',value:`${myUtilization}%`,note:`Target: ${currentEmployee.targetUtilization}%`},{label:'Active projects',value:activeLoad.length,note:'Projects currently in progress'},{label:'Open assignments',value:myProjects.length,note:'Excludes completed projects'},{label:'Skill gaps to review',value:mySkillGaps.length,note:'Compared with project requirements'}].map((metric)=><div key={metric.label} className="card p-4"><p className="text-xs text-text-secondary">{metric.label}</p><p className="mt-2 text-2xl font-semibold text-text-primary">{metric.value}</p><p className="mt-1 text-xs text-text-secondary">{metric.note}</p></div>)}
+        </div>
+        <section className="card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-text-primary">Capacity overview</h2><p className="mt-1 text-xs text-text-secondary">An estimate based on active project assignments, not timesheet hours.</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${loadStatus === 'overloaded' ? 'bg-red-500/10 text-red-500' : loadStatus === 'underutilized' ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>{loadStatus === 'overloaded' ? 'Above target' : loadStatus === 'underutilized' ? 'Capacity available' : 'Balanced workload'}</span></div><div className="mt-4 h-3 overflow-hidden rounded-full bg-base-border"><div className={`h-full rounded-full ${myUtilization > 100 ? 'bg-red-500' : myUtilization >= 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{width:`${Math.min(100,myUtilization)}%`}}/></div><div className="mt-2 flex justify-between text-xs text-text-secondary"><span>0% allocated</span><span>{myUtilization}% estimated load</span><span>100% capacity</span></div><p className="mt-3 text-xs text-text-secondary">Each active project counts as {ESTIMATED_PROJECT_LOAD_PERCENT}% estimated capacity in the current model. Tell your project lead if this estimate doesn't reflect your actual workload.</p></section>
+        <section className="card overflow-hidden"><div className="border-b border-base-border p-5"><h2 className="font-semibold text-text-primary">Project workload breakdown</h2><p className="mt-1 text-xs text-text-secondary">Deadlines, priority, staffing, and your next action for each assignment.</p></div>{myProjects.length === 0 ? <div className="p-8 text-center text-sm text-text-secondary">You have no open project assignments right now.</div> : <div className="divide-y divide-base-border">{myProjects.map((project)=>{const days=project.deadline?daysUntil(project.deadline):null;const risk=days!==null&&days<0?'Overdue':days!==null&&days<=7?'Due soon':'On track';return <div key={project.id} className="grid grid-cols-1 gap-3 p-5 md:grid-cols-[minmax(0,1.5fr)_1fr_1fr_auto] md:items-center"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-text-primary">{project.name}</h3><span className="rounded px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-secondary border border-base-border">{project.priority ?? 'medium'} priority</span></div><p className="mt-1 text-xs text-text-secondary">{project.department} · {project.status}</p><p className="mt-2 text-sm text-text-secondary">{project.description || 'No scope details provided.'}</p></div><div><p className="text-[11px] text-text-secondary">Deadline</p><p className="mt-1 text-sm font-medium text-text-primary">{project.deadline?formatDate(project.deadline):'Not set'}</p><p className={`mt-1 text-xs ${risk==='Overdue'?'text-red-500':risk==='Due soon'?'text-amber-600':'text-emerald-600'}`}>{project.status==='completed'?'Completed':days===null?'No deadline':days<0?`${Math.abs(days)} days overdue`:days===0?'Due today':`${days} days remaining`}</p></div><div><p className="text-[11px] text-text-secondary">Team & skills</p><p className="mt-1 text-sm text-text-primary">{project.assignedEmployeeIds.length} / {project.targetTeamSize} team members</p><p className="mt-1 text-xs text-text-secondary">{project.requiredSkills.length} skill requirements · {project.requiredSkills.filter((r)=>{const skill=currentEmployee.skills.find((item)=>item.skillId===r.skillId);return !skill||skill.level<r.minLevel;}).length} gaps</p></div><div className="flex md:justify-end"><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${risk==='Overdue'?'bg-red-500/10 text-red-500':risk==='Due soon'?'bg-amber-500/10 text-amber-600':'bg-emerald-500/10 text-emerald-600'}`}>{risk}</span></div></div>})}</div>}</section>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2"><section className="card p-5"><h2 className="font-semibold text-text-primary">Upcoming deadlines</h2><p className="mt-1 text-xs text-text-secondary">Your nearest project dates first.</p><div className="mt-4 space-y-3">{deadlines.slice(0,4).map((project)=><div key={project.id} className="flex items-center justify-between gap-3 rounded-lg border border-base-border p-3"><div><p className="text-sm font-medium text-text-primary">{project.name}</p><p className="mt-1 text-xs text-text-secondary">{formatDate(project.deadline)}</p></div><span className="text-xs text-text-secondary">{daysUntil(project.deadline)<0?`${Math.abs(daysUntil(project.deadline))}d late`:daysUntil(project.deadline)===0?'Today':`${daysUntil(project.deadline)}d left`}</span></div>)}{deadlines.length===0&&<p className="text-sm text-text-secondary">No project deadlines have been set.</p>}</div></section><section className="card p-5"><h2 className="font-semibold text-text-primary">Skill gaps affecting your work</h2><p className="mt-1 text-xs text-text-secondary">Requirements from your assigned projects compared with your recorded skills.</p><div className="mt-4 space-y-3">{mySkillGaps.slice(0,5).map(({project,requirement},index)=><div key={`${project.id}-${requirement.skillId}-${index}`} className="rounded-lg border border-base-border p-3"><p className="text-sm font-medium text-text-primary">{getSkillName(requirement.skillId)}</p><p className="mt-1 text-xs text-text-secondary">{project.name} · needs level {requirement.minLevel}</p></div>)}{mySkillGaps.length===0&&<p className="text-sm text-emerald-600">No recorded skill gaps against your current project requirements.</p>}</div><p className="mt-3 text-[11px] text-text-secondary">{assignedSkills.size} distinct skills are referenced across your open projects.</p></section></div>
+      </div>
+    );
+  }
 
   return (
     <div>
