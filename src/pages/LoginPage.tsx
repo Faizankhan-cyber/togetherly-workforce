@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   Info,
   Server,
   Eye,
