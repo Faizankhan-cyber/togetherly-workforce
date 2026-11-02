@@ -67,8 +67,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_MODE_STORAGE_KEY = 'togetherly_demo_session_active';
-
 const VALID_SYSTEM_ROLES: SystemRole[] = ['employee', 'manager', 'hr', 'admin'];
 
 function isValidSystemRole(val: unknown): val is SystemRole {
@@ -118,12 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const configStatus = getSupabaseConfigStatus();
   const configured = configStatus.isConfigured;
 
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    if (!isSupabaseConfigured()) {
-      return true;
-    }
-    return sessionStorage.getItem(DEMO_MODE_STORAGE_KEY) === 'true';
-  });
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
   // Verify connection against live Supabase Auth endpoint
   const verifyConnection = useCallback(async (): Promise<SupabaseConnectionVerification> => {
@@ -309,8 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(initialSession);
           setUser(initialSession.user);
           setIsDemoMode(false);
-          sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-          await syncUserDatabaseIdentity(initialSession.user);
+              await syncUserDatabaseIdentity(initialSession.user);
         }
         if (isMounted) {
           setIsLoading(false);
@@ -333,8 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === 'SIGNED_IN' && newSession) {
         setIsDemoMode(false);
-        sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-        setAuthError(null);
+          setAuthError(null);
         void syncUserDatabaseIdentity(newSession.user);
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
@@ -364,7 +355,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!currentConfig.isConfigured || !supabase) {
         const err =
           currentConfig.configError ||
-          'Supabase is not configured. Please use Demo Workspace or configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.';
+          'Supabase is not configured. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to sign in.';
         setAuthError(err);
         return { success: false, error: err };
       }
@@ -402,8 +393,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(data.user);
         setSession(data.session);
         setIsDemoMode(false);
-        sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-        await syncUserDatabaseIdentity(data.user);
+          await syncUserDatabaseIdentity(data.user);
         return { success: true };
       } catch (err: unknown) {
         const rawMsg = (err as Error)?.message || '';
@@ -431,7 +421,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!currentConfig.isConfigured || !supabase) {
         const err =
           currentConfig.configError ||
-          'Supabase is not configured. Please use Demo Workspace or check environment variables.';
+          'Supabase is not configured. Check the deployment environment variables.';
         setAuthError(err);
         return { success: false, error: err };
       }
@@ -497,8 +487,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user);
           setSession(data.session);
           setIsDemoMode(false);
-          sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-          await syncUserDatabaseIdentity(data.user);
+              await syncUserDatabaseIdentity(data.user);
         }
 
         return {
@@ -613,24 +602,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsOffboarded(false);
       setRegistrationRequest(null);
       setAuthError(null);
-      sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-      setIsDemoMode(!isSupabaseConfigured());
+      setIsDemoMode(false);
     }
   }, []);
 
-  // Enter demo mode explicitly
-  const enterDemoMode = useCallback(() => {
-    setIsDemoMode(true);
-    sessionStorage.setItem(DEMO_MODE_STORAGE_KEY, 'true');
-    setAuthError(null);
-  }, []);
-
-  // Exit demo mode (returns user to login or active Supabase session)
-  const exitDemoMode = useCallback(() => {
-    setIsDemoMode(false);
-    sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-    setAuthError(null);
-  }, []);
+  const enterDemoMode = useCallback(() => { setAuthError('Demo mode has been disabled. Sign in with your Togetherly account.'); }, []);
+  const exitDemoMode = useCallback(() => { setIsDemoMode(false); setAuthError(null); }, []);
 
   const clearAuthError = useCallback(() => {
     setAuthError(null);

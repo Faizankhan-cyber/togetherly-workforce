@@ -291,13 +291,14 @@ const sanitizedKeyResult = sanitizeSupabaseKey(getRawEnvKey());
  * Shared Supabase client instance.
  *
  * Initialized with sanitized origin URL and clean public API key.
- * If credentials are missing or invalid, value is `null`, enabling demo mode fallback.
+ * If credentials are missing or invalid, value is `null`, and authenticated features remain unavailable until configured.
  */
 export const supabase: SupabaseClient | null =
   configStatus.isConfigured && configStatus.sanitizedUrl && sanitizedKeyResult.key
     ? createClient(configStatus.sanitizedUrl, sanitizedKeyResult.key, {
         auth: {
           persistSession: true,
+          storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
           autoRefreshToken: true,
           detectSessionInUrl: true,
         },
