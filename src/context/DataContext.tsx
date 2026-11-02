@@ -434,49 +434,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const assignEmployeeToProject = (employeeId: string, projectId: string) => {
+    void employeeId;
+    void projectId;
     showToast('error', 'Use the database-backed project editor to change project assignments.');
-    return;
-    const emp = employees.find((e) => e.id === employeeId);
-    const proj = projects.find((p) => p.id === projectId);
-
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id === projectId && !p.assignedEmployeeIds.includes(employeeId)) {
-          return {
-            ...p,
-            assignedEmployeeIds: [...p.assignedEmployeeIds, employeeId],
-          };
-        }
-        return p;
-      })
-    );
-
-    if (emp && proj) {
-      addActivity(`Assigned ${emp.name} to ${proj.name}`, 'assignment');
-    }
   };
 
   const unassignEmployeeFromProject = (employeeId: string, projectId: string) => {
+    void employeeId;
+    void projectId;
     showToast('error', 'Use the database-backed project editor to change project assignments.');
-    return;
-    const emp = employees.find((e) => e.id === employeeId);
-    const proj = projects.find((p) => p.id === projectId);
-
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id === projectId) {
-          return {
-            ...p,
-            assignedEmployeeIds: p.assignedEmployeeIds.filter((id) => id !== employeeId),
-          };
-        }
-        return p;
-      })
-    );
-
-    if (emp && proj) {
-      addActivity(`Unassigned ${emp.name} from ${proj.name}`, 'assignment');
-    }
   };
 
   const addTrainingAssignment = async (employeeId: string, training: Omit<TrainingAssignment, 'id'>) => {
