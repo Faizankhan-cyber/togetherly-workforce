@@ -37,9 +37,9 @@ import { AdminManagementPage } from '@/pages/AdminManagementPage';
 function WorkspaceLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const { role, toasts, dismissToast } = useData();
-  const { systemRole, isDemoMode, user } = useAuth();
-  const workspaceRole = !user && isDemoMode ? role : systemRole;
+  const { toasts, dismissToast } = useData();
+  const { systemRole } = useAuth();
+  const workspaceRole = systemRole;
 
   return (
     <div className="flex min-h-screen bg-base-bg text-text-primary antialiased selection:bg-primary/30 selection:text-white">
@@ -65,7 +65,7 @@ function WorkspaceLayout() {
             <Route path="/my-settings" element={<EmployeeSettingsPage />} />
             <Route path="/intelligence" element={<TinyFishIntelligencePage />} />
 
-            {/* Administrator-only route protected by real database administrator authorization (not demo role switcher) */}
+            {/* Administrator-only route protected by database-verified administrator authorization */}
             <Route
               path="/admin/employee-requests"
               element={

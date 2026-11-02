@@ -4,63 +4,46 @@ import {
   Building2,
   Bell,
   Sliders,
-  RotateCcw,
   Check,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
-import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { Reveal } from '@/components/Reveal';
 import { ProfileUpdateSection } from '@/components/ProfileUpdateSection';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import type { AppSettings } from '@/types';
-import { defaultSettings } from '@/data/mockData';
 
 export function SettingsPage() {
-  const { settings, updateSettings, resetData, showToast, role: workspaceRole } = useData();
-  const { user, identityStatus, mappedEmployee, systemRole, isDemoMode } = useAuth();
+  const { settings, updateSettings, showToast } = useData();
+  const { user, identityStatus, mappedEmployee, systemRole } = useAuth();
   const [local, setLocal] = useState<AppSettings>(settings);
-  const [confirmReset, setConfirmReset] = useState(false);
 
   function handleSave() {
     updateSettings(local);
-    showToast('success', 'Settings saved successfully');
+    showToast('info', 'Settings applied for this session. Persistent organization settings need database-backed storage.');
   }
 
-  function handleReset() {
-    resetData();
-    setLocal(defaultSettings);
-    showToast('success', 'Demo data has been reset to defaults');
-  }
 
   const hasChanges = JSON.stringify(local) !== JSON.stringify(settings);
 
-  // Authenticated identity is authoritative. Never fall back to a demo profile
+  // Authenticated identity is authoritative. Never fall back to a placeholder profile
   // for a signed-in user, or one account can display someone else's details.
   const authenticatedProfile = user && identityStatus === 'mapped' && mappedEmployee?.authUserId === user.id
     ? mappedEmployee
     : null;
   const profileName = user
     ? authenticatedProfile?.name || String(user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Signed-in user')
-    : 'Alex Morgan';
-  const profileEmail = user
-    ? authenticatedProfile?.email || user.email || 'Not available'
-    : 'alex.morgan@togetherly.io';
-  const profileJobTitle = user
-    ? authenticatedProfile?.role || (identityStatus === 'pending_assignment' ? 'Awaiting approval' : 'Not assigned')
-    : 'Operations Lead';
-  const profileDepartment = user
-    ? authenticatedProfile?.department || (identityStatus === 'pending_assignment' ? 'Pending assignment' : 'Not assigned')
-    : 'Operations';
-  const profileAccessRole = user
-    ? (authenticatedProfile?.systemRole || systemRole || 'unassigned').replace(/_/g, ' ')
-    : (workspaceRole === 'manager' ? 'Manager demo' : 'Employee demo');
+    : 'Not signed in';
+  const profileEmail = user ? authenticatedProfile?.email || user.email || 'Not available' : 'Not available';
+  const profileJobTitle = user ? authenticatedProfile?.role || (identityStatus === 'pending_assignment' ? 'Awaiting approval' : 'Not assigned') : 'Not signed in';
+  const profileDepartment = user ? authenticatedProfile?.department || (identityStatus === 'pending_assignment' ? 'Pending assignment' : 'Not assigned') : 'Not assigned';
+  const profileAccessRole = user ? (authenticatedProfile?.systemRole || systemRole || 'unassigned').replace(/_/g, ' ') : 'unassigned';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Settings & Workspace Preferences"
-        description="Configure matching weights, capacity alert thresholds, notifications, and demo environment."
+        description="Configure matching weights and capacity alert thresholds."
         breadcrumb={['Home', 'Settings']}
         actions={
           hasChanges && (
@@ -101,14 +84,13 @@ export function SettingsPage() {
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold capitalize text-primary">Access: {profileAccessRole}</span>
-              {!user && <span className="rounded-full border border-warning/25 bg-warning/5 px-2.5 py-1 text-[11px] text-warning">Demo profile</span>}
             </div>
             <p className="text-[11px] text-text-secondary mt-3">
               {user
                 ? authenticatedProfile
                   ? 'Profile details are loaded from your linked employee record. Contact an authorized manager or HR reviewer to correct official details.'
                   : 'Your account is not currently linked to an employee record. This page will not substitute another person’s profile.'
-                : `Demo profile for the ${isDemoMode ? 'demo' : 'current preview'} session.`}
+                 : 'Sign in with an approved account to view your profile.'}
             </p>
           </div>
         </Reveal>
@@ -209,32 +191,10 @@ export function SettingsPage() {
           </div>
         </Reveal>
 
-        {/* Demo Data Reset */}
-        <Reveal delay={240}>
-          <div className="card p-5 border-critical/30 shadow-md">
-            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-base-border/50">
-              <RotateCcw size={18} className="text-critical" />
-              <h3 className="text-sm font-bold text-text-primary">Demo State Management</h3>
-            </div>
-            <p className="text-xs text-text-secondary mb-4 leading-relaxed">
-              Restore the original Togetherly mock dataset including 12 staff profiles, 6 projects, assignments, and activity logs.
-            </p>
-            <button className="btn-danger" onClick={() => setConfirmReset(true)}>
-              <RotateCcw size={15} /> Reset Demo Dataset
-            </button>
-          </div>
-        </Reveal>
+
       </div>
 
-      <ConfirmationDialog
-        open={confirmReset}
-        onClose={() => setConfirmReset(false)}
-        onConfirm={handleReset}
-        title="Reset Demo Data"
-        message="This will reset all employees, projects, simulations, and settings to original defaults. Any custom records created in this session will be replaced."
-        confirmLabel="Reset Everything"
-        variant="danger"
-      />
+
     </div>
   );
 }
