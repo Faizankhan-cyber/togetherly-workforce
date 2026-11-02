@@ -36,29 +36,13 @@ const defaultPreferences: EmployeePreferences = {
   weeklySummary: false,
 };
 
-function readPreferences(key: string): EmployeePreferences {
-  try {
-    const stored = localStorage.getItem(key);
-    if (!stored) return defaultPreferences;
-    const parsed = JSON.parse(stored) as Partial<EmployeePreferences>;
-    return {
-      projectUpdates: typeof parsed.projectUpdates === 'boolean' ? parsed.projectUpdates : defaultPreferences.projectUpdates,
-      workloadWarnings: typeof parsed.workloadWarnings === 'boolean' ? parsed.workloadWarnings : defaultPreferences.workloadWarnings,
-      learningReminders: typeof parsed.learningReminders === 'boolean' ? parsed.learningReminders : defaultPreferences.learningReminders,
-      weeklySummary: typeof parsed.weeklySummary === 'boolean' ? parsed.weeklySummary : defaultPreferences.weeklySummary,
-    };
-  } catch {
-    return defaultPreferences;
-  }
-}
 
 export function EmployeeSettingsPage() {
   const employee = useCurrentEmployee();
-  const { user, identityStatus, signOut, exitDemoMode } = useAuth();
+  const { user, identityStatus, signOut } = useAuth();
   const { showToast } = useData();
   const navigate = useNavigate();
-  const preferenceKey = `togetherly:employee-preferences:${user?.id ?? employee?.id ?? 'demo'}`;
-  const [preferences, setPreferences] = useState<EmployeePreferences>(() => readPreferences(preferenceKey));
+  const [preferences, setPreferences] = useState<EmployeePreferences>(defaultPreferences);
   const [saved, setSaved] = useState(true);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -98,18 +82,12 @@ export function EmployeeSettingsPage() {
   }
 
   function savePreferences() {
-    try {
-      localStorage.setItem(preferenceKey, JSON.stringify(preferences));
-      setSaved(true);
-      showToast('success', 'Your personal preferences were saved on this device.');
-    } catch {
-      showToast('error', 'Could not save preferences in this browser.');
-    }
+    setSaved(true);
+    showToast('info', 'Preferences apply for this session only. Persistent preferences will be available when database-backed settings are implemented.');
   }
 
   async function handleSignOut() {
     if (user) await signOut();
-    else exitDemoMode();
     navigate('/login', { replace: true });
   }
 
@@ -126,7 +104,7 @@ export function EmployeeSettingsPage() {
     );
   }
 
-  const identityLabel = user ? (identityStatus === 'mapped' ? 'Verified employee account' : 'Account awaiting profile mapping') : 'Demo workspace';
+  const identityLabel = user ? (identityStatus === 'mapped' ? 'Verified employee account' : 'Account awaiting profile mapping') : 'Not signed in';
 
   return (
     <div className="space-y-6">
@@ -185,12 +163,12 @@ export function EmployeeSettingsPage() {
               <div className="flex items-start gap-3 py-4">
                 <div className="rounded-lg bg-success/10 border border-success/20 p-2 text-success"><ShieldCheck size={18} /></div>
                 <div className="flex-1">
-                  <div className="text-xs font-bold text-text-primary">{user ? 'Signed in with your account' : 'Demo session active'}</div>
-                  <p className="mt-1 text-[11px] text-text-secondary">{user ? 'Your workspace role is taken from your linked employee record.' : 'This is a demo profile. Sign-in security is not active in demo mode.'}</p>
+                  <div className="text-xs font-bold text-text-primary">{user ? 'Signed in with your account' : 'Not signed in'}</div>
+                  <p className="mt-1 text-[11px] text-text-secondary">{user ? 'Your workspace role is taken from your linked employee record.' : 'Sign in with your approved Togetherly account to access your profile.'}</p>
                 </div>
               </div>
               <button type="button" onClick={() => void handleSignOut()} className="btn-secondary w-full justify-center">
-                <LogOut size={15} /> {user ? 'Sign Out' : 'Exit Demo Workspace'}
+                <LogOut size={15} /> Sign Out
               </button>
             </section>
           </Reveal>

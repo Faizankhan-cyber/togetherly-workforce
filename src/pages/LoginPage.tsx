@@ -38,7 +38,6 @@ export function LoginPage() {
   const {
     signInWithEmail,
     signUpWithEmail,
-    enterDemoMode,
     isConfigured,
     configError,
     connectionVerification,
@@ -72,7 +71,7 @@ export function LoginPage() {
         setLocalError(configError);
       } else {
         setLocalError(
-          'Supabase environment variables are not configured. Please use Demo Mode below or configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.'
+          'Supabase environment variables are not configured. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before signing in.'
         );
       }
       return;
@@ -138,10 +137,6 @@ export function LoginPage() {
     }
   };
 
-  const handleDemoAccess = () => {
-    enterDemoMode();
-    navigate('/');
-  };
 
   const errorMessage = localError || authError;
 
@@ -183,7 +178,7 @@ export function LoginPage() {
           ) : (
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-gray-50 border-gray-200 text-gray-600">
               <Server size={11} />
-              Demo Mode Available
+              Supabase Configuration Required
             </span>
           )}
         </div>
@@ -243,7 +238,7 @@ export function LoginPage() {
                   title="VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY not configured"
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Demo Mode (Local Data)
+                  Supabase Not Configured
                 </span>
               )}
             </div>
@@ -512,39 +507,7 @@ export function LoginPage() {
             </form>
 
             {/* Separator */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-base-border" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-semibold">
-                <span className="bg-white px-3 text-text-muted tracking-wider">Or</span>
-              </div>
-            </div>
 
-            {/* Demo Mode Button */}
-            <div className="rounded-lg bg-primary-50/50 border border-primary/20 p-3.5">
-              <div className="flex items-start gap-2.5 mb-2.5">
-                <div className="p-1.5 rounded-md bg-primary text-white flex-shrink-0">
-                  <Sparkles size={14} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-text-primary">
-                    Explore Interactive Demo
-                  </h3>
-                  <p className="text-[11px] text-text-secondary leading-tight mt-0.5">
-                    Evaluate Togetherly with simulated data, employee and manager perspectives, and the complete Training Completion Verification System.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleDemoAccess}
-                className="btn-secondary w-full py-2 text-xs font-semibold border-primary/30 text-primary hover:bg-primary-50 transition-colors"
-              >
-                Enter Demo Workspace
-              </button>
-            </div>
           </div>
 
           {/* Environmental information footer */}
@@ -552,7 +515,7 @@ export function LoginPage() {
             <Info size={12} />
             <span>
               {isConnectionVerified
-                ? 'Secured by live Supabase Auth with persistent JWT sessions.'
+                ? 'Secured by Supabase Auth.'
                 : isConfigured
                 ? 'Connecting to configured Supabase project…'
                 : 'Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable live authentication.'}

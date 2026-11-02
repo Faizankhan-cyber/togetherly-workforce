@@ -15,7 +15,7 @@ import type {
   SystemRole,
 } from '@/types';
 
-export type IdentityStatus = 'unauthenticated' | 'demo' | 'pending_assignment' | 'mapped' | 'offboarded';
+export type IdentityStatus = 'unauthenticated' | 'pending_assignment' | 'mapped' | 'offboarded';
 
 export interface SignUpProfileOptions {
   fullName?: string;
@@ -34,7 +34,6 @@ interface AuthContextType {
   connectionVerification: SupabaseConnectionVerification | null;
   isVerifyingConnection: boolean;
   verifyConnection: () => Promise<SupabaseConnectionVerification>;
-  isDemoMode: boolean;
   identityStatus: IdentityStatus;
   mappedEmployee: Employee | null;
   systemRole: SystemRole | 'unassigned';
@@ -59,15 +58,11 @@ interface AuthContextType {
     requestedJobTitle?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
-  enterDemoMode: () => void;
-  exitDemoMode: () => void;
   clearAuthError: () => void;
   refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const DEMO_MODE_STORAGE_KEY = 'togetherly_demo_session_active';
 
 const VALID_SYSTEM_ROLES: SystemRole[] = ['employee', 'manager', 'hr', 'admin'];
 
@@ -118,12 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const configStatus = getSupabaseConfigStatus();
   const configured = configStatus.isConfigured;
 
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    if (!isSupabaseConfigured()) {
-      return true;
-    }
-    return sessionStorage.getItem(DEMO_MODE_STORAGE_KEY) === 'true';
-  });
+
 
   // Verify connection against live Supabase Auth endpoint
   const verifyConnection = useCallback(async (): Promise<SupabaseConnectionVerification> => {
@@ -308,8 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (initialSession) {
           setSession(initialSession);
           setUser(initialSession.user);
-          setIsDemoMode(false);
-          sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
+          
           await syncUserDatabaseIdentity(initialSession.user);
         }
         if (isMounted) {
@@ -332,8 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newSession?.user ?? null);
 
       if (event === 'SIGNED_IN' && newSession) {
-        setIsDemoMode(false);
-        sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
+        
         setAuthError(null);
         void syncUserDatabaseIdentity(newSession.user);
       } else if (event === 'SIGNED_OUT') {
@@ -364,7 +352,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!currentConfig.isConfigured || !supabase) {
         const err =
           currentConfig.configError ||
-          'Supabase is not configured. Please use Demo Workspace or configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.';
+          'Supabase is not configured. Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before signing in.';
         setAuthError(err);
         return { success: false, error: err };
       }
@@ -401,8 +389,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUser(data.user);
         setSession(data.session);
-        setIsDemoMode(false);
-        sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
+        
         await syncUserDatabaseIdentity(data.user);
         return { success: true };
       } catch (err: unknown) {
@@ -431,7 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!currentConfig.isConfigured || !supabase) {
         const err =
           currentConfig.configError ||
-          'Supabase is not configured. Please use Demo Workspace or check environment variables.';
+          'Supabase is not configured. Check the Supabase environment variables before signing in.';
         setAuthError(err);
         return { success: false, error: err };
       }
@@ -496,8 +483,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.session && data.user) {
           setUser(data.user);
           setSession(data.session);
-          setIsDemoMode(false);
-          sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
+          
           await syncUserDatabaseIdentity(data.user);
         }
 
@@ -613,23 +599,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsOffboarded(false);
       setRegistrationRequest(null);
       setAuthError(null);
-      sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-      setIsDemoMode(!isSupabaseConfigured());
+      
     }
-  }, []);
-
-  // Enter demo mode explicitly
-  const enterDemoMode = useCallback(() => {
-    setIsDemoMode(true);
-    sessionStorage.setItem(DEMO_MODE_STORAGE_KEY, 'true');
-    setAuthError(null);
-  }, []);
-
-  // Exit demo mode (returns user to login or active Supabase session)
-  const exitDemoMode = useCallback(() => {
-    setIsDemoMode(false);
-    sessionStorage.removeItem(DEMO_MODE_STORAGE_KEY);
-    setAuthError(null);
   }, []);
 
   const clearAuthError = useCallback(() => {
@@ -707,12 +678,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mappedEmployee = null;
       systemRole = 'unassigned';
     }
-  } else if (isDemoMode) {
-    identityStatus = 'demo';
-    systemRole = 'unassigned';
   }
 
-  // Strictly require an authenticated, mapped administrator identity (never the demo role switcher)
+  // Strictly require an authenticated, mapped administrator identity.
   const isAdmin = Boolean(user && identityStatus === 'mapped' && systemRole === 'admin');
 
   const value: AuthContextType = {
@@ -726,7 +694,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     connectionVerification,
     isVerifyingConnection,
     verifyConnection,
-    isDemoMode,
     identityStatus,
     mappedEmployee,
     systemRole,
@@ -739,8 +706,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateMyRegistrationRequest,
     reapplyMyRegistrationRequest,
     signOut,
-    enterDemoMode,
-    exitDemoMode,
     clearAuthError,
     refreshSession,
   };

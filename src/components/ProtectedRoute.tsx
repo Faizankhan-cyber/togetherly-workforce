@@ -19,7 +19,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, isDemoMode, identityStatus, signOut } = useAuth();
+  const { user, isLoading, identityStatus, signOut } = useAuth();
   const location = useLocation();
 
   // Show a professional loading screen while restoring Supabase Auth session
@@ -40,7 +40,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // Offboarded employees remain linked to historical records but lose workspace access.
-  if (user && identityStatus === 'offboarded' && !isDemoMode) {
+  if (user && identityStatus === 'offboarded') {
     return (
       <div className="min-h-screen bg-base-bg flex items-center justify-center p-4 text-text-primary">
         <section className="card w-full max-w-lg p-8 text-center shadow-sm">
@@ -56,24 +56,24 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // If user is authenticated with Supabase, but their account is not mapped to an employee record
-  // (e.g. self-registered signup or unmapped user) and not previewing demo mode, protect sensitive
+  // (e.g. self-registered signup or unmapped user) and protect sensitive
   // workforce intelligence by displaying the IdentityPendingPage.
-  if (user && identityStatus === 'pending_assignment' && !isDemoMode) {
+  if (user && identityStatus === 'pending_assignment') {
     return <IdentityPendingPage />;
   }
 
-  // If not authenticated and not in demo mode, redirect to the login page
-  if (!user && !isDemoMode) {
+  // If not authenticated, redirect to the login page
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Otherwise, user is either mapped or in authorized demo mode
+  // Only authenticated users can access the workspace
   return <>{children}</>;
 }
 
 /**
  * Route guard strictly enforcing database-verified Administrator authorization.
- * Never uses the demo role-preview switcher as an authorization mechanism.
+ * Never relies on client-side role selection for authorization.
  */
 export function AdminRoute({ children }: ProtectedRouteProps) {
   const {
@@ -81,11 +81,9 @@ export function AdminRoute({ children }: ProtectedRouteProps) {
     isLoading,
     isAdmin,
     systemRole,
-    isDemoMode,
     isConfigured,
     configError,
     registrationTableMissing,
-    exitDemoMode,
     refreshSession,
   } = useAuth();
   const navigate = useNavigate();
@@ -153,8 +151,7 @@ export function AdminRoute({ children }: ProtectedRouteProps) {
                 <code>/admin/employee-requests</code>) is strictly restricted to authenticated
                 Supabase users with a database-verified <strong>Administrator</strong> (
                 <code>system_role = &apos;admin&apos;</code>) record in <code>public.employees</code>.
-                Local Demo Mode and the UI workspace-role switcher cannot grant access to live
-                employee verification.
+                Client-side role changes cannot grant access to live employee verification.
               </p>
             </div>
           </div>
@@ -163,11 +160,7 @@ export function AdminRoute({ children }: ProtectedRouteProps) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-base-border">
               <span className="font-sans text-text-secondary font-medium">Current Session Mode:</span>
               <span className="font-semibold text-text-primary">
-                {user
-                  ? `Authenticated (${user.email})`
-                  : isDemoMode
-                    ? 'Demo Mode (Local) — Unauthenticated Browser Session'
-                    : 'Unauthenticated'}
+                {user ? `Authenticated (${user.email})` : 'Unauthenticated'}
               </span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-base-border">
@@ -225,16 +218,9 @@ export function AdminRoute({ children }: ProtectedRouteProps) {
 
           <div className="flex flex-wrap items-center gap-2.5">
             {!user ? (
-              <button
-                type="button"
-                onClick={() => {
-                  exitDemoMode();
-                  navigate('/login');
-                }}
-                className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-              >
+              <button type="button" onClick={() => navigate('/login')} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5">
                 <LogIn size={14} />
-                <span>Exit Demo Mode & Sign In as Administrator</span>
+                <span>Sign In as Administrator</span>
               </button>
             ) : (
               <button
@@ -242,7 +228,6 @@ export function AdminRoute({ children }: ProtectedRouteProps) {
                 disabled={isReverifying}
                 onClick={async () => {
                   setIsReverifying(true);
-                  exitDemoMode();
                   await refreshSession();
                   setIsReverifying(false);
                 }}

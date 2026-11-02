@@ -31,7 +31,6 @@ import { BrandMark } from './BrandMark';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut } from 'lucide-react';
-import type { Role } from '@/types';
 
 type SidebarNavItem = { to: string; label: string; icon: LucideIcon };
 type SidebarNavGroup = { name: string; items: SidebarNavItem[] };
@@ -131,9 +130,9 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }: AppSidebarProps) {
-  const { employees, role, setRole, submissions } = useData();
-  const { user, isAdmin, isDemoMode, identityStatus, mappedEmployee, signOut, exitDemoMode, systemRole } = useAuth();
-  const workspaceRole = !user && isDemoMode ? role : systemRole;
+  const { employees, submissions } = useData();
+  const { user, isAdmin, identityStatus, mappedEmployee, signOut, systemRole } = useAuth();
+  const workspaceRole = systemRole;
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -145,16 +144,14 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
     'My Work': true,
     'Growth & Profile': false,
   });
-  const demoProfile = employees.find((employee) => employee.id === 'emp-001');
   const authenticatedProfile = user && identityStatus === 'mapped' && mappedEmployee?.authUserId === user.id
     ? (employees.find((employee) => employee.authUserId === user.id) ?? mappedEmployee)
     : null;
-  const profile = user ? authenticatedProfile : demoProfile;
+  const profile = user ? authenticatedProfile : null;
   const pendingCount = submissions.filter((s) => s.status === 'pending-verification').length;
   // Visible to authenticated users whose verified database-backed system role is 'admin'
-  // (and visible as a locked gateway link when in unauthenticated Demo Mode so users can access admin sign-in).
-  // Strictly hidden for any authenticated non-admin employee (user && !isAdmin).
-  const showAdminSection = isAdmin || (isDemoMode && !user);
+  // Strictly hidden for any authenticated non-admin employee.
+  const showAdminSection = isAdmin;
 
   useEffect(() => {
     if (workspaceRole === 'employee') {
@@ -208,12 +205,6 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         )}
       </NavLink>
     );
-  }
-
-  function changeRole(nextRole: Role) {
-    setRole(nextRole);
-    navigate('/');
-    onCloseMobile();
   }
 
   return (
@@ -458,73 +449,24 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           )}
         </nav>
 
-        {/* Demo-only role switcher. Authenticated accounts use their verified database role. */}
-        {!user && (
-          <div className={`p-2.5 border-t border-base-border bg-base-subtle ${collapsed ? 'flex flex-col items-center gap-1' : ''}`}>
-            {!collapsed && (
-              <div className="flex items-center justify-between px-1 mb-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
-                  Demo Workspace Role
-                </span>
-                <span className="text-[9px] text-text-muted font-normal">
-                  Preview Only
-                </span>
-              </div>
-            )}
-            <div className={collapsed ? 'flex flex-col gap-1' : 'grid grid-cols-2 gap-1 rounded-md border border-base-border bg-gray-100 p-0.5'}>
-              {([
-                { value: 'manager', label: 'Manager', icon: BriefcaseBusiness },
-                { value: 'employee', label: 'Employee', icon: UserRound },
-                { value: 'admin', label: 'Admin', icon: ShieldCheck },
-                { value: 'hr', label: 'HR', icon: UserCheck },
-              ] as const).map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => changeRole(value)}
-                  aria-pressed={role === value}
-                  title={collapsed ? `${label} Demo View` : undefined}
-                  className={`flex items-center gap-1.5 rounded py-1 px-2 text-[11px] font-semibold transition-all ${
-                    collapsed ? 'justify-center w-8 h-8' : 'justify-center'
-                  } ${
-                    role === value
-                      ? 'bg-white text-primary shadow-sm border border-base-border'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
-                  }`}
-                >
-                  <Icon size={13} />
-                  {!collapsed && label}
-                </button>
-              ))}
-            </div>
-            {!collapsed && (
-              <p className="text-[9.5px] text-text-muted mt-1 text-center font-normal leading-tight">
-                Demo preview only; signed-in role comes from your account.
-              </p>
-            )}
-          </div>
-        )}
-
         {/* User profile & Session control */}
         <div className={`p-2 border-t border-base-border flex-shrink-0 bg-white ${collapsed ? 'flex flex-col items-center gap-1.5' : ''}`}>
           <div className={`flex items-center gap-2.5 ${collapsed ? '' : 'p-1.5 rounded-md hover:bg-base-hover transition-colors'}`}>
             <Avatar
-              name={user ? profile?.name || user.email || 'User' : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
-              color={role === 'employee' && profile ? profile.avatarColor : '#315D70'}
+              name={profile?.name || user?.email || 'User'}
+              color={profile?.avatarColor || '#315D70'}
               size="sm"
             />
             {!collapsed && (
               <div className="overflow-hidden flex-1 min-w-0">
                 <div className="text-xs font-bold text-text-primary truncate">
-                  {user ? (profile?.name || user.email) : (role === 'employee' && profile ? profile.name : 'Alex Morgan')}
+                  {profile?.name || user?.email || 'User'}
                 </div>
                 <div className="text-[10px] text-text-secondary truncate flex items-center gap-1">
                   {user ? (
                     <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {profile?.role || 'Supabase User'}
                     </span>
-                  ) : (
-                    <span className="text-amber-600 font-medium">Demo Administrator</span>
                   )}
                 </div>
               </div>
@@ -535,14 +477,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                 onClick={async () => {
                   if (user) {
                     await signOut();
-                  } else {
-                    exitDemoMode();
                   }
                   navigate('/login');
                 }}
                 className="p-1 rounded text-text-muted hover:text-critical hover:bg-critical/10 transition-colors ml-auto"
-                title={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
-                aria-label={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
+                title="Sign Out"
+                aria-label="Sign Out"
               >
                 <LogOut size={13} />
               </button>
@@ -554,14 +494,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
               onClick={async () => {
                 if (user) {
                   await signOut();
-                } else {
-                  exitDemoMode();
                 }
                 navigate('/login');
               }}
               className="w-8 h-8 rounded flex items-center justify-center text-text-muted hover:text-critical hover:bg-critical/10 transition-colors"
-              title={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
-              aria-label={user ? 'Sign Out of Supabase' : 'Exit Demo Mode'}
+              title="Sign Out"
+              aria-label="Sign Out"
             >
               <LogOut size={13} />
             </button>

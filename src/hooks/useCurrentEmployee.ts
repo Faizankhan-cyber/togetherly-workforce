@@ -1,17 +1,15 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
-import { demoEmployeeId } from '@/data/mockData';
 import type { Employee } from '@/types';
 
 /**
  * Resolve the employee profile for employee-facing pages.
- * Authenticated users must use their database-linked employee record; only demo
- * sessions may fall back to the fixed demo profile.
+ * Profiles are resolved only from the authenticated database-linked employee record.
  */
 export function useCurrentEmployee(): Employee | null {
   const { employees } = useData();
-  const { user, identityStatus, mappedEmployee, isDemoMode } = useAuth();
+  const { user, identityStatus, mappedEmployee } = useAuth();
 
   return useMemo(() => {
     if (user) {
@@ -23,8 +21,7 @@ export function useCurrentEmployee(): Employee | null {
         return null;
       }
 
-      // Reuse the app's local record when available so locally stored skills,
-      // training and project references remain connected to the same employee ID.
+      // Reuse the database-loaded employee row when available to keep references consistent.
       const localRecord =
         employees.find((employee) => employee.authUserId === user.id) ??
         employees.find((employee) => employee.id === mappedEmployee.id);
@@ -41,11 +38,7 @@ export function useCurrentEmployee(): Employee | null {
       };
     }
 
-    // The demo profile is a fallback for unauthenticated demo mode only.
-    if (isDemoMode) {
-      return employees.find((employee) => employee.id === demoEmployeeId) ?? null;
-    }
 
     return null;
-  }, [employees, user, identityStatus, mappedEmployee, isDemoMode]);
+  }, [employees, user, identityStatus, mappedEmployee]);
 }
