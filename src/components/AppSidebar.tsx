@@ -463,7 +463,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                   {profile?.name || user?.email || 'User'}
                 </div>
                 <div className="text-[10px] text-text-secondary truncate flex items-center gap-1">
-                  {user ? (
+                  {user && (
                     <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {profile?.role || 'Supabase User'}
                     </span>

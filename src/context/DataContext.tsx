@@ -109,7 +109,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshProjects = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured() || !user || identityStatus !== 'mapped' || !mappedEmployee) return;
 
-    let result = await supabase
+    const result = await supabase
       .from('projects')
       .select('id,name,description,department,status,target_team_size,start_date,deadline,priority')
       .order('created_at', { ascending: false });

@@ -12,7 +12,6 @@ import { ProfileUpdateSection } from '@/components/ProfileUpdateSection';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import type { AppSettings } from '@/types';
-import { defaultSettings } from '@/data/mockData';
 
 export function SettingsPage() {
   const { settings, updateSettings, showToast } = useData();
