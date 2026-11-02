@@ -15,7 +15,6 @@ import {
   FileBarChart,
   Map,
   UserRound,
-  BriefcaseBusiness,
   GitFork,
   UserCheck,
   Lock,
