@@ -15,10 +15,6 @@ import type {
 } from '@/types';
 import {
   defaultSettings,
-  initialActivities,
-  initialEmployees,
-  initialProjects,
-  initialSubmissions,
 } from '@/data/mockData';
 
 interface DataContextType {
@@ -67,16 +63,6 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-const STORAGE_KEYS = {
-  ROLE: 'togetherly_role',
-  EMPLOYEES: 'togetherly_employees',
-  PROJECTS: 'togetherly_projects',
-  SETTINGS: 'togetherly_settings',
-  ACTIVITIES: 'togetherly_activities',
-  SUBMISSIONS: 'togetherly_training_submissions',
-};
-
-
 const normalizeProjectIdentityPart = (value: unknown) =>
   String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 
@@ -90,106 +76,24 @@ const getProjectIdentityKey = (project: Pick<Project, 'name' | 'description' | '
     normalizeProjectIdentityPart(project.department),
   ]);
 
-const dedupeProjects = (projects: Project[]): Project[] => {
-  const seen = new Set<string>();
-  return projects.filter((project) => {
-    const key = getProjectIdentityKey(project);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
-
-const readLegacyProjects = (): Project[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-    const parsed: unknown = stored === null ? initialProjects : JSON.parse(stored);
-    return dedupeProjects(Array.isArray(parsed) ? parsed as Project[] : initialProjects);
-  } catch {
-    return dedupeProjects(initialProjects);
-  }
-};
-
-const getStableLegacyProjectId = async (project: Project): Promise<string> => {
-  // Old demo projects used sequence IDs such as proj-001. Different browsers can
-  // reuse those IDs for different projects, so derive a stable ID from project identity.
-  if (!/^proj-\d+$/.test(project.id)) return project.id;
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(getProjectIdentityKey(project))
-  );
-  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `legacy-${hash.slice(0, 32)}`;
-};
-
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, identityStatus, mappedEmployee } = useAuth();
 
-  // This role is only a preference for the unauthenticated demo workspace.
-  // Real signed-in users always use the role on their database-linked employee record.
-  const [previewRole, setPreviewRoleState] = useState<Role>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ROLE);
-      return stored === 'employee' || stored === 'manager' || stored === 'admin' || stored === 'hr' ? stored : 'manager';
-    } catch {
-      return 'manager';
-    }
-  });
 
   const hasMappedAuthIdentity = Boolean(
     user && identityStatus === 'mapped' && mappedEmployee && mappedEmployee.authUserId === user.id
   );
-  const role: Role = hasMappedAuthIdentity
-    ? mappedEmployee?.systemRole ?? 'employee'
-    : previewRole;
+  const role: Role = mappedEmployee?.systemRole ?? 'employee';
 
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
-      const cached = stored ? (JSON.parse(stored) as Employee[]) : initialEmployees;
-      return cached.filter((employee) => !employee.authUserId && employee.dataSource !== 'database');
-    } catch {
-      return initialEmployees;
-    }
-  });
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
-  const [projects, setProjects] = useState<Project[]>(() => {
-    if (user && identityStatus === 'mapped') return [];
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-      const parsed: unknown = stored === null ? initialProjects : JSON.parse(stored);
-      return dedupeProjects(Array.isArray(parsed) ? parsed as Project[] : initialProjects);
-    } catch {
-      return dedupeProjects(initialProjects);
-    }
-  });
+  const [projects, setProjects] = useState<Project[]>([]);
 
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return stored ? JSON.parse(stored) : defaultSettings;
-    } catch {
-      return defaultSettings;
-    }
-  });
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
-  const [activities, setActivities] = useState<Activity[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
-      return stored ? JSON.parse(stored) : initialActivities;
-    } catch {
-      return initialActivities;
-    }
-  });
+  const [activities, setActivities] = useState<Activity[]>([]);
 
-  const [submissions, setSubmissions] = useState<TrainingSubmission[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.SUBMISSIONS);
-      return stored ? JSON.parse(stored) : initialSubmissions;
-    } catch {
-      return initialSubmissions;
-    }
-  });
+  const [submissions, setSubmissions] = useState<TrainingSubmission[]>([]);
 
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const databaseEmployeeIdsRef = useRef<Set<string>>(new Set());
@@ -201,149 +105,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4500);
   }, []);
-  const projectImportInFlightRef = useRef(false);
   const projectCreationKeysRef = useRef<Set<string>>(new Set());
 
   const refreshProjects = useCallback(async () => {
     if (!supabase || !isSupabaseConfigured() || !user || identityStatus !== 'mapped' || !mappedEmployee) return;
 
-    let result = await supabase
+    const result = await supabase
       .from('projects')
       .select('id,name,description,department,status,target_team_size,start_date,deadline,priority')
       .order('created_at', { ascending: false });
     if (result.error || !result.data) {
       showToast('error', 'Could not load shared projects from the database.');
       return;
-    }
-
-    // Import legacy browser data into the shared workspace for managers/admins.
-    // This is idempotent: duplicate project identities are filtered before insert,
-    // and legacy sequential IDs are replaced with stable content-derived IDs.
-    const canManageProjects = mappedEmployee.systemRole === 'admin' || mappedEmployee.systemRole === 'manager';
-    if (canManageProjects && !projectImportInFlightRef.current) {
-      projectImportInFlightRef.current = true;
-      try {
-        const legacyProjects = dedupeProjects(readLegacyProjects());
-        const existingKeys = new Set(result.data.map((row) => getProjectIdentityKey({
-          name: String(row.name),
-          description: String(row.description ?? ''),
-          department: String(row.department),
-        })));
-        const projectsToImport: Array<{ source: Project; id: string }> = [];
-        for (const project of legacyProjects) {
-          const key = getProjectIdentityKey(project);
-          if (existingKeys.has(key)) continue;
-          existingKeys.add(key);
-          projectsToImport.push({ source: project, id: await getStableLegacyProjectId(project) });
-        }
-
-        if (projectsToImport.length) {
-          const projectRows = projectsToImport.map(({ source, id }) => ({
-            id,
-            name: source.name,
-            description: source.description,
-            department: source.department,
-            status: source.status,
-            target_team_size: source.targetTeamSize,
-            start_date: source.startDate || null,
-            deadline: source.deadline || null,
-            priority: source.priority ?? 'medium',
-          }));
-          const projectInsert = await supabase.from('projects').upsert(projectRows, {
-            onConflict: 'id',
-            ignoreDuplicates: true,
-          });
-
-          if (projectInsert.error) {
-            showToast('error', `Could not migrate saved projects to the shared workspace: ${projectInsert.error.message}`);
-          } else {
-            const [employeeResult, skillResult] = await Promise.all([
-              supabase.from('employees').select('id,name,email').eq('employment_status', 'active'),
-              supabase.from('skills').select('id'),
-            ]);
-            const validEmployeeIds = new Set((employeeResult.data ?? []).map((employee) => String(employee.id)));
-            const validSkillIds = new Set((skillResult.data ?? []).map((skill) => String(skill.id)));
-            const localEmployees: Employee[] = (() => {
-              try {
-                const stored = localStorage.getItem(STORAGE_KEYS.EMPLOYEES);
-                const parsed: unknown = stored === null ? initialEmployees : JSON.parse(stored);
-                return Array.isArray(parsed) ? parsed as Employee[] : initialEmployees;
-              } catch {
-                return initialEmployees;
-              }
-            })();
-            const dbByEmail = new Map<string, string>();
-            const dbByName = new Map<string, string[]>();
-            for (const employee of employeeResult.data ?? []) {
-              const email = normalizeProjectIdentityPart(employee.email);
-              const name = normalizeProjectIdentityPart(employee.name);
-              if (email) dbByEmail.set(email, String(employee.id));
-              const sameName = dbByName.get(name) ?? [];
-              sameName.push(String(employee.id));
-              dbByName.set(name, sameName);
-            }
-            const localToDatabaseEmployeeId = new Map<string, string>();
-            for (const employee of localEmployees) {
-              if (validEmployeeIds.has(employee.id)) {
-                localToDatabaseEmployeeId.set(employee.id, employee.id);
-                continue;
-              }
-              const byEmail = employee.email ? dbByEmail.get(normalizeProjectIdentityPart(employee.email)) : undefined;
-              const sameName = dbByName.get(normalizeProjectIdentityPart(employee.name)) ?? [];
-              const mappedId = byEmail ?? (sameName.length === 1 ? sameName[0] : undefined);
-              if (mappedId) localToDatabaseEmployeeId.set(employee.id, mappedId);
-            }
-
-            const memberRows: Array<{ project_id: string; employee_id: string }> = [];
-            const requirementRows: Array<{ project_id: string; skill_id: string; min_level: number; importance: 'required' | 'preferred' }> = [];
-            for (const { source, id } of projectsToImport) {
-              const memberIds = new Set(source.assignedEmployeeIds
-                .map((employeeId) => localToDatabaseEmployeeId.get(employeeId) ?? (validEmployeeIds.has(employeeId) ? employeeId : undefined))
-                .filter((employeeId): employeeId is string => Boolean(employeeId)));
-              for (const employee_id of memberIds) memberRows.push({ project_id: id, employee_id });
-
-              const seenSkillIds = new Set<string>();
-              for (const requirement of source.requiredSkills) {
-                const skill_id = requirement.skillId;
-                if (!validSkillIds.has(skill_id) || seenSkillIds.has(skill_id)) continue;
-                seenSkillIds.add(skill_id);
-                requirementRows.push({
-                  project_id: id,
-                  skill_id,
-                  min_level: requirement.minLevel,
-                  importance: requirement.importance ?? 'required',
-                });
-              }
-            }
-
-            if (memberRows.length) {
-              const membersInsert = await supabase.from('project_members').upsert(memberRows, {
-                onConflict: 'project_id,employee_id',
-                ignoreDuplicates: true,
-              });
-              if (membersInsert.error) showToast('warning', 'Projects were imported, but some staff assignments could not be migrated.');
-            }
-            if (requirementRows.length) {
-              const requirementsInsert = await supabase.from('project_requirements').upsert(requirementRows, {
-                onConflict: 'project_id,skill_id',
-                ignoreDuplicates: true,
-              });
-              if (requirementsInsert.error) showToast('warning', 'Projects were imported, but some skill requirements could not be migrated.');
-            }
-          }
-
-          result = await supabase
-            .from('projects')
-            .select('id,name,description,department,status,target_team_size,start_date,deadline,priority')
-            .order('created_at', { ascending: false });
-          if (result.error || !result.data) {
-            showToast('error', 'Projects were saved, but the shared list could not be refreshed.');
-            return;
-          }
-        }
-      } finally {
-        projectImportInFlightRef.current = false;
-      }
     }
 
     const ids = result.data.map((project) => String(project.id));
@@ -380,7 +153,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           importance: requirement.importance as 'required' | 'preferred',
         })),
     } satisfies Project));
-    setProjects(dedupeProjects(mappedProjects));
+    setProjects(mappedProjects);
   }, [user, identityStatus, mappedEmployee, showToast]);
   useEffect(() => { void refreshProjects(); }, [refreshProjects]);
 
@@ -504,82 +277,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [refreshVerifiedDirectory]);
 
-  // Sync to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ROLE, previewRole);
-    } catch (e) {
-      void e;
-    }
-  }, [previewRole]);
-
-  useEffect(() => {
-    try {
-      // Supabase-linked profiles and verified skills are reloaded from the database.
-      // Keep only local/demo-managed profiles in browser storage.
-      localStorage.setItem(
-        STORAGE_KEYS.EMPLOYEES,
-        JSON.stringify(employees.filter((employee) => !employee.authUserId && employee.dataSource !== 'database'))
-      );
-    } catch (e) {
-      void e;
-    }
-  }, [employees]);
-
-  useEffect(() => {
-    try {
-      if (!hasMappedAuthIdentity) localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(dedupeProjects(projects)));
-    } catch (e) {
-      void e;
-    }
-  }, [projects, hasMappedAuthIdentity]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    } catch (e) {
-      void e;
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
-    } catch (e) {
-      void e;
-    }
-  }, [activities]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(submissions));
-    } catch (e) {
-      void e;
-    }
-  }, [submissions]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    } catch (e) {
-      void e;
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
-    } catch (e) {
-      void e;
-    }
-  }, [activities]);
-
-  const setRole = (newRole: Role) => {
-    // Never let a signed-in account switch to a different workspace role in the UI.
-    // The authenticated role is derived from the verified linked employee record above.
-    if (hasMappedAuthIdentity) return;
-    setPreviewRoleState(newRole);
-  };
+  const setRole = (newRole: Role) => { void newRole; /* Role is controlled by the database employee record. */ };
 
 
   const dismissToast = useCallback((id: string) => {
@@ -599,6 +297,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addEmployee = (empData: Omit<Employee, 'id'> & { id?: string }) => {
+    if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) { showToast('error', 'Employee records must be created through the approved database-backed employee workflow.'); return; }
+    showToast('error', 'Direct employee creation is disabled. Use Employee Approvals to create a database-backed employee record.');
+    return;
     const newEmp: Employee = {
       ...empData,
       id: empData.id || `emp-${String(employees.length + 1).padStart(3, '0')}`,
@@ -609,6 +310,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateEmployee = (id: string, updates: Partial<Employee>) => {
+    showToast('error', 'Direct profile edits are disabled until the database-backed employee update workflow is available.');
+    return;
     setEmployees((prev) =>
       prev.map((emp) => (emp.id === id ? { ...emp, ...updates } : emp))
     );
@@ -680,7 +383,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     projectCreationKeysRef.current.add(identityKey);
     try {
-      if (hasMappedAuthIdentity && supabase) {
+      if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) { showToast('error', 'Sign in with an approved Togetherly account before creating projects.'); return; }
+      {
         // Recheck the shared database as well as local state so a stale tab cannot
         // create another copy of a project that was just added by another manager.
         const existingResult = await supabase.from('projects').select('name,description,department');
@@ -702,8 +406,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newProj.assignedEmployeeIds.length) { const { error: memberError } = await supabase.from('project_members').insert(newProj.assignedEmployeeIds.map((employee_id) => ({ project_id: newProj.id, employee_id }))); if (memberError) showToast('error', `Project saved, but team assignment failed: ${memberError.message}`); }
         if (newProj.requiredSkills.length) { const { error: reqError } = await supabase.from('project_requirements').insert(newProj.requiredSkills.map((r) => ({ project_id: newProj.id, skill_id: r.skillId, min_level: r.minLevel, importance: r.importance ?? 'required' }))); if (reqError) showToast('error', `Project saved, but skill requirements failed: ${reqError.message}`); }
         await refreshProjects();
-      } else {
-        setProjects((previous) => dedupeProjects([...previous, newProj]));
       }
       addActivity(`Created new project: ${newProj.name}`, 'project');
       showToast('success', `Project "${newProj.name}" created successfully.`);
@@ -713,7 +415,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProject = async (id: string, updates: Partial<Project>) => {
-    if (hasMappedAuthIdentity && supabase) {
+    if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) { showToast('error', 'Sign in with an approved Togetherly account before editing projects.'); return; }
+    {
       const dbUpdates: Record<string, unknown> = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name; if (updates.description !== undefined) dbUpdates.description = updates.description; if (updates.department !== undefined) dbUpdates.department = updates.department; if (updates.status !== undefined) dbUpdates.status = updates.status; if (updates.targetTeamSize !== undefined) dbUpdates.target_team_size = updates.targetTeamSize; if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate || null; if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline || null; if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
       if (Object.keys(dbUpdates).length) { const { error } = await supabase.from('projects').update(dbUpdates).eq('id', id); if (error) { showToast('error', `Project update failed: ${error.message}`); return; } }
@@ -721,56 +424,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (updates.requiredSkills) { await supabase.from('project_requirements').delete().eq('project_id', id); if (updates.requiredSkills.length) { const { error } = await supabase.from('project_requirements').insert(updates.requiredSkills.map((r) => ({ project_id: id, skill_id: r.skillId, min_level: r.minLevel, importance: r.importance ?? 'required' }))); if (error) { showToast('error', `Skill requirement update failed: ${error.message}`); return; } } }
       await refreshProjects(); return;
     }
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };
 
   const deleteProject = async (id: string) => {
+    if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) { showToast('error', 'Sign in with an approved Togetherly account before deleting projects.'); return; }
     const proj = projects.find((p) => p.id === id);
-    if (hasMappedAuthIdentity && supabase) { const { error } = await supabase.from('projects').delete().eq('id', id); if (error) { showToast('error', `Project deletion failed: ${error.message}`); return; } await refreshProjects(); }
-    else setProjects((prev) => prev.filter((p) => p.id !== id));
+    { const { error } = await supabase.from('projects').delete().eq('id', id); if (error) { showToast('error', `Project deletion failed: ${error.message}`); return; } await refreshProjects(); }
     if (proj) { addActivity(`Deleted project: ${proj.name}`, 'project'); showToast('info', `Project "${proj.name}" removed.`); }
   };
 
   const assignEmployeeToProject = (employeeId: string, projectId: string) => {
-    const emp = employees.find((e) => e.id === employeeId);
-    const proj = projects.find((p) => p.id === projectId);
-
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id === projectId && !p.assignedEmployeeIds.includes(employeeId)) {
-          return {
-            ...p,
-            assignedEmployeeIds: [...p.assignedEmployeeIds, employeeId],
-          };
-        }
-        return p;
-      })
-    );
-
-    if (emp && proj) {
-      addActivity(`Assigned ${emp.name} to ${proj.name}`, 'assignment');
-    }
+    void employeeId;
+    void projectId;
+    showToast('error', 'Use the database-backed project editor to change project assignments.');
   };
 
   const unassignEmployeeFromProject = (employeeId: string, projectId: string) => {
-    const emp = employees.find((e) => e.id === employeeId);
-    const proj = projects.find((p) => p.id === projectId);
-
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id === projectId) {
-          return {
-            ...p,
-            assignedEmployeeIds: p.assignedEmployeeIds.filter((id) => id !== employeeId),
-          };
-        }
-        return p;
-      })
-    );
-
-    if (emp && proj) {
-      addActivity(`Unassigned ${emp.name} from ${proj.name}`, 'assignment');
-    }
+    void employeeId;
+    void projectId;
+    showToast('error', 'Use the database-backed project editor to change project assignments.');
   };
 
   const addTrainingAssignment = async (employeeId: string, training: Omit<TrainingAssignment, 'id'>) => {
@@ -782,7 +454,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.from('training_assignments').insert({ id: newTrn.id, employee_id: employeeId, course_name: newTrn.courseName, provider: newTrn.provider, skill_id: newTrn.skillId, status: newTrn.status, progress: newTrn.progress, reason: newTrn.reason ?? null, assigned_date: newTrn.assignedDate ?? new Date().toISOString().slice(0, 10), completed_date: newTrn.completedDate ?? null, verification_status: newTrn.verificationStatus ?? 'not-started', submission_id: newTrn.submissionId ?? null });
       if (error) { showToast('error', `Course assignment failed: ${error.message}`); return; }
       await refreshVerifiedDirectory();
-    } else setEmployees((prev) => prev.map((item) => item.id === employeeId ? { ...item, trainingAssignments: [...item.trainingAssignments, newTrn] } : item));
+    } else { showToast('error', 'Sign in with an approved account before assigning training.'); return; }
     addActivity(`Assigned "${newTrn.courseName}" to ${emp.name}`, 'training');
     showToast('success', `Assigned "${newTrn.courseName}" to ${emp.name}.`);
   };
@@ -1063,23 +735,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetData = () => {
-    setEmployees(initialEmployees);
-    setProjects(initialProjects);
-    setSettings(defaultSettings);
-    setActivities(initialActivities);
-    setSubmissions(initialSubmissions);
-    setPreviewRoleState('manager');
-    try {
-      localStorage.removeItem(STORAGE_KEYS.EMPLOYEES);
-      localStorage.removeItem(STORAGE_KEYS.PROJECTS);
-      localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-      localStorage.removeItem(STORAGE_KEYS.ACTIVITIES);
-      localStorage.removeItem(STORAGE_KEYS.SUBMISSIONS);
-      localStorage.removeItem(STORAGE_KEYS.ROLE);
-    } catch (e) {
-      void e;
-    }
-    addActivity('Reset all workspace data to defaults', 'system');
+    showToast('warning', 'Workspace data is managed in the shared database. Local/demo reset is disabled.');
   };
 
   return (
