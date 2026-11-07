@@ -2,7 +2,7 @@ name: Validate Togetherly
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'security/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
