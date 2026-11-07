@@ -189,7 +189,13 @@ BEGIN
   UPDATE public.training_assignments SET verification_status='in-progress'
   WHERE id='assign-a';
   GET DIAGNOSTICS v_count = ROW_COUNT;
-  IF v_count <> 1 THEN RAISE EXCEPTION 'RLS TEST FAILED: employee could not update own training assignment'; END IF;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'RLS TEST FAILED: own assignment update affected % rows; uid=%, employee_id=%, visible_assignment=%, guard_id=%, update_policy=%',
+      v_count, auth.uid(), public.current_employee_id(),
+      EXISTS (SELECT 1 FROM public.training_assignments WHERE id='assign-a'),
+      current_setting('togetherly.verified_assignment_update_id', true),
+      (SELECT pg_get_expr(polqual, polrelid) FROM pg_policy WHERE polrelid='public.training_assignments'::regclass AND polname='Employees can update their own assignment progress');
+  END IF;
 
   UPDATE public.training_assignments SET verification_status='in-progress'
   WHERE id='assign-b';
