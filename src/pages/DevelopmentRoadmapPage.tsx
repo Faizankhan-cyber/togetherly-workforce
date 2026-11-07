@@ -150,7 +150,7 @@ export function DevelopmentRoadmapPage() {
         }
       />
 
-      {role === 'manager' && (
+      {['admin', 'manager', 'hr'].includes(role) && (
         <Reveal>
         <label className="mb-4 flex max-w-xl items-center gap-3 card p-3">
           <span className="text-sm text-text-secondary">Employee</span>
@@ -414,7 +414,7 @@ export function DevelopmentRoadmapPage() {
                       {alreadyAssigned && <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] text-primary">In roadmap</span>}
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-xs text-text-secondary"><LockKeyhole size={13} /> {course.course} · {course.provider}</div>
-                    {role === 'manager' && !alreadyAssigned && (
+                    {['admin', 'manager', 'hr'].includes(role) && !alreadyAssigned && (
                       <button className="btn-primary mt-3" onClick={() => assignCourse(need.skillId, need.requiredLevel, need.projects)}>
                         <GraduationCap size={15} /> Assign training
                       </button>
