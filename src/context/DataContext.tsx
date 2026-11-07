@@ -39,7 +39,7 @@ interface DataContextType {
     employeeId: string,
     trainingId: string,
     updates: Partial<TrainingAssignment>
-  ) => void;
+  ) => Promise<boolean>;
   submitTrainingClaim: (
     claim: Omit<TrainingSubmission, 'id' | 'submissionDate' | 'status' | 'auditTrail'> & { id?: string }
   ) => TrainingSubmission;
@@ -485,29 +485,58 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('success', `Assigned "${newTrn.courseName}" to ${emp.name}.`);
   };
 
-  const updateTrainingAssignment = (
+  const updateTrainingAssignment = async (
     employeeId: string,
     trainingId: string,
     updates: Partial<TrainingAssignment>
-  ) => {
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id === employeeId) {
-          const updatedAssignments = emp.trainingAssignments.map((trn) => {
-            if (trn.id === trainingId) {
-              return { ...trn, ...updates };
-            }
-            return trn;
-          });
+  ): Promise<boolean> => {
+    const employee = employees.find((item) => item.id === employeeId);
+    const assignment = employee?.trainingAssignments.find((item) => item.id === trainingId);
+    if (!employee || !assignment) {
+      showToast('error', 'Training assignment was not found. Refresh the page and try again.');
+      return false;
+    }
+    if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) {
+      showToast('error', 'Sign in with an approved Togetherly account before updating training progress.');
+      return false;
+    }
 
-          return {
-            ...emp,
-            trainingAssignments: updatedAssignments,
-          };
-        }
-        return emp;
-      })
-    );
+    const isSelf = employeeId === mappedEmployee?.id;
+    const canReview = ['admin', 'manager', 'hr'].includes(String(mappedEmployee?.systemRole));
+    if (!isSelf && !canReview) {
+      showToast('error', 'You can only update your own training progress.');
+      return false;
+    }
+    if (updates.progress !== undefined && (!Number.isInteger(updates.progress) || updates.progress < 0 || updates.progress > 100)) {
+      showToast('error', 'Training progress must be a whole number from 0 to 100.');
+      return false;
+    }
+
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (updates.progress !== undefined) payload.progress = updates.progress;
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.completedDate !== undefined) payload.completed_date = updates.completedDate || null;
+    if (updates.reason !== undefined && canReview) payload.reason = updates.reason ?? null;
+
+    const { data, error } = await supabase
+      .from('training_assignments')
+      .update(payload)
+      .eq('id', trainingId)
+      .eq('employee_id', employeeId)
+      .select('id')
+      .maybeSingle();
+
+    if (error || !data) {
+      showToast('error', error?.message || 'Training progress was not saved. Check your access and try again.');
+      return false;
+    }
+
+    setEmployees((prev) => prev.map((emp) => emp.id !== employeeId ? emp : ({
+      ...emp,
+      trainingAssignments: emp.trainingAssignments.map((item) => item.id === trainingId ? { ...item, ...updates } : item),
+    })));
+    showToast('success', 'Training progress saved.');
+    return true;
   };
 
   const submitTrainingClaim = (

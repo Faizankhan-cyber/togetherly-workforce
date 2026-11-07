@@ -115,12 +115,11 @@ export function SkillsTrainingPage() {
     showToast('success', 'Skill matrix exported to CSV');
   }
 
-  function advanceTraining(employeeId: string, trainingId: string, progress: number, status: 'not-started' | 'in-progress' | 'completed') {
+  async function advanceTraining(employeeId: string, trainingId: string, progress: number, status: 'not-started' | 'in-progress' | 'completed') {
     if (status === 'completed') return;
     const nextProgress = status === 'not-started' ? Math.max(10, progress) : Math.min(100, progress + 25);
     const nextStatus = nextProgress >= 100 ? 'completed' : 'in-progress';
-    updateTrainingAssignment(employeeId, trainingId, { progress: nextProgress, status: nextStatus });
-    showToast('success', nextStatus === 'completed' ? 'Coursework completed (100%). Awaiting completion verification claim.' : `Training progress updated to ${nextProgress}%`);
+    await updateTrainingAssignment(employeeId, trainingId, { progress: nextProgress, status: nextStatus });
   }
 
   return (
