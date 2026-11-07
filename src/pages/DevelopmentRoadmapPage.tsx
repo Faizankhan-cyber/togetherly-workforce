@@ -43,7 +43,7 @@ const coursesBySkill: Record<string, { course: string; provider: string }> = {
 };
 
 export function DevelopmentRoadmapPage() {
-  const { employees, projects, submissions, role, addTrainingAssignment, updateTrainingAssignment, showToast } = useData();
+  const { employees, projects, submissions, role, addTrainingAssignment, updateTrainingAssignment } = useData();
   const currentEmployee = useCurrentEmployee();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
