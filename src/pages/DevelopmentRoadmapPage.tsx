@@ -107,11 +107,10 @@ export function DevelopmentRoadmapPage() {
     submission.employeeId === employee.id && submission.status === 'pending-verification'
   ).length;
 
-  function advanceTraining(trainingId: string, progress: number, status: 'not-started' | 'in-progress' | 'completed') {
+  async function advanceTraining(trainingId: string, progress: number, status: 'not-started' | 'in-progress' | 'completed') {
     const nextProgress = status === 'not-started' ? Math.max(10, progress) : Math.min(100, progress + 25);
     const nextStatus = nextProgress >= 100 ? 'completed' : 'in-progress';
-    updateTrainingAssignment(selectedEmployee.id, trainingId, { progress: nextProgress, status: nextStatus });
-    showToast('success', nextStatus === 'completed' ? 'Coursework completed (100%). Ready for completion verification.' : `Course progress updated to ${nextProgress}%`);
+    await updateTrainingAssignment(selectedEmployee.id, trainingId, { progress: nextProgress, status: nextStatus });
   }
 
   function assignCourse(skillId: string, requiredLevel: number, projectNames: string[]) {
