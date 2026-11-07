@@ -61,6 +61,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
+      - name: Test security and performance remediation migration
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: togetherly_test
+        run: psql --no-psqlrc --set ON_ERROR_STOP=1 --host "$PGHOST" --port "$PGPORT" --username "$PGUSER" --dbname "$PGDATABASE" --file supabase/tests/security_performance_remediation.test.sql
       - name: Test rejected-registration migration and authorization boundaries
         env:
           PGHOST: 127.0.0.1
