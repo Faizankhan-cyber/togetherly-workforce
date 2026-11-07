@@ -116,7 +116,7 @@ export function DevelopmentRoadmapPage() {
 
   function assignCourse(skillId: string, requiredLevel: number, projectNames: string[]) {
     const course = coursesBySkill[skillId] ?? { course: `${getSkillName(skillId)} Learning Path`, provider: 'Togetherly Academy' };
-    addTrainingAssignment(selectedEmployee.id, {
+    void addTrainingAssignment(selectedEmployee.id, {
       skillId,
       courseName: course.course,
       provider: course.provider,
@@ -124,7 +124,6 @@ export function DevelopmentRoadmapPage() {
       status: 'not-started',
       reason: `Build toward level ${requiredLevel} for ${projectNames.slice(0, 2).join(' and ')}`,
     });
-    showToast('success', `${course.course} assigned to ${selectedEmployee.name}`);
   }
 
   return (
@@ -150,7 +149,7 @@ export function DevelopmentRoadmapPage() {
         }
       />
 
-      {role === 'manager' && (
+      {role !== 'employee' && (
         <Reveal>
         <label className="mb-4 flex max-w-xl items-center gap-3 card p-3">
           <span className="text-sm text-text-secondary">Employee</span>
@@ -414,7 +413,7 @@ export function DevelopmentRoadmapPage() {
                       {alreadyAssigned && <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] text-primary">In roadmap</span>}
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-xs text-text-secondary"><LockKeyhole size={13} /> {course.course} · {course.provider}</div>
-                    {role === 'manager' && !alreadyAssigned && (
+                    {role !== 'employee' && !alreadyAssigned && (
                       <button className="btn-primary mt-3" onClick={() => assignCourse(need.skillId, need.requiredLevel, need.projects)}>
                         <GraduationCap size={15} /> Assign training
                       </button>
