@@ -34,7 +34,7 @@ interface DataContextType {
   deleteProject: (id: string) => void;
   assignEmployeeToProject: (employeeId: string, projectId: string) => void;
   unassignEmployeeFromProject: (employeeId: string, projectId: string) => void;
-  addTrainingAssignment: (employeeId: string, training: Omit<TrainingAssignment, 'id'>) => void;
+  addTrainingAssignment: (employeeId: string, training: Omit<TrainingAssignment, 'id'>) => Promise<void>;
   updateTrainingAssignment: (
     employeeId: string,
     trainingId: string,
@@ -445,16 +445,42 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('error', 'Use the database-backed project editor to change project assignments.');
   };
 
-  const addTrainingAssignment = async (employeeId: string, training: Omit<TrainingAssignment, 'id'>) => {
+  const addTrainingAssignment = async (employeeId: string, training: Omit<TrainingAssignment, 'id'>): Promise<void> => {
+    const emp = employees.find((item) => item.id === employeeId && item.employmentStatus !== 'offboarded');
+    if (!emp) {
+      showToast('error', 'Select an active employee before assigning a course.');
+      return;
+    }
+    if (!hasMappedAuthIdentity || !supabase || !isSupabaseConfigured()) {
+      showToast('error', 'Sign in with an approved Togetherly account before assigning training.');
+      return;
+    }
+    if (!['admin', 'manager', 'hr'].includes(String(mappedEmployee?.systemRole))) {
+      showToast('error', 'Only managers, HR and admins can assign training.');
+      return;
+    }
+
     const newTrn: TrainingAssignment = { ...training, id: `trn-${crypto.randomUUID()}` };
-    const emp = employees.find((e) => e.id === employeeId);
-    if (!emp) { showToast('error', 'Select a valid employee before assigning a course.'); return; }
-    if (hasMappedAuthIdentity && supabase) {
-      if (!['admin', 'manager', 'hr'].includes(String(mappedEmployee?.systemRole))) { showToast('error', 'You do not have permission to assign courses.'); return; }
-      const { error } = await supabase.from('training_assignments').insert({ id: newTrn.id, employee_id: employeeId, course_name: newTrn.courseName, provider: newTrn.provider, skill_id: newTrn.skillId, status: newTrn.status, progress: newTrn.progress, reason: newTrn.reason ?? null, assigned_date: newTrn.assignedDate ?? new Date().toISOString().slice(0, 10), completed_date: newTrn.completedDate ?? null, verification_status: newTrn.verificationStatus ?? 'not-started', submission_id: newTrn.submissionId ?? null });
-      if (error) { showToast('error', `Course assignment failed: ${error.message}`); return; }
-      await refreshVerifiedDirectory();
-    } else { showToast('error', 'Sign in with an approved account before assigning training.'); return; }
+    const { error } = await supabase.from('training_assignments').insert({
+      id: newTrn.id,
+      employee_id: employeeId,
+      course_name: newTrn.courseName,
+      provider: newTrn.provider,
+      skill_id: newTrn.skillId,
+      status: newTrn.status,
+      progress: newTrn.progress,
+      reason: newTrn.reason ?? null,
+      assigned_date: newTrn.assignedDate ?? new Date().toISOString().slice(0, 10),
+      completed_date: newTrn.completedDate ?? null,
+      verification_status: newTrn.verificationStatus ?? 'not-started',
+      submission_id: newTrn.submissionId ?? null,
+    });
+    if (error) {
+      showToast('error', `Course assignment failed: ${error.message}`);
+      return;
+    }
+
+    await refreshVerifiedDirectory();
     addActivity(`Assigned "${newTrn.courseName}" to ${emp.name}`, 'training');
     showToast('success', `Assigned "${newTrn.courseName}" to ${emp.name}.`);
   };
