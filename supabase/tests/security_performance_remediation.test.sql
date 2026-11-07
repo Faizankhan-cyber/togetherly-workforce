@@ -110,6 +110,13 @@ ALTER TABLE public.training_assignments ENABLE ROW LEVEL SECURITY;
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO authenticated;
 
+CREATE POLICY "Employees directory is visible to authenticated users"
+  ON public.employees FOR SELECT TO authenticated
+  USING (employment_status = 'active' OR auth_user_id = auth.uid() OR public.is_reviewer_or_admin());
+CREATE POLICY "Employees can view their own training assignments"
+  ON public.training_assignments FOR SELECT TO authenticated
+  USING (employee_id = public.current_employee_id());
+
 -- Seed synthetic users only.
 INSERT INTO public.employees (id,auth_user_id,employment_status,system_role) VALUES
  ('employee-a','00000000-0000-0000-0000-000000000001','active','employee'),
