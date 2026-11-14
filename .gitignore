@@ -25,3 +25,9 @@ vitest.config.cts.timestamp-*.mjs
 *.sql.gz
 
 dist/
+
+# Tool/editor scaffolding and generated artifacts
+.aistudio/
+.replit
+attached_assets/
+metadata.json
